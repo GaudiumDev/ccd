@@ -1,0 +1,209 @@
+'use client'
+
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Settings, Bell, Lock, Database } from 'lucide-react'
+
+export default function SettingsPage() {
+  const [activeTab, setActiveTab] = useState('general')
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+          <Settings className="h-8 w-8 text-primary" />
+          Configuración
+        </h1>
+        <p className="mt-2 text-muted-foreground">
+          Administra la configuración del sistema
+        </p>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-4 border-b border-border">
+        <button
+          onClick={() => setActiveTab('general')}
+          className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+            activeTab === 'general'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          General
+        </button>
+        <button
+          onClick={() => setActiveTab('notificaciones')}
+          className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+            activeTab === 'notificaciones'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Notificaciones
+        </button>
+        <button
+          onClick={() => setActiveTab('seguridad')}
+          className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+            activeTab === 'seguridad'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Seguridad
+        </button>
+        <button
+          onClick={() => setActiveTab('datos')}
+          className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+            activeTab === 'datos'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Datos
+        </button>
+      </div>
+
+      {/* General Settings */}
+      {activeTab === 'general' && (
+        <Card className="border-border bg-card max-w-2xl">
+          <CardHeader>
+            <CardTitle className="text-foreground">Configuración General</CardTitle>
+            <CardDescription>Ajusta la configuración general del sistema</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="nombreSistema" className="text-foreground">Nombre del Sistema</Label>
+              <Input
+                id="nombreSistema"
+                placeholder="Convivencia con Dios"
+                defaultValue="Convivencia con Dios"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="emailContacto" className="text-foreground">Email de Contacto</Label>
+              <Input
+                id="emailContacto"
+                type="email"
+                placeholder="contacto@convivencia.org"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="telefonoContacto" className="text-foreground">Teléfono de Contacto</Label>
+              <Input
+                id="telefonoContacto"
+                placeholder="+34 123 456 789"
+              />
+            </div>
+
+            <Button>Guardar Cambios</Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Notifications */}
+      {activeTab === 'notificaciones' && (
+        <Card className="border-border bg-card max-w-2xl">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <Bell className="h-5 w-5 text-primary" />
+              Notificaciones
+            </CardTitle>
+            <CardDescription>Configura cómo recibes notificaciones</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between py-3 border-b border-border">
+              <div>
+                <p className="font-medium text-foreground">Eventos próximos</p>
+                <p className="text-sm text-muted-foreground">Recibe alertas sobre eventos próximos</p>
+              </div>
+              <input type="checkbox" defaultChecked className="w-4 h-4" />
+            </div>
+
+            <div className="flex items-center justify-between py-3 border-b border-border">
+              <div>
+                <p className="font-medium text-foreground">Nuevas inscripciones</p>
+                <p className="text-sm text-muted-foreground">Notificaciones sobre nuevas inscripciones</p>
+              </div>
+              <input type="checkbox" defaultChecked className="w-4 h-4" />
+            </div>
+
+            <div className="flex items-center justify-between py-3">
+              <div>
+                <p className="font-medium text-foreground">Cambios en eventos</p>
+                <p className="text-sm text-muted-foreground">Se notificado de cambios en los eventos</p>
+              </div>
+              <input type="checkbox" defaultChecked className="w-4 h-4" />
+            </div>
+
+            <Button>Guardar Preferencias</Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Security */}
+      {activeTab === 'seguridad' && (
+        <Card className="border-border bg-card max-w-2xl">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <Lock className="h-5 w-5 text-primary" />
+              Seguridad
+            </CardTitle>
+            <CardDescription>Administra la seguridad de tu cuenta</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="py-4 border-b border-border">
+              <h3 className="font-medium text-foreground mb-2">Cambiar Contraseña</h3>
+              <p className="text-sm text-muted-foreground mb-4">Actualiza tu contraseña regularmente para mantener tu cuenta segura</p>
+              <Button variant="outline" className="bg-transparent">
+                Cambiar Contraseña
+              </Button>
+            </div>
+
+            <div className="py-4">
+              <h3 className="font-medium text-foreground mb-2">Autenticación de Dos Factores</h3>
+              <p className="text-sm text-muted-foreground mb-4">Añade una capa adicional de seguridad a tu cuenta</p>
+              <Button variant="outline" className="bg-transparent">
+                Configurar 2FA
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Data */}
+      {activeTab === 'datos' && (
+        <Card className="border-border bg-card max-w-2xl">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <Database className="h-5 w-5 text-primary" />
+              Gestión de Datos
+            </CardTitle>
+            <CardDescription>Administra los datos del sistema</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="py-4 border-b border-border">
+              <h3 className="font-medium text-foreground mb-2">Exportar Datos</h3>
+              <p className="text-sm text-muted-foreground mb-4">Descarga una copia de todos tus datos en formato CSV</p>
+              <Button variant="outline" className="bg-transparent">
+                Exportar Datos
+              </Button>
+            </div>
+
+            <div className="py-4">
+              <h3 className="font-medium text-foreground mb-2">Limpiar Caché</h3>
+              <p className="text-sm text-muted-foreground mb-4">Limpia los datos en caché del sistema para mejorar el rendimiento</p>
+              <Button variant="outline" className="bg-transparent">
+                Limpiar Caché
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  )
+}
