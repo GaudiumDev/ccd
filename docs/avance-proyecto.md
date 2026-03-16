@@ -13,6 +13,7 @@
 En menos de dos semanas se construyó desde cero una plataforma web completa para la gestión organizacional de la Comunidad CcD. El sistema cubre personas, organizaciones, ministerios, eventos, retiros, inscripciones y pagos, con autenticación, permisos por rol, migraciones de base de datos y documentación técnica.
 
 **Volumen de trabajo entregado:**
+
 - **109 archivos creados o modificados** en total
 - **~17.500 líneas de código nuevas** (netas, excluyendo eliminaciones)
 - **11 scripts SQL** de migración de base de datos
@@ -28,6 +29,7 @@ En menos de dos semanas se construyó desde cero una plataforma web completa par
 **Promedio: ~7–8 h/día (2 días activos)**
 
 ### 3 de marzo — Setup completo + estructura base
+
 **Horas: ~7–8 h**
 
 Se creó toda la estructura del proyecto desde cero. Un solo commit incluyó 120 archivos y 12.922 líneas de código.
@@ -35,6 +37,7 @@ Se creó toda la estructura del proyecto desde cero. Un solo commit incluyó 120
 **Lo que se hizo:**
 
 **Infraestructura y configuración**
+
 - Inicialización del proyecto Next.js 15 con App Router y TypeScript
 - Integración completa de Supabase (Auth, base de datos, Storage)
 - Configuración de Tailwind CSS v4 con shadcn/ui (tema new-york, base neutral)
@@ -44,18 +47,21 @@ Se creó toda la estructura del proyecto desde cero. Un solo commit incluyó 120
 - 50+ componentes UI de shadcn/ui instalados y configurados
 
 **Sistema de autenticación**
+
 - Página de login con manejo de errores
 - Página de registro de usuario
 - Página de confirmación post-registro
 - Redirección automática según estado de sesión
 
 **Layout y navegación**
+
 - Sidebar con navegación completa por módulos
 - Header con información de usuario y acciones
 - Footer
 - Layout diferenciado para área pública vs. área protegida vs. área admin
 
 **Módulos base (versión inicial, conectados a Supabase real)**
+
 - `/personas` — listado y alta de personas
 - `/organizaciones` — listado y alta de organizaciones
 - `/eventos` — listado y alta de eventos
@@ -69,38 +75,44 @@ Se creó toda la estructura del proyecto desde cero. Un solo commit incluyó 120
 - `/dashboard` — vista general con estadísticas
 
 **Área Admin**
+
 - `/admin` — panel de administración
 - `/admin/cofradias` — gestión de confraternidades con alta
 - `/admin/inscripciones` — gestión de inscripciones con acciones
 - `/admin/retiros` — gestión y creación de retiros
 
 **Base de datos**
+
 - `001_create_tables.sql` — schema inicial completo con todas las tablas del dominio
 
 ---
 
 ### 6 de marzo — Arquitectura canónica + permisos + documentación
+
 **Horas: ~7–8 h**
 
 El mayor commit técnico del proyecto: 68 archivos cambiados, cientos de líneas de lógica nueva.
 
 **Modelo de datos y documentación**
+
 - `docs/PRD.md` — Documento de Requerimientos del Producto (351 líneas): visión, objetivos, módulos, casos de uso, requisitos no funcionales
 - `docs/data-model.md` — Especificación completa del modelo de datos (383 líneas): todas las tablas, campos, relaciones, constraints, RLS policies
-- `CLAUDE.md` — Documentación de arquitectura para el proyecto (91 líneas)
 - Definición precisa de los 4 conceptos de rol/asignación (nunca conflated): modo de participación, ministerio institucional, rol técnico, rol en evento
 
 **Migraciones SQL ejecutadas**
+
 - `003_align_to_data_model.sql` (500 líneas) — Alineación completa del schema al modelo canónico: columnas faltantes, nuevas tablas, constraints, RLS policies
 - `004_fix_invite_trigger.sql` (97 líneas) — Fix del trigger `handle_new_user` para vincular personas existentes al invitar usuarios
 - `005_dynamic_permissions.sql` (172 líneas) — Sistema de permisos dinámicos: tablas `permisos` y `rol_permisos`, constraints únicos en `usuario_roles`
 - `006_persona_id_en_usuario_roles.sql` — Relación persona ↔ usuario_roles para roles sin cuenta de auth, triggers y policies actualizadas
 
 **Reestructuración del App Router**
+
 - Migración de todas las rutas a la estructura `(app)/` con route groups de Next.js
 - Layout propio para el área autenticada con contexto de usuario
 
 **Módulo Personas — versión completa**
+
 - `/personas` — listado con búsqueda por nombre/apellido, filtros, paginación
 - `/personas/nueva` — formulario completo de alta (377 líneas): datos personales, eclesiales, modo de participación
 - `/personas/[id]/editar` — formulario de edición con todos los campos (616 líneas)
@@ -108,6 +120,7 @@ El mayor commit técnico del proyecto: 68 archivos cambiados, cientos de líneas
 - API `GET/PUT/DELETE /api/personas/[id]` — operaciones por ID
 
 **Módulo Organizaciones — versión completa**
+
 - `/organizaciones` — listado con búsqueda, tipos, jerarquía
 - `/organizaciones/nueva` — formulario de alta con selector de tipo y organización padre
 - `/organizaciones/[id]` — vista detalle con miembros y suborganizaciones
@@ -115,6 +128,7 @@ El mayor commit técnico del proyecto: 68 archivos cambiados, cientos de líneas
 - API `GET/POST /api/organizaciones` y `GET/PUT/DELETE /api/organizaciones/[id]`
 
 **Módulo Ministerios — completo**
+
 - `/ministerios` — hub de navegación del módulo
 - `/ministerios/roles` — listado de roles del sistema
 - `/ministerios/roles/nuevo` — creación de rol con permisos (134 líneas)
@@ -127,12 +141,14 @@ El mayor commit técnico del proyecto: 68 archivos cambiados, cientos de líneas
 - API `GET/POST /api/ministerios/roles`
 
 **Módulo Eventos — completo**
+
 - `/eventos` — listado con estados y tipos
 - `/eventos/nuevo` — formulario de creación con fechas múltiples (294 líneas)
 - `/eventos/[id]/editar` — edición completa (352 líneas)
 - API `GET/POST /api/eventos`
 
 **Sistema de autenticación y permisos**
+
 - `lib/auth/context.ts` (116 líneas) — contexto de usuario con roles, ministerios y scope organizacional
 - `lib/auth/permissions.ts` (138 líneas) — evaluación de permisos por contexto
 
@@ -146,10 +162,12 @@ El mayor commit técnico del proyecto: 68 archivos cambiados, cientos de líneas
 ---
 
 ### 10 de marzo — Refactor masivo + exports + reglas de negocio
+
 **Horas: ~8 h**
-*(6 commits en el mismo día)*
+_(6 commits en el mismo día)_
 
 **Refactor completo del módulo Personas**
+
 - Nuevo componente `personas-table.tsx` (348 líneas) — tabla avanzada con columnas, ordenamiento, acciones en línea
 - Nuevo componente `persona-detail-modal.tsx` (257 líneas) — modal de detalle sin salir del listado
 - Nuevo componente `personas-filters.tsx` (138 líneas) — panel de filtros avanzados (modo, estado, organización, búsqueda)
@@ -157,6 +175,7 @@ El mayor commit técnico del proyecto: 68 archivos cambiados, cientos de líneas
 - API `GET /api/personas/export` (137 líneas) — endpoint de exportación con filtros
 
 **Refactor módulo Organizaciones**
+
 - Nuevo componente `org-export-button.tsx` — exportación de organizaciones
 - API `GET /api/organizaciones/export` (52 líneas) — endpoint de exportación
 - Mejoras en listado y detalle
@@ -165,14 +184,16 @@ El mayor commit técnico del proyecto: 68 archivos cambiados, cientos de líneas
 
 Este fue uno de los cambios más importantes del proyecto, no solo de código sino de lógica de negocio.
 
-*Antes (hasta el 6 de marzo):*
+_Antes (hasta el 6 de marzo):_
+
 - Existían dos sistemas paralelos e inconexos: `ministerios` (pastorales) y `roles_sistema` (técnicos)
 - Los roles técnicos del sistema (admin, solo lectura, etc.) vivían en una tabla separada `roles_sistema`
 - La gestión de roles estaba **embebida dentro del formulario de edición de persona** — mezclando datos personales con permisos de sistema en una misma pantalla
 - Asignar un rol implicaba ir a editar la persona, encontrar la sección de roles al final del formulario, y operar desde ahí
 - No había relación entre ministerios pastorales y permisos de sistema
 
-*Después (desde el 14 de marzo):*
+_Después (desde el 14 de marzo):_
+
 - **Un solo modelo unificado**: los roles técnicos se convirtieron en ministerios de tipo `'sistema'` dentro de la tabla `ministerios`
 - Los permisos de sistema se configuran por ministerio via la nueva tabla `ministerio_permisos` (relación ministerio → permiso)
 - La gestión de ministerios y roles se extrajo completamente de la persona y pasó a su propio módulo dedicado
@@ -180,34 +201,41 @@ Este fue uno de los cambios más importantes del proyecto, no solo de código si
 - Al hacer login, el sistema deriva los permisos del usuario a partir de sus ministerios activos (no de una tabla de roles separada)
 - `007_unify_ministerios.sql` (137 líneas) migró los datos: insertó los 5 roles técnicos existentes como ministerios de tipo `sistema`, con su `nivel_acceso` correspondiente
 
-*Impacto técnico:*
+_Impacto técnico:_
+
 - Se eliminaron ~15 tipos, estados y funciones del formulario de edición de persona relacionados con roles
 - `edit-persona-form.tsx` se simplificó significativamente al remover toda la sección "Rol del sistema"
 - El módulo Ministerios pasó de ser una sección secundaria a ser el punto central de gestión de permisos
 
-*Nuevas páginas del catálogo:*
+_Nuevas páginas del catálogo:_
+
 - `/ministerios/catalogo` — listado del catálogo unificado de ministerios
 - `/ministerios/catalogo/nuevo` — creación de ministerio con configuración de permisos (180 líneas)
 - `/ministerios/catalogo/[id]` — detalle con matriz de permisos configurable
 - Componentes: `edit-ministerio-form.tsx`, `ministerio-detail-client.tsx`, `permisos-matrix.tsx` (153 líneas), `ministerios-table.tsx` (235 líneas)
 
 **Dashboard mejorado**
+
 - `dashboard/page.tsx` reescrito (287 líneas) — KPIs dinámicos desde Supabase, gráficos de actividad, resumen por módulo
 
 **Documentación de negocio**
+
 - `docs/negocio.md` (270 líneas) — reglas de negocio detalladas: clasificación de personas, jerarquía organizacional, flujos de eventos, reglas de participación
 - `docs/data-model-2.0.md` (476 líneas) — modelo de datos v2 con todas las actualizaciones
 
 **Migraciones SQL ejecutadas**
+
 - `004_add_estado_eclesial.sql` — columnas `estado_eclesial` y `diocesis` en personas
 - `005_data_model_v2.sql` — nuevas columnas en personas y organizaciones, tabla `persona_categoria_no_cecista`, tabla `persona_organizacion`
 
 **Dependencias nuevas instaladas**
+
 - `html2canvas-pro` — captura de pantalla para exportación PDF
 - `jspdf` — generación de PDFs
 - `xlsx` — exportación a Excel
 
 **Fixes de build críticos (3 commits)**
+
 - Corrección del crash de Supabase client durante static build
 - `export const dynamic = 'force-dynamic'` agregado a 37 páginas Server Component
 - Separación correcta: Client Components NO pueden tener force-dynamic, Server Components sí
@@ -215,11 +243,13 @@ Este fue uno de los cambios más importantes del proyecto, no solo de código si
 ---
 
 ### 14 de marzo — Módulo Casas de Retiro completo
+
 **Horas: ~7 h**
 
 26 archivos modificados, módulo completo de cero más refactor de ministerios y permisos.
 
 **Módulo Casas de Retiro — completo desde cero**
+
 - `/casas-retiro` — listado con búsqueda, capacidad, servicios disponibles (198 líneas)
 - `/casas-retiro/nueva` — formulario de alta completo: datos generales, contacto, capacidad, servicios, ubicación (454 líneas)
 - `/casas-retiro/[id]` — vista detalle con todos los campos y retiros asociados (230 líneas)
@@ -228,33 +258,40 @@ Este fue uno de los cambios más importantes del proyecto, no solo de código si
 - API `GET/PUT/DELETE /api/casas-retiro/[id]` (112 líneas)
 
 **Migraciones SQL**
+
 - `007_unify_ministerios.sql` (137 líneas) — unificación del catálogo de ministerios, eliminación de duplicados, nuevas relaciones
 - `008_casas_retiro.sql` (117 líneas) — tabla `casas_retiro` con todos sus campos y relaciones
 
 **Refactor de Ministerios**
+
 - Unificación de ministerios institucionales y roles del sistema en un solo flujo
 - Componente `ministerios-table.tsx` (235 líneas) — tabla completa con filtros y acciones
 - Refactor de asignaciones para soportar el nuevo modelo unificado
 
 **Mejoras en Personas**
+
 - Eliminación de gestión de roles legacy del formulario de edición
 - Simplificación del formulario (`edit-persona-form.tsx` reducido)
 
 **Mejoras en autenticación**
+
 - Login page mejorado con mejor manejo de errores y UX
 - Contexto de usuario (`lib/auth/context.ts`) actualizado para incluir permisos de ministerio
 
 **Navegación**
+
 - Sidebar actualizado con nuevo módulo Casas de Retiro y reorganización de ministerios
 
 ---
 
 ### 16 de marzo — Campos faltantes en Personas + RLS
+
 **Horas: ~5 h**
 
 7 archivos, 736 líneas nuevas netas. Extensión mayor de los formularios de personas.
 
 **Nuevos campos en Personas**
+
 - `email_ccd` — email institucional de la comunidad
 - `direccion_nro` — número de la dirección (separado de la calle)
 - `codigo_postal` — código postal
@@ -263,30 +300,34 @@ Este fue uno de los cambios más importantes del proyecto, no solo de código si
 - Soporte completo para categorías no-cecistas extendidas
 
 **Formularios actualizados**
+
 - `personas/nueva/page.tsx` — reescritura parcial (512 líneas totales), nueva lógica para categorías no-cecistas, validaciones mejoradas
 - `personas/[id]/editar/_components/edit-persona-form.tsx` — nuevos campos integrados (316 líneas de cambios)
 - `personas/_components/persona-detail-modal.tsx` — muestra todos los campos nuevos (168 líneas de cambios)
 
 **APIs actualizadas**
+
 - `POST /api/personas` — acepta y guarda todos los campos nuevos
 - `PUT /api/personas/[id]` — actualización con los nuevos campos
 
 **Seguridad (RLS)**
+
 - Políticas RLS para `persona_categoria_no_cecista`
 - Políticas RLS para `persona_organizacion`
 
 **Migración SQL**
+
 - `009_persona_campos_faltantes.sql` (57 líneas) — columnas nuevas en tabla personas, extensión del enum de categorías no-cecistas
 
 ---
 
 ## Detalle de horas por semana
 
-| Semana | Período | Días activos | Horas |
-|---|---|---|---|
-| Semana 1 | 3–6 marzo | 2 días (3 y 6) | ~15 h |
-| Semana 2 | 10–16 marzo | 3 días (10, 14 y 16) | ~20 h |
-| **Total** | | **5 días activos** | **~35 h** |
+| Semana    | Período     | Días activos         | Horas     |
+| --------- | ----------- | -------------------- | --------- |
+| Semana 1  | 3–6 marzo   | 2 días (3 y 6)       | ~15 h     |
+| Semana 2  | 10–16 marzo | 3 días (10, 14 y 16) | ~20 h     |
+| **Total** |             | **5 días activos**   | **~35 h** |
 
 > Ritmo presupuestado: 4 h/día × 5 días/semana = 20 h/semana.
 > El trabajo efectivo corresponde a ~1.75 semanas de ese ritmo, distribuidas en 13 días calendario.
@@ -297,61 +338,61 @@ Este fue uno de los cambios más importantes del proyecto, no solo de código si
 
 ### Páginas y componentes (62 archivos TSX)
 
-| Módulo | Archivos | Descripción |
-|---|---|---|
-| Auth | 3 | Login, sign-up, confirmación |
-| Dashboard | 1 | Vista general con KPIs |
-| Personas | 8 | Listado, alta, edición, modal, filtros, tabla, export |
-| Organizaciones | 5 | Listado, alta, detalle, edición, export |
-| Ministerios | 12 | Hub, roles, catálogo, asignaciones, revocar, matrices de permisos |
-| Eventos | 4 | Listado, alta, edición, form separado |
-| Retiros | 3 | Listado, detalle, inscripción |
-| Casas de Retiro | 4 | Listado, alta, detalle, edición |
-| Inscripciones | 2 | Listado, nueva inscripción |
-| Pagos | 2 | Listado, nuevo pago |
-| Admin | 5 | Panel, cofradías, inscripciones, retiros, nuevo retiro |
-| Otros | 3 | Documentos, Reportes, Settings |
+| Módulo          | Archivos | Descripción                                                       |
+| --------------- | -------- | ----------------------------------------------------------------- |
+| Auth            | 3        | Login, sign-up, confirmación                                      |
+| Dashboard       | 1        | Vista general con KPIs                                            |
+| Personas        | 8        | Listado, alta, edición, modal, filtros, tabla, export             |
+| Organizaciones  | 5        | Listado, alta, detalle, edición, export                           |
+| Ministerios     | 12       | Hub, roles, catálogo, asignaciones, revocar, matrices de permisos |
+| Eventos         | 4        | Listado, alta, edición, form separado                             |
+| Retiros         | 3        | Listado, detalle, inscripción                                     |
+| Casas de Retiro | 4        | Listado, alta, detalle, edición                                   |
+| Inscripciones   | 2        | Listado, nueva inscripción                                        |
+| Pagos           | 2        | Listado, nuevo pago                                               |
+| Admin           | 5        | Panel, cofradías, inscripciones, retiros, nuevo retiro            |
+| Otros           | 3        | Documentos, Reportes, Settings                                    |
 
 ### API Routes (11 archivos TS)
 
-| Endpoint | Métodos | Propósito |
-|---|---|---|
-| `/api/personas` | GET, POST | Listado con filtros + creación |
-| `/api/personas/[id]` | GET, PUT, DELETE | Operaciones por persona |
-| `/api/personas/export` | GET | Exportación Excel/PDF |
-| `/api/personas/invite` | POST | Invitación a crear cuenta |
-| `/api/organizaciones` | GET, POST | Listado + creación |
-| `/api/organizaciones/[id]` | GET, PUT, DELETE | Operaciones por org |
-| `/api/organizaciones/export` | GET | Exportación |
-| `/api/eventos` | GET, POST | Listado + creación |
-| `/api/ministerios/roles` | GET, POST | Roles del sistema |
-| `/api/casas-retiro` | GET, POST | Listado + creación |
-| `/api/casas-retiro/[id]` | GET, PUT, DELETE | Operaciones por casa |
+| Endpoint                     | Métodos          | Propósito                      |
+| ---------------------------- | ---------------- | ------------------------------ |
+| `/api/personas`              | GET, POST        | Listado con filtros + creación |
+| `/api/personas/[id]`         | GET, PUT, DELETE | Operaciones por persona        |
+| `/api/personas/export`       | GET              | Exportación Excel/PDF          |
+| `/api/personas/invite`       | POST             | Invitación a crear cuenta      |
+| `/api/organizaciones`        | GET, POST        | Listado + creación             |
+| `/api/organizaciones/[id]`   | GET, PUT, DELETE | Operaciones por org            |
+| `/api/organizaciones/export` | GET              | Exportación                    |
+| `/api/eventos`               | GET, POST        | Listado + creación             |
+| `/api/ministerios/roles`     | GET, POST        | Roles del sistema              |
+| `/api/casas-retiro`          | GET, POST        | Listado + creación             |
+| `/api/casas-retiro/[id]`     | GET, PUT, DELETE | Operaciones por casa           |
 
 ### Scripts SQL (11 archivos)
 
-| Script | Líneas | Estado | Descripción |
-|---|---|---|---|
-| `001_create_tables.sql` | — | ✅ Ejecutado | Schema inicial completo |
-| `002_restructure_schema.sql` | — | ✅ Ejecutado | Reestructuración |
-| `003_align_to_data_model.sql` | 500 | ✅ Ejecutado | Alineación al modelo canónico |
-| `004_add_estado_eclesial.sql` | — | ✅ Ejecutado | Estado eclesial en personas |
-| `004_fix_invite_trigger.sql` | 97 | ✅ Ejecutado | Fix trigger de invitación |
-| `005_data_model_v2.sql` | — | ✅ Ejecutado | Modelo v2 |
-| `005_dynamic_permissions.sql` | 172 | ✅ Ejecutado | Permisos dinámicos |
-| `006_persona_id_en_usuario_roles.sql` | — | ✅ Ejecutado | Relación persona-roles |
-| `007_unify_ministerios.sql` | 137 | ✅ Ejecutado | Unificación ministerios |
-| `008_casas_retiro.sql` | 117 | ✅ Ejecutado | Tabla casas de retiro |
-| `009_persona_campos_faltantes.sql` | 57 | ⏳ Pendiente | Campos nuevos en personas |
+| Script                                | Líneas | Estado       | Descripción                   |
+| ------------------------------------- | ------ | ------------ | ----------------------------- |
+| `001_create_tables.sql`               | —      | ✅ Ejecutado | Schema inicial completo       |
+| `002_restructure_schema.sql`          | —      | ✅ Ejecutado | Reestructuración              |
+| `003_align_to_data_model.sql`         | 500    | ✅ Ejecutado | Alineación al modelo canónico |
+| `004_add_estado_eclesial.sql`         | —      | ✅ Ejecutado | Estado eclesial en personas   |
+| `004_fix_invite_trigger.sql`          | 97     | ✅ Ejecutado | Fix trigger de invitación     |
+| `005_data_model_v2.sql`               | —      | ✅ Ejecutado | Modelo v2                     |
+| `005_dynamic_permissions.sql`         | 172    | ✅ Ejecutado | Permisos dinámicos            |
+| `006_persona_id_en_usuario_roles.sql` | —      | ✅ Ejecutado | Relación persona-roles        |
+| `007_unify_ministerios.sql`           | 137    | ✅ Ejecutado | Unificación ministerios       |
+| `008_casas_retiro.sql`                | 117    | ✅ Ejecutado | Tabla casas de retiro         |
+| `009_persona_campos_faltantes.sql`    | 57     | ⏳ Pendiente | Campos nuevos en personas     |
 
 ### Documentación técnica (4 documentos)
 
-| Archivo | Líneas | Contenido |
-|---|---|---|
-| `docs/PRD.md` | 351 | Requerimientos completos del producto |
-| `docs/data-model.md` | 383 | Modelo de datos v1 |
-| `docs/data-model-2.0.md` | 476 | Modelo de datos v2 actualizado |
-| `docs/negocio.md` | 270 | Reglas de negocio de la comunidad |
+| Archivo                  | Líneas | Contenido                             |
+| ------------------------ | ------ | ------------------------------------- |
+| `docs/PRD.md`            | 351    | Requerimientos completos del producto |
+| `docs/data-model.md`     | 383    | Modelo de datos v1                    |
+| `docs/data-model-2.0.md` | 476    | Modelo de datos v2 actualizado        |
+| `docs/negocio.md`        | 270    | Reglas de negocio de la comunidad     |
 
 ---
 
