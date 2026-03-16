@@ -161,11 +161,35 @@ El mayor commit técnico del proyecto: 68 archivos cambiados, cientos de líneas
 - API `GET /api/organizaciones/export` (52 líneas) — endpoint de exportación
 - Mejoras en listado y detalle
 
-**Catálogo de Ministerios**
-- `/ministerios/catalogo` — listado del catálogo de ministerios
-- `/ministerios/catalogo/nuevo` — creación de ministerio (180 líneas)
-- `/ministerios/catalogo/[id]` — detalle de ministerio
-- Componentes: `edit-ministerio-form.tsx`, `ministerio-detail-client.tsx`, `permisos-matrix.tsx`, `ministerios-table.tsx`
+**Refactor y unificación del sistema de Ministerios**
+
+Este fue uno de los cambios más importantes del proyecto, no solo de código sino de lógica de negocio.
+
+*Antes (hasta el 6 de marzo):*
+- Existían dos sistemas paralelos e inconexos: `ministerios` (pastorales) y `roles_sistema` (técnicos)
+- Los roles técnicos del sistema (admin, solo lectura, etc.) vivían en una tabla separada `roles_sistema`
+- La gestión de roles estaba **embebida dentro del formulario de edición de persona** — mezclando datos personales con permisos de sistema en una misma pantalla
+- Asignar un rol implicaba ir a editar la persona, encontrar la sección de roles al final del formulario, y operar desde ahí
+- No había relación entre ministerios pastorales y permisos de sistema
+
+*Después (desde el 14 de marzo):*
+- **Un solo modelo unificado**: los roles técnicos se convirtieron en ministerios de tipo `'sistema'` dentro de la tabla `ministerios`
+- Los permisos de sistema se configuran por ministerio via la nueva tabla `ministerio_permisos` (relación ministerio → permiso)
+- La gestión de ministerios y roles se extrajo completamente de la persona y pasó a su propio módulo dedicado
+- Asignar permisos a una persona = asignarle un ministerio con los permisos configurados
+- Al hacer login, el sistema deriva los permisos del usuario a partir de sus ministerios activos (no de una tabla de roles separada)
+- `007_unify_ministerios.sql` (137 líneas) migró los datos: insertó los 5 roles técnicos existentes como ministerios de tipo `sistema`, con su `nivel_acceso` correspondiente
+
+*Impacto técnico:*
+- Se eliminaron ~15 tipos, estados y funciones del formulario de edición de persona relacionados con roles
+- `edit-persona-form.tsx` se simplificó significativamente al remover toda la sección "Rol del sistema"
+- El módulo Ministerios pasó de ser una sección secundaria a ser el punto central de gestión de permisos
+
+*Nuevas páginas del catálogo:*
+- `/ministerios/catalogo` — listado del catálogo unificado de ministerios
+- `/ministerios/catalogo/nuevo` — creación de ministerio con configuración de permisos (180 líneas)
+- `/ministerios/catalogo/[id]` — detalle con matriz de permisos configurable
+- Componentes: `edit-ministerio-form.tsx`, `ministerio-detail-client.tsx`, `permisos-matrix.tsx` (153 líneas), `ministerios-table.tsx` (235 líneas)
 
 **Dashboard mejorado**
 - `dashboard/page.tsx` reescrito (287 líneas) — KPIs dinámicos desde Supabase, gráficos de actividad, resumen por módulo
