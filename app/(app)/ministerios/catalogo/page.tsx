@@ -43,23 +43,23 @@ export default async function CatalogoMinisteriosPage() {
       <div>
         <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
           <Briefcase className="h-8 w-8 text-primary" />
-          Catálogo de Ministerios
+          Catálogo de Roles en Ministerios
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Administra los ministerios y sus permisos de acceso al sistema
+          Administra los roles en ministerios y sus permisos de acceso al sistema
         </p>
       </div>
 
       <Card className="border-border bg-card">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle className="text-foreground">Ministerios Configurados</CardTitle>
-            <CardDescription>Haz clic en un ministerio para ver y editar sus permisos</CardDescription>
+            <CardTitle className="text-foreground">Roles en Ministerios Configurados</CardTitle>
+            <CardDescription>Haz clic en un rol para ver y editar sus permisos</CardDescription>
           </div>
           <Link href="/ministerios/catalogo/nuevo">
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
-              Nuevo Ministerio
+              Nuevo Rol en Ministerio
             </Button>
           </Link>
         </CardHeader>
@@ -69,9 +69,9 @@ export default async function CatalogoMinisteriosPage() {
           ) : (
             <div className="py-12 text-center">
               <Briefcase className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-semibold text-foreground">No hay ministerios configurados</h3>
+              <h3 className="mt-4 text-lg font-semibold text-foreground">No hay roles en ministerios configurados</h3>
               <p className="mt-2 text-muted-foreground">
-                Ejecuta la migración 007 para cargar los ministerios del sistema
+                Ejecuta la migración 007 para cargar los roles del sistema
               </p>
             </div>
           )}

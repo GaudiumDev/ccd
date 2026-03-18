@@ -122,17 +122,17 @@ const navItems: NavItem[] = [
   },
   {
     icon: <ShieldCheck className="h-5 w-5" />,
-    label: "Ministerios",
+    label: "Roles en Ministerios",
     href: "/ministerios",
     children: [
       {
         icon: <Briefcase className="h-4 w-4" />,
-        label: "Catálogo de Ministerios",
+        label: "Listado de roles",
         href: "/ministerios/catalogo",
       },
       {
         icon: <UserCheck className="h-4 w-4" />,
-        label: "Asignaciones",
+        label: "Asignación Rol-Persona",
         href: "/ministerios/asignaciones",
       },
     ],

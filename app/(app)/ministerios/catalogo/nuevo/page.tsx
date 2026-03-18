@@ -2,40 +2,87 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Briefcase, ArrowLeft } from 'lucide-react'
+import { Briefcase, ArrowLeft, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
 
+interface Permiso {
+  id: string
+  clave: string
+  nombre: string
+  descripcion: string | null
+  categoria: string
+}
+
+const categoriaLabel: Record<string, string> = {
+  personas: 'Personas',
+  organizaciones: 'Organizaciones',
+  eventos: 'Eventos',
+  roles: 'Roles en Ministerios',
+  sistema: 'Sistema',
+}
+
 export default function NuevoMinisterioPage() {
   const router = useRouter()
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
   const [form, setForm] = useState({
     nombre: '',
     tipo: 'pastoral',
     nivel: 'fraternidad',
-    nivel_acceso: '0',
     requiere_acta: false,
   })
+
+  // Permisos disponibles cargados al montar
+  const [permisosPorCategoria, setPermisosPorCategoria] = useState<Record<string, Permiso[]>>({})
+  const [totalPermisos, setTotalPermisos] = useState(0)
+  const [loadingPermisos, setLoadingPermisos] = useState(true)
+  const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase
+        .from('permisos')
+        .select('id, clave, nombre, descripcion, categoria')
+        .eq('activo', true)
+        .order('categoria')
+        .order('nombre')
+
+      const byCategoria: Record<string, Permiso[]> = {}
+      for (const p of data ?? []) {
+        if (!byCategoria[p.categoria]) byCategoria[p.categoria] = []
+        byCategoria[p.categoria].push(p)
+      }
+      setPermisosPorCategoria(byCategoria)
+      setTotalPermisos((data ?? []).length)
+      setLoadingPermisos(false)
+    }
+    load()
+  }, [])
+
+  const togglePermiso = (id: string) => {
+    setSeleccionados(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const nivelAcceso = totalPermisos === 0 ? 0 : Math.round((seleccionados.size / totalPermisos) * 100)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
-
-    const nivelAcceso = parseInt(form.nivel_acceso, 10)
-    if (isNaN(nivelAcceso) || nivelAcceso < 0 || nivelAcceso > 99) {
-      setError('El nivel de acceso debe ser un número entre 0 y 99 (100 está reservado para admin_general)')
-      setLoading(false)
-      return
-    }
 
     const nombre = form.nombre.trim()
     if (!nombre) {
@@ -44,6 +91,7 @@ export default function NuevoMinisterioPage() {
       return
     }
 
+    // 1. Crear el ministerio
     const { data, error: err } = await supabase
       .from('ministerios')
       .insert({
@@ -58,9 +106,18 @@ export default function NuevoMinisterioPage() {
       .single()
 
     if (err) {
-      setError(err.message.includes('unique') ? 'Ya existe un ministerio con ese nombre' : 'Error al crear el ministerio: ' + err.message)
+      setError(err.message.includes('unique') ? 'Ya existe un rol en ministerio con ese nombre' : 'Error al crear el rol: ' + err.message)
       setLoading(false)
       return
+    }
+
+    // 2. Insertar permisos seleccionados
+    if (seleccionados.size > 0) {
+      const rows = [...seleccionados].map(permiso_id => ({
+        ministerio_id: data.id,
+        permiso_id,
+      }))
+      await supabase.from('ministerio_permisos').insert(rows)
     }
 
     router.push(`/ministerios/catalogo/${data.id}`)
@@ -71,110 +128,180 @@ export default function NuevoMinisterioPage() {
       <div>
         <Link href="/ministerios/catalogo" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
           <ArrowLeft className="h-4 w-4" />
-          Volver al Catálogo
+          Volver al Catálogo de Roles
         </Link>
         <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
           <Briefcase className="h-8 w-8 text-primary" />
-          Nuevo Ministerio
+          Nuevo Rol en Ministerio
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Crea un nuevo ministerio y luego configura sus permisos de acceso al sistema
+          Define los datos y permisos del rol. Todo se guarda al hacer clic en Crear.
         </p>
       </div>
 
-      <Card className="border-border bg-card max-w-xl">
-        <CardHeader>
-          <CardTitle className="text-foreground">Datos del Ministerio</CardTitle>
-          <CardDescription>
-            El nivel de acceso al sistema (0 = sin acceso técnico, 1–99 = acceso configurable).
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="nombre">Nombre *</Label>
-              <Input
-                id="nombre"
-                required
-                placeholder="ej: Coordinador de Zona"
-                value={form.nombre}
-                onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))}
-              />
-            </div>
+      <form onSubmit={handleSubmit} className="grid gap-6 lg:grid-cols-3">
+        {/* Columna izquierda: datos básicos */}
+        <div>
+          <Card className="border-border bg-card">
+            <CardHeader>
+              <CardTitle className="text-foreground">Datos del Rol en Ministerio</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="nombre">Nombre *</Label>
+                <Input
+                  id="nombre"
+                  required
+                  placeholder="ej: Coordinador de Zona"
+                  value={form.nombre}
+                  onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))}
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="tipo">Tipo *</Label>
-              <select
-                id="tipo"
-                required
-                value={form.tipo}
-                onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-              >
-                <option value="conduccion">Conducción</option>
-                <option value="pastoral">Pastoral</option>
-                <option value="servicio">Servicio</option>
-                <option value="sistema">Sistema (acceso técnico)</option>
-              </select>
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="tipo">Tipo *</Label>
+                <select
+                  id="tipo"
+                  required
+                  value={form.tipo}
+                  onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                >
+                  <option value="conduccion">Conducción</option>
+                  <option value="pastoral">Pastoral</option>
+                  <option value="servicio">Servicio</option>
+                  <option value="sistema">Sistema (acceso técnico)</option>
+                </select>
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="nivel">Nivel organizacional *</Label>
-              <select
-                id="nivel"
-                required
-                value={form.nivel}
-                onChange={e => setForm(f => ({ ...f, nivel: e.target.value }))}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-              >
-                <option value="comunidad">Comunidad</option>
-                <option value="confraternidad">Confraternidad</option>
-                <option value="fraternidad">Fraternidad</option>
-                <option value="evento">Evento</option>
-              </select>
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="nivel">Nivel organizacional *</Label>
+                <select
+                  id="nivel"
+                  required
+                  value={form.nivel}
+                  onChange={e => setForm(f => ({ ...f, nivel: e.target.value }))}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                >
+                  <option value="comunidad">Comunidad</option>
+                  <option value="confraternidad">Confraternidad</option>
+                  <option value="fraternidad">Fraternidad</option>
+                  <option value="evento">Evento</option>
+                </select>
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="nivel_acceso">Nivel de acceso al sistema (0–99)</Label>
-              <Input
-                id="nivel_acceso"
-                type="number"
-                min={0}
-                max={99}
-                value={form.nivel_acceso}
-                onChange={e => setForm(f => ({ ...f, nivel_acceso: e.target.value }))}
-              />
-              <p className="text-xs text-muted-foreground">
-                0 = sin acceso técnico (ministerio pastoral sin permisos de sistema)
-              </p>
-            </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="requiere_acta"
+                  checked={form.requiere_acta}
+                  onChange={e => setForm(f => ({ ...f, requiere_acta: e.target.checked }))}
+                  className="h-4 w-4 rounded border-border accent-primary"
+                />
+                <Label htmlFor="requiere_acta" className="cursor-pointer">
+                  Requiere acta de asignación
+                </Label>
+              </div>
 
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="requiere_acta"
-                checked={form.requiere_acta}
-                onChange={e => setForm(f => ({ ...f, requiere_acta: e.target.checked }))}
-                className="h-4 w-4 rounded border-border accent-primary"
-              />
-              <Label htmlFor="requiere_acta" className="cursor-pointer">
-                Requiere acta de asignación
-              </Label>
-            </div>
+              {/* Nivel de acceso calculado */}
+              <div className="space-y-2 pt-2 border-t border-border">
+                <Label>Nivel de acceso al sistema</Label>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all duration-300"
+                      style={{ width: `${nivelAcceso}%` }}
+                    />
+                  </div>
+                  <span className="text-sm font-semibold text-foreground tabular-nums w-8 text-right">{nivelAcceso}</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Se calcula automáticamente según los permisos seleccionados
+                </p>
+              </div>
 
-            {error && <p className="text-sm text-destructive">{error}</p>}
+              {error && <p className="text-sm text-destructive">{error}</p>}
 
-            <div className="flex gap-3 pt-2">
-              <Button type="submit" disabled={loading}>
-                {loading ? 'Creando...' : 'Crear Ministerio'}
-              </Button>
-              <Link href="/ministerios/catalogo">
-                <Button type="button" variant="outline">Cancelar</Button>
-              </Link>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+              <div className="flex gap-3 pt-2">
+                <Button type="submit" disabled={loading}>
+                  {loading ? 'Creando...' : 'Crear Rol en Ministerio'}
+                </Button>
+                <Link href="/ministerios/catalogo">
+                  <Button type="button" variant="outline">Cancelar</Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Columna derecha: permisos */}
+        <div className="lg:col-span-2">
+          <Card className="border-border bg-card">
+            <CardHeader>
+              <CardTitle className="text-foreground">Permisos del Rol en Ministerio</CardTitle>
+              <CardDescription>
+                Seleccioná los permisos que tendrá este rol. El nivel de acceso se calcula automáticamente.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingPermisos ? (
+                <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">Cargando permisos...</span>
+                </div>
+              ) : Object.keys(permisosPorCategoria).length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  No hay permisos definidos. Ejecuta la migración 005.
+                </p>
+              ) : (
+                <div className="space-y-6">
+                  {Object.keys(permisosPorCategoria).map(categoria => (
+                    <div key={categoria}>
+                      <h3 className="text-sm font-semibold text-foreground mb-3 uppercase tracking-wide">
+                        {categoriaLabel[categoria] ?? categoria}
+                      </h3>
+                      <div className="space-y-2">
+                        {permisosPorCategoria[categoria].map(permiso => {
+                          const isActive = seleccionados.has(permiso.id)
+                          return (
+                            <div
+                              key={permiso.id}
+                              className="flex items-start gap-3 rounded-lg border border-border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
+                              onClick={() => togglePermiso(permiso.id)}
+                            >
+                              <input
+                                type="checkbox"
+                                id={`perm-${permiso.id}`}
+                                checked={isActive}
+                                onChange={() => togglePermiso(permiso.id)}
+                                onClick={e => e.stopPropagation()}
+                                className="h-4 w-4 rounded border-border accent-primary cursor-pointer mt-0.5 shrink-0"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <label
+                                  htmlFor={`perm-${permiso.id}`}
+                                  className="text-sm font-medium text-foreground cursor-pointer"
+                                  onClick={e => e.stopPropagation()}
+                                >
+                                  {permiso.nombre}
+                                </label>
+                                {permiso.descripcion && (
+                                  <p className="text-xs text-muted-foreground mt-0.5">{permiso.descripcion}</p>
+                                )}
+                                <p className="text-xs text-muted-foreground/60 mt-0.5 font-mono">{permiso.clave}</p>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </form>
     </div>
   )
 }

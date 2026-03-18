@@ -5,11 +5,12 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { UserCheck, ArrowLeft } from 'lucide-react'
+import { UserCheck, ArrowLeft, Paperclip, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { createClient } from '@/lib/supabase/client'
 
 interface Persona {
@@ -31,12 +32,26 @@ interface Org {
   nombre: string
 }
 
+interface Evento {
+  id: string
+  nombre: string
+  tipo: string
+}
+
+const tipoEventoLabel: Record<string, string> = {
+  convivencia: 'Convivencia',
+  retiro: 'Retiro',
+  taller: 'Taller',
+}
+
 const tipoLabel: Record<string, string> = {
   conduccion: 'Conducción',
   pastoral: 'Pastoral',
   servicio: 'Servicio',
   sistema: 'Sistema',
 }
+
+const BUCKET = 'asignaciones-adjuntos'
 
 export default function NuevaAsignacionPage() {
   const router = useRouter()
@@ -45,20 +60,27 @@ export default function NuevaAsignacionPage() {
   const [personas, setPersonas] = useState<Persona[]>([])
   const [ministerios, setMinisterios] = useState<Ministerio[]>([])
   const [organizaciones, setOrganizaciones] = useState<Org[]>([])
+  const [eventos, setEventos] = useState<Evento[]>([])
   const [loadingData, setLoadingData] = useState(true)
 
   const [form, setForm] = useState({
     persona_id: '',
     ministerio_id: '',
     organizacion_id: '',
+    evento_id: '',
     fecha_inicio: new Date().toISOString().split('T')[0],
+    fecha_fin: '',
+    estado: 'activo',
+    motivo_fin: '',
+    notas: '',
   })
+  const [adjunto, setAdjunto] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const load = async () => {
-      const [{ data: personasData, error: personasError }, { data: ministeriosData }, { data: orgsData }] = await Promise.all([
+      const [{ data: personasData, error: personasError }, { data: ministeriosData }, { data: orgsData }, { data: eventosData }] = await Promise.all([
         supabase
           .from('personas')
           .select('id, nombre, apellido, email')
@@ -76,11 +98,16 @@ export default function NuevaAsignacionPage() {
           .select('id, nombre')
           .is('fecha_baja', null)
           .order('nombre'),
+        supabase
+          .from('eventos')
+          .select('id, nombre, tipo')
+          .order('nombre'),
       ])
       if (personasError) console.error('Error cargando personas:', personasError)
       setPersonas(personasData ?? [])
       setMinisterios(ministeriosData ?? [])
       setOrganizaciones(orgsData ?? [])
+      setEventos(eventosData ?? [])
       setLoadingData(false)
     }
     load()
@@ -92,13 +119,36 @@ export default function NuevaAsignacionPage() {
     setError(null)
 
     if (!form.persona_id || !form.ministerio_id) {
-      setError('Debes seleccionar una persona y un ministerio')
+      setError('Debes seleccionar una persona y un rol en ministerio')
+      setLoading(false)
+      return
+    }
+
+    if (form.estado === 'inactivo' && !form.fecha_fin) {
+      setError('Debes indicar una fecha de fin cuando el estado es inactivo')
       setLoading(false)
       return
     }
 
     const orgId = form.organizacion_id || null
     const hoy = new Date().toISOString().split('T')[0]
+
+    // Subir adjunto si se seleccionó uno
+    let documentoUrl: string | null = null
+    if (adjunto) {
+      const ext = adjunto.name.split('.').pop()
+      const path = `${form.persona_id}/${Date.now()}.${ext}`
+      const { error: uploadError } = await supabase.storage
+        .from(BUCKET)
+        .upload(path, adjunto)
+      if (uploadError) {
+        setError('Error al subir el adjunto: ' + uploadError.message)
+        setLoading(false)
+        return
+      }
+      const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(path)
+      documentoUrl = urlData.publicUrl
+    }
 
     // Cerrar asignación activa existente para la misma combinación (patrón histórico)
     let closeQuery = supabase
@@ -123,8 +173,13 @@ export default function NuevaAsignacionPage() {
         persona_id: form.persona_id,
         ministerio_id: form.ministerio_id,
         organizacion_id: orgId,
+        evento_id: form.evento_id || null,
         fecha_inicio: form.fecha_inicio || hoy,
-        estado: 'activo',
+        fecha_fin: form.fecha_fin || null,
+        estado: form.estado,
+        motivo_fin: form.motivo_fin || null,
+        notas: form.notas || null,
+        documento_url: documentoUrl,
       })
 
     if (insertError) {
@@ -153,92 +208,208 @@ export default function NuevaAsignacionPage() {
         </Link>
         <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
           <UserCheck className="h-8 w-8 text-primary" />
-          Nueva Asignación de Ministerio
+          Nueva Asignación de Rol en Ministerio
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Asigna un ministerio a una persona. Los permisos de sistema del ministerio se activan automáticamente.
+          Asigna un rol en ministerio a una persona. Los permisos de sistema del rol se activan automáticamente.
         </p>
       </div>
 
-      <Card className="border-border bg-card max-w-xl">
+      <Card className="border-border bg-card max-w-4xl">
         <CardHeader>
           <CardTitle className="text-foreground">Datos de la Asignación</CardTitle>
           <CardDescription>
-            Podés asignar ministerios a cualquier persona. Si el ministerio tiene permisos de sistema configurados, se aplicarán al hacer login.
+            Podés asignar roles en ministerios a cualquier persona. Si el rol tiene permisos de sistema configurados, se aplicarán al hacer login.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="persona_id">Persona *</Label>
-              <select
-                id="persona_id"
-                required
-                value={form.persona_id}
-                onChange={e => setForm(f => ({ ...f, persona_id: e.target.value }))}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-              >
-                <option value="">Selecciona una persona...</option>
-                {personas.map(p => (
-                  <option key={p.id} value={p.id}>
-                    {p.apellido}, {p.nombre}{p.email ? ` — ${p.email}` : ''}
-                  </option>
-                ))}
-              </select>
+          <form onSubmit={handleSubmit} className="space-y-5">
+
+            {/* Fila 1: Persona + Rol en Ministerio */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="persona_id">Persona *</Label>
+                <select
+                  id="persona_id"
+                  required
+                  value={form.persona_id}
+                  onChange={e => setForm(f => ({ ...f, persona_id: e.target.value }))}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                >
+                  <option value="">Selecciona una persona...</option>
+                  {personas.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.apellido}, {p.nombre}{p.email ? ` — ${p.email}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ministerio_id">Rol en Ministerio *</Label>
+                <select
+                  id="ministerio_id"
+                  required
+                  value={form.ministerio_id}
+                  onChange={e => setForm(f => ({ ...f, ministerio_id: e.target.value }))}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                >
+                  <option value="">Selecciona un rol...</option>
+                  {ministerios.map(m => (
+                    <option key={m.id} value={m.id}>
+                      {m.nombre} — {tipoLabel[m.tipo] ?? m.tipo}{m.nivel_acceso > 0 ? ` (nivel ${m.nivel_acceso})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="ministerio_id">Ministerio *</Label>
-              <select
-                id="ministerio_id"
-                required
-                value={form.ministerio_id}
-                onChange={e => setForm(f => ({ ...f, ministerio_id: e.target.value }))}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-              >
-                <option value="">Selecciona un ministerio...</option>
-                {ministerios.map(m => (
-                  <option key={m.id} value={m.id}>
-                    {m.nombre} — {tipoLabel[m.tipo] ?? m.tipo}{m.nivel_acceso > 0 ? ` (acceso nivel ${m.nivel_acceso})` : ''}
-                  </option>
-                ))}
-              </select>
+            {/* Fila 2: Organización + Evento */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="organizacion_id">Organización (opcional)</Label>
+                <select
+                  id="organizacion_id"
+                  value={form.organizacion_id}
+                  onChange={e => setForm(f => ({ ...f, organizacion_id: e.target.value }))}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                >
+                  <option value="">Global (sin restricción)</option>
+                  {organizaciones.map(o => (
+                    <option key={o.id} value={o.id}>{o.nombre}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">Vacío = acceso global</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="evento_id">Evento (opcional)</Label>
+                <select
+                  id="evento_id"
+                  value={form.evento_id}
+                  onChange={e => setForm(f => ({ ...f, evento_id: e.target.value }))}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                >
+                  <option value="">Sin evento específico</option>
+                  {eventos.map(ev => (
+                    <option key={ev.id} value={ev.id}>
+                      {ev.nombre} ({tipoEventoLabel[ev.tipo] ?? ev.tipo})
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="organizacion_id">Organización (opcional)</Label>
-              <select
-                id="organizacion_id"
-                value={form.organizacion_id}
-                onChange={e => setForm(f => ({ ...f, organizacion_id: e.target.value }))}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-              >
-                <option value="">Global (sin restricción de organización)</option>
-                {organizaciones.map(o => (
-                  <option key={o.id} value={o.id}>{o.nombre}</option>
-                ))}
-              </select>
-              <p className="text-xs text-muted-foreground">
-                Dejar vacío para acceso global; seleccionar para limitar el ministerio a una organización específica.
-              </p>
+            {/* Fila 3: Estado + Motivo de fin */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="estado">Estado *</Label>
+                <select
+                  id="estado"
+                  required
+                  value={form.estado}
+                  onChange={e => setForm(f => ({ ...f, estado: e.target.value }))}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                >
+                  <option value="activo">Activo</option>
+                  <option value="inactivo">Inactivo</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="motivo_fin">Motivo de fin (opcional)</Label>
+                <select
+                  id="motivo_fin"
+                  value={form.motivo_fin}
+                  onChange={e => setForm(f => ({ ...f, motivo_fin: e.target.value }))}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                >
+                  <option value="">Sin motivo especificado</option>
+                  <option value="renuncia">Renuncia</option>
+                  <option value="fin_ciclo">Fin de ciclo</option>
+                  <option value="fin_convivencia">Fin de convivencia</option>
+                  <option value="otro">Otro</option>
+                </select>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="fecha_inicio">Fecha de inicio *</Label>
-              <Input
-                id="fecha_inicio"
-                type="date"
-                required
-                value={form.fecha_inicio}
-                onChange={e => setForm(f => ({ ...f, fecha_inicio: e.target.value }))}
-              />
+            {/* Fila 4: Fecha inicio + Fecha fin */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="fecha_inicio">Fecha de inicio *</Label>
+                <Input
+                  id="fecha_inicio"
+                  type="date"
+                  required
+                  value={form.fecha_inicio}
+                  onChange={e => setForm(f => ({ ...f, fecha_inicio: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="fecha_fin">
+                  Fecha de fin {form.estado === 'inactivo' ? '*' : '(opcional)'}
+                </Label>
+                <Input
+                  id="fecha_fin"
+                  type="date"
+                  required={form.estado === 'inactivo'}
+                  value={form.fecha_fin}
+                  onChange={e => setForm(f => ({ ...f, fecha_fin: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            {/* Fila 5: Adjunto + Notas */}
+            <div className="grid grid-cols-2 gap-4 items-start">
+              <div className="space-y-2">
+                <Label>Adjunto (opcional)</Label>
+                {adjunto ? (
+                  <div className="flex items-center gap-3 rounded-md border border-border bg-muted px-3 py-2.5 text-sm">
+                    <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate font-medium text-foreground">{adjunto.name}</p>
+                      <p className="text-xs text-muted-foreground">{(adjunto.size / 1024 / 1024).toFixed(2)} MB</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAdjunto(null)}
+                      className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label
+                    htmlFor="adjunto"
+                    className="flex cursor-pointer flex-col items-center gap-2 rounded-md border border-dashed border-border bg-muted/40 px-4 py-5 text-sm text-muted-foreground transition-colors hover:border-primary hover:bg-muted/70 hover:text-foreground"
+                  >
+                    <Paperclip className="h-5 w-5" />
+                    <span>Hacé clic para seleccionar</span>
+                    <span className="text-xs">PDF, Word o imagen — máx. 10 MB</span>
+                    <input
+                      id="adjunto"
+                      type="file"
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                      className="sr-only"
+                      onChange={e => setAdjunto(e.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="notas">Notas (opcional)</Label>
+                <Textarea
+                  id="notas"
+                  placeholder="Observaciones sobre esta asignación..."
+                  value={form.notas}
+                  onChange={e => setForm(f => ({ ...f, notas: e.target.value }))}
+                  rows={4}
+                />
+              </div>
             </div>
 
             {error && <p className="text-sm text-destructive">{error}</p>}
 
             <div className="flex gap-3 pt-2">
               <Button type="submit" disabled={loading}>
-                {loading ? 'Asignando...' : 'Asignar Ministerio'}
+                {loading ? 'Asignando...' : 'Asignar Rol en Ministerio'}
               </Button>
               <Link href="/ministerios/asignaciones">
                 <Button type="button" variant="outline">Cancelar</Button>

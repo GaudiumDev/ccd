@@ -117,7 +117,7 @@ export default function RevocarAsignacionPage() {
             <CardTitle className="text-foreground">Confirmar Revocación</CardTitle>
           </div>
           <CardDescription>
-            Esta acción cerrará la asignación de ministerio. El registro histórico se conservará.
+            Esta acción cerrará la asignación de rol en ministerio. El registro histórico se conservará.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -133,7 +133,7 @@ export default function RevocarAsignacionPage() {
               </div>
             )}
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Ministerio</span>
+              <span className="text-muted-foreground">Rol en Ministerio</span>
               <span className="font-medium text-foreground">
                 {asignacion.ministerio?.nombre ?? '—'}
                 {asignacion.ministerio?.tipo && (

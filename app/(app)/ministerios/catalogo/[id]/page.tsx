@@ -23,7 +23,7 @@ export default async function MinisterioDetailPage({
     { data: ministerio },
     { data: todosPermisos },
     { data: minPermisos },
-    { count: numAsignados },
+    { data: asignaciones },
   ] = await Promise.all([
     supabase.from('ministerios').select('*').eq('id', id).single(),
     supabase
@@ -39,9 +39,14 @@ export default async function MinisterioDetailPage({
       .eq('activo', true),
     supabase
       .from('asignaciones_ministerio')
-      .select('*', { count: 'exact', head: true })
+      .select(`
+        id, fecha_inicio, fecha_fin, estado,
+        persona:personas!persona_id(id, nombre, apellido, email),
+        organizacion:organizaciones!organizacion_id(nombre),
+        evento:eventos!evento_id(nombre)
+      `)
       .eq('ministerio_id', id)
-      .eq('estado', 'activo'),
+      .order('fecha_inicio', { ascending: false }),
   ])
 
   if (!ministerio) notFound()
@@ -59,7 +64,7 @@ export default async function MinisterioDetailPage({
     personas: 'Personas',
     organizaciones: 'Organizaciones',
     eventos: 'Eventos',
-    roles: 'Ministerios y Roles',
+    roles: 'Roles en Ministerios',
     sistema: 'Sistema',
   }
 
@@ -75,7 +80,7 @@ export default async function MinisterioDetailPage({
       <div>
         <Link href="/ministerios/catalogo" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
           <ArrowLeft className="h-4 w-4" />
-          Volver al Catálogo
+          Volver al Catálogo de Roles
         </Link>
         <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
           <Briefcase className="h-8 w-8 text-primary" />
@@ -86,7 +91,7 @@ export default async function MinisterioDetailPage({
           <span>Nivel: <strong className="text-foreground capitalize">{ministerio.nivel}</strong></span>
           <span className="flex items-center gap-1">
             <Users className="h-4 w-4" />
-            {numAsignados ?? 0} asignación{numAsignados !== 1 ? 'es' : ''} activa{numAsignados !== 1 ? 's' : ''}
+            {(asignaciones ?? []).filter((a: any) => a.estado === 'activo').length} asignación{(asignaciones ?? []).filter((a: any) => a.estado === 'activo').length !== 1 ? 'es' : ''} activa{(asignaciones ?? []).filter((a: any) => a.estado === 'activo').length !== 1 ? 's' : ''}
           </span>
         </div>
       </div>
@@ -97,6 +102,7 @@ export default async function MinisterioDetailPage({
         categoriaLabel={categoriaLabel}
         permisosActivosIds={permisosActivosIds}
         totalPermisos={totalPermisos}
+        asignaciones={asignaciones ?? []}
       />
     </div>
   )

@@ -83,10 +83,10 @@ export default async function AsignacionesPage({
       <div>
         <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
           <UserCheck className="h-8 w-8 text-primary" />
-          Asignaciones de Ministerios
+          Asignaciones de Roles en Ministerios
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Personas con ministerios activos asignados
+          Personas con roles en ministerios activos asignados
         </p>
       </div>
 
@@ -94,7 +94,7 @@ export default async function AsignacionesPage({
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle className="text-foreground">Asignaciones Activas</CardTitle>
-            <CardDescription>Gestiona los ministerios asignados a cada persona</CardDescription>
+            <CardDescription>Gestiona los roles en ministerios asignados a cada persona</CardDescription>
           </div>
           <Link href="/ministerios/asignaciones/nueva">
             <Button className="gap-2">
@@ -124,7 +124,7 @@ export default async function AsignacionesPage({
               defaultValue={ministerioFiltro ?? ''}
               className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
             >
-              <option value="">Todos los ministerios</option>
+              <option value="">Todos los roles en ministerios</option>
               {(ministerios ?? []).map((m: any) => (
                 <option key={m.id} value={m.id}>{m.nombre} ({tipoLabel[m.tipo] ?? m.tipo})</option>
               ))}
@@ -139,7 +139,7 @@ export default async function AsignacionesPage({
                 <thead>
                   <tr className="border-b border-border">
                     <th className="text-left py-3 px-4 font-semibold text-foreground">Persona</th>
-                    <th className="text-left py-3 px-4 font-semibold text-foreground">Ministerio</th>
+                    <th className="text-left py-3 px-4 font-semibold text-foreground">Rol en Ministerio</th>
                     <th className="text-left py-3 px-4 font-semibold text-foreground">Organización</th>
                     <th className="text-left py-3 px-4 font-semibold text-foreground">Desde</th>
                     <th className="text-center py-3 px-4 font-semibold text-foreground">Acciones</th>
@@ -197,7 +197,7 @@ export default async function AsignacionesPage({
               <p className="mt-2 text-muted-foreground">
                 {q || ministerioFiltro
                   ? 'Ajusta los filtros de búsqueda'
-                  : 'Asigna un ministerio a una persona para comenzar'}
+                  : 'Asigna un rol en ministerio a una persona para comenzar'}
               </p>
               {!q && !ministerioFiltro && (
                 <Link href="/ministerios/asignaciones/nueva" className="mt-4 inline-block">

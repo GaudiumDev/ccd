@@ -125,7 +125,7 @@ export function MinisteriosTable({ ministerios: initial }: { ministerios: Minist
     const conAsignaciones = ministerios.filter(m => selected.has(m.id) && m.asignaciones > 0)
     if (conAsignaciones.length > 0) {
       setError(
-        `No se pueden desactivar ministerios con asignaciones activas: ${conAsignaciones.map(m => m.nombre).join(', ')}`
+        `No se pueden desactivar roles en ministerios con asignaciones activas: ${conAsignaciones.map(m => m.nombre).join(', ')}`
       )
       return
     }
@@ -133,7 +133,7 @@ export function MinisteriosTable({ ministerios: initial }: { ministerios: Minist
     // Proteger admin_general
     const protegidos = ministerios.filter(m => selected.has(m.id) && m.nombre === 'admin_general')
     if (protegidos.length > 0) {
-      setError('El ministerio admin_general no se puede desactivar porque es requerido por el sistema de autenticación.')
+      setError('El rol admin_general no se puede desactivar porque es requerido por el sistema de autenticación.')
       return
     }
 

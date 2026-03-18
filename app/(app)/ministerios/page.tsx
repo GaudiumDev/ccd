@@ -16,10 +16,10 @@ export default async function MinisteriosPage() {
       <div>
         <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
           <ShieldCheck className="h-8 w-8 text-primary" />
-          Ministerios y Acceso
+          Roles en Ministerios y Acceso
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Gestión unificada de ministerios pastorales y permisos de acceso al sistema.
+          Gestión unificada de roles en ministerios pastorales y permisos de acceso al sistema.
         </p>
       </div>
 
@@ -32,14 +32,14 @@ export default async function MinisteriosPage() {
                   <Briefcase className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <CardTitle className="text-foreground">Catálogo de Ministerios</CardTitle>
-                  <CardDescription>Define ministerios y sus permisos de sistema</CardDescription>
+                  <CardTitle className="text-foreground">Catálogo de Roles en Ministerios</CardTitle>
+                  <CardDescription>Define roles en ministerios y sus permisos de sistema</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Crea y configura ministerios pastorales y técnicos. Cada ministerio puede tener permisos de acceso al sistema configurables.
+                Crea y configura roles en ministerios pastorales y técnicos. Cada rol puede tener permisos de acceso al sistema configurables.
               </p>
             </CardContent>
           </Card>
@@ -54,13 +54,13 @@ export default async function MinisteriosPage() {
                 </div>
                 <div>
                   <CardTitle className="text-foreground">Asignaciones</CardTitle>
-                  <CardDescription>Qué personas tienen qué ministerios</CardDescription>
+                  <CardDescription>Qué personas tienen qué roles en ministerios</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Asigna ministerios a personas. Los permisos de sistema del ministerio se activan automáticamente al hacer login.
+                Asigna roles en ministerios a personas. Los permisos de sistema del rol se activan automáticamente al hacer login.
               </p>
             </CardContent>
           </Card>
@@ -75,13 +75,13 @@ export default async function MinisteriosPage() {
                 </div>
                 <div>
                   <CardTitle className="text-foreground">Personas</CardTitle>
-                  <CardDescription>Ver perfil y ministerios de cada persona</CardDescription>
+                  <CardDescription>Ver perfil y roles en ministerios de cada persona</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Accedé al perfil de cada persona para ver su historial de ministerios y asignaciones desde el formulario de edición.
+                Accedé al perfil de cada persona para ver su historial de roles en ministerios y asignaciones desde el formulario de edición.
               </p>
             </CardContent>
           </Card>
