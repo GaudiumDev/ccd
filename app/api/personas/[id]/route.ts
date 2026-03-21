@@ -69,6 +69,7 @@ export async function PATCH(
   if (body.codigo_postal !== undefined) updateData.codigo_postal = body.codigo_postal || null
   if (body.estado_vida !== undefined) updateData.estado_vida = body.estado_vida || null
   if (body.intercesor_dies_natalis !== undefined) updateData.intercesor_dies_natalis = body.intercesor_dies_natalis || null
+  if (body.nombre_usuario !== undefined) updateData.nombre_usuario = body.nombre_usuario ? body.nombre_usuario.toLowerCase().trim() : null
 
   const { error } = await supabase
     .from('personas')

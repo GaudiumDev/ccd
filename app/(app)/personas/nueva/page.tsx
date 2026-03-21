@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { LocationFields } from '@/components/location-fields'
 
 interface RolSistema {
   id: string
@@ -41,6 +42,7 @@ export default function NewPersonaPage() {
   const [organizaciones, setOrganizaciones] = useState<Organizacion[]>([])
 
   const [formData, setFormData] = useState({
+    nombre_usuario: '',
     nombre: '',
     apellido: '',
     email: '',
@@ -90,8 +92,8 @@ export default function NewPersonaPage() {
     setError('')
 
     try {
-      if (!formData.email) throw new Error('El email es requerido para crear el acceso al sistema')
       if (!formData.documento) throw new Error('El número de documento es requerido (se usará como contraseña inicial)')
+      if (formData.rol_sistema_id && !formData.nombre_usuario) throw new Error('El nombre de usuario es requerido para crear el acceso al sistema')
 
       const res = await fetch('/api/personas', {
         method: 'POST',
@@ -106,12 +108,13 @@ export default function NewPersonaPage() {
 
       const { id: personaId } = await res.json()
 
-      // Create system access
+      // Create system access only if a role was selected
+      if (formData.rol_sistema_id) {
       const inviteRes = await fetch('/api/personas/invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: formData.email,
+          nombre_usuario: formData.nombre_usuario,
           persona_id: personaId,
           rol_sistema_id: formData.rol_sistema_id || null,
           organizacion_id: formData.organizacion_id || null,
@@ -120,6 +123,7 @@ export default function NewPersonaPage() {
       if (!inviteRes.ok) {
         const { error: inviteError } = await inviteRes.json()
         throw new Error(`Persona creada, pero no se pudo crear el acceso: ${inviteError}`)
+      }
       }
 
       router.push('/personas')
@@ -195,8 +199,8 @@ export default function NewPersonaPage() {
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="email">Mail Personal *</Label>
-                <Input id="email" name="email" type="email" placeholder="juan@example.com" value={formData.email} onChange={handleChange} required />
+                <Label htmlFor="email">Mail Personal</Label>
+                <Input id="email" name="email" type="email" placeholder="juan@example.com" value={formData.email} onChange={handleChange} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email_ccd">Mail CcD</Label>
@@ -238,32 +242,18 @@ export default function NewPersonaPage() {
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="localidad">Ciudad</Label>
-                <Input id="localidad" name="localidad" placeholder="Corrientes" value={formData.localidad} onChange={handleChange} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="codigo_postal">CP</Label>
-                <Input id="codigo_postal" name="codigo_postal" placeholder="3400" value={formData.codigo_postal} onChange={handleChange} />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="diocesis">Diócesis</Label>
-              <Input id="diocesis" name="diocesis" placeholder="Ej: Diócesis de Corrientes" value={formData.diocesis} onChange={handleChange} />
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="provincia">Provincia</Label>
-                <Input id="provincia" name="provincia" placeholder="Corrientes" value={formData.provincia} onChange={handleChange} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="pais">País</Label>
-                <Input id="pais" name="pais" placeholder="Argentina" value={formData.pais} onChange={handleChange} />
-              </div>
-            </div>
+            <LocationFields
+              pais={formData.pais}
+              provincia={formData.provincia}
+              localidad={formData.localidad}
+              codigoPostal={formData.codigo_postal}
+              diocesis={formData.diocesis}
+              onPaisChange={(val) => setFormData((prev) => ({ ...prev, pais: val }))}
+              onProvinciaChange={(val) => setFormData((prev) => ({ ...prev, provincia: val }))}
+              onLocalidadChange={(val) => setFormData((prev) => ({ ...prev, localidad: val }))}
+              onCodigoPostalChange={(val) => setFormData((prev) => ({ ...prev, codigo_postal: val }))}
+              onDiocesisChange={(val) => setFormData((prev) => ({ ...prev, diocesis: val }))}
+            />
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
@@ -451,9 +441,9 @@ export default function NewPersonaPage() {
         <Card className="border-border">
           <CardHeader>
             <CardTitle className="text-foreground">Acceso al Sistema</CardTitle>
-            <CardDescription>Se creará acceso con el documento como contraseña inicial.</CardDescription>
+            <CardDescription>El documento se usará como contraseña inicial. El nombre de usuario se usará para iniciar sesión.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="rol_sistema_id">Rol del Sistema</Label>
@@ -464,7 +454,7 @@ export default function NewPersonaPage() {
                   onChange={handleChange}
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
                 >
-                  <option value="">Sin rol del sistema</option>
+                  <option value="">Sin acceso al sistema</option>
                   {roles.map(r => (
                     <option key={r.id} value={r.id}>
                       {r.nombre}{r.descripcion ? ` — ${r.descripcion}` : ''}
@@ -490,6 +480,25 @@ export default function NewPersonaPage() {
                 </select>
               </div>
             </div>
+
+            {formData.rol_sistema_id && (
+              <div className="space-y-2">
+                <Label htmlFor="nombre_usuario">Nombre de Usuario *</Label>
+                <Input
+                  id="nombre_usuario"
+                  name="nombre_usuario"
+                  type="text"
+                  placeholder="ej: juan.garcia"
+                  value={formData.nombre_usuario}
+                  onChange={handleChange}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Solo letras minúsculas, números, puntos y guiones bajos. 3–30 caracteres.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 

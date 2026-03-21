@@ -18,6 +18,8 @@ export type Permission =
   | 'person.merge'        // fusión de duplicados — solo admin
   | 'event.create'
   | 'event.approve'       // cambiar estado a aprobado/publicado — solo admin
+  | 'event.approve_confra' // aprobar en discernimiento confra (tecnico_confraternidad, responsable_fraternidad)
+  | 'event.approve_eqt'  // aprobar en discernimiento equipo timón (admin_general)
   | 'event.update'
   | 'event.manage_participants'
   | 'organization.create' // solo admin
@@ -41,6 +43,8 @@ export const rolePermissions: Record<SystemRole, Permission[]> = {
     'person.merge',
     'event.create',
     'event.approve',
+    'event.approve_confra',
+    'event.approve_eqt',
     'event.update',
     'event.manage_participants',
     'organization.create',
@@ -54,6 +58,7 @@ export const rolePermissions: Record<SystemRole, Permission[]> = {
     'person.create',
     'person.update',
     'event.create',
+    'event.approve_confra',
     'event.update',
     'event.manage_participants',
     'organization.update',
@@ -66,6 +71,7 @@ export const rolePermissions: Record<SystemRole, Permission[]> = {
     'person.create',
     'person.update',
     'event.create',
+    'event.approve_confra',
     'event.update',
     'event.manage_participants',
     'roles.view',

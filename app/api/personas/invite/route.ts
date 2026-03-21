@@ -2,10 +2,10 @@ import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
-  const { email, persona_id, rol_sistema_id, organizacion_id } = await request.json()
+  const { nombre_usuario, persona_id, rol_sistema_id, organizacion_id } = await request.json()
 
-  if (!email || !persona_id) {
-    return NextResponse.json({ error: 'email y persona_id son requeridos' }, { status: 400 })
+  if (!nombre_usuario || !persona_id) {
+    return NextResponse.json({ error: 'nombre_usuario y persona_id son requeridos' }, { status: 400 })
   }
 
   const supabaseAdmin = createClient(
@@ -32,15 +32,42 @@ export async function POST(request: Request) {
     )
   }
 
+  // Persist nombre_usuario to personas table
+  const { error: usernameError } = await supabaseAdmin
+    .from('personas')
+    .update({ nombre_usuario: nombre_usuario.toLowerCase().trim() })
+    .eq('id', persona_id)
+
+  if (usernameError) {
+    // Check for unique constraint violation
+    if (usernameError.code === '23505') {
+      return NextResponse.json(
+        { error: 'El nombre de usuario ya está en uso. Elegí otro.' },
+        { status: 409 }
+      )
+    }
+    return NextResponse.json({ error: usernameError.message }, { status: 400 })
+  }
+
+  // Construct fake internal email — never exposed to users.
+  // Convention: {username}@ccd.internal (non-routable domain)
+  const fakeEmail = `${nombre_usuario.toLowerCase().trim()}@ccd.internal`
+
   // Create user directly with documento as password (no email confirmation needed)
   const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-    email,
+    email: fakeEmail,
     password: persona.documento,
     email_confirm: true,
     user_metadata: { persona_id },
   })
 
   if (authError) {
+    if (authError.message.includes('already been registered')) {
+      return NextResponse.json(
+        { error: 'El nombre de usuario ya está en uso. Elegí otro.' },
+        { status: 409 }
+      )
+    }
     return NextResponse.json({ error: authError.message }, { status: 400 })
   }
 

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/client"
+import { LocationFields } from "@/components/location-fields"
 
 type Persona = {
   id: string
@@ -37,6 +38,7 @@ type Persona = {
   referente_comunidad: boolean | null
   cecista_dedicado: boolean | null
   intercesor_dies_natalis: string | null
+  nombre_usuario: string | null
 }
 
 type ModoActual = { id: string; modo: string; fecha_inicio: string } | null
@@ -147,6 +149,7 @@ export function EditPersonaForm({
     referente_comunidad: persona.referente_comunidad ?? false,
     cecista_dedicado: persona.cecista_dedicado ?? false,
     intercesor_dies_natalis: persona.intercesor_dies_natalis ?? "",
+    nombre_usuario: persona.nombre_usuario ?? "",
   })
   const [basicLoading, setBasicLoading] = useState(false)
   const [basicError, setBasicError] = useState<string | null>(null)
@@ -367,6 +370,20 @@ export function EditPersonaForm({
               </div>
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="nombre_usuario">Nombre de Usuario</Label>
+              <Input
+                id="nombre_usuario"
+                name="nombre_usuario"
+                value={basicData.nombre_usuario}
+                disabled
+                placeholder="Sin usuario asignado"
+              />
+              <p className="text-xs text-muted-foreground">
+                Para cambiar el usuario contactá al administrador técnico.
+              </p>
+            </div>
+
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="tipo_documento">Tipo de Documento</Label>
@@ -402,39 +419,19 @@ export function EditPersonaForm({
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="localidad">Ciudad</Label>
-                <Input id="localidad" name="localidad" value={basicData.localidad} onChange={handleBasicChange} disabled={basicLoading} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="codigo_postal">CP</Label>
-                <Input id="codigo_postal" name="codigo_postal" value={basicData.codigo_postal} onChange={handleBasicChange} disabled={basicLoading} />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="diocesis">Diócesis</Label>
-              <Input
-                id="diocesis"
-                name="diocesis"
-                placeholder="Ej: Diócesis de Corrientes"
-                value={basicData.diocesis}
-                onChange={handleBasicChange}
-                disabled={basicLoading}
-              />
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="provincia">Provincia</Label>
-                <Input id="provincia" name="provincia" value={basicData.provincia} onChange={handleBasicChange} disabled={basicLoading} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="pais">País</Label>
-                <Input id="pais" name="pais" value={basicData.pais} onChange={handleBasicChange} disabled={basicLoading} />
-              </div>
-            </div>
+            <LocationFields
+              pais={basicData.pais ?? ""}
+              provincia={basicData.provincia ?? ""}
+              localidad={basicData.localidad ?? ""}
+              codigoPostal={basicData.codigo_postal ?? ""}
+              diocesis={basicData.diocesis ?? ""}
+              onPaisChange={(val) => setBasicData((prev) => ({ ...prev, pais: val, provincia: "", localidad: "" }))}
+              onProvinciaChange={(val) => setBasicData((prev) => ({ ...prev, provincia: val, localidad: "" }))}
+              onLocalidadChange={(val) => setBasicData((prev) => ({ ...prev, localidad: val }))}
+              onCodigoPostalChange={(val) => setBasicData((prev) => ({ ...prev, codigo_postal: val }))}
+              onDiocesisChange={(val) => setBasicData((prev) => ({ ...prev, diocesis: val }))}
+              disabled={basicLoading}
+            />
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">

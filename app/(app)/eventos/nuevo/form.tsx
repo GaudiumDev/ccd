@@ -6,35 +6,57 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft } from 'lucide-react'
 
-type OrgOption = { id: string; nombre: string; tipo: string }
+type OrgOption = { id: string; nombre: string; parent_id?: string | null }
 
 type Props = {
-  organizaciones: OrgOption[]
-  casasRetiro: OrgOption[]
-  defaultOrgId?: string
+  fraternidades: OrgOption[]
+  confraternidades: OrgOption[]
+  personaNombre: string
+  isAdmin?: boolean
 }
 
-export default function NuevoEventoForm({ organizaciones, casasRetiro, defaultOrgId = '' }: Props) {
+const today = new Date().toISOString().split('T')[0]
+
+export default function NuevoEventoForm({ fraternidades, confraternidades, personaNombre, isAdmin = false }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  const [fraternidadId, setFraternidadId] = useState(fraternidades[0]?.id ?? '')
+  const [requiereConfra, setRequiereConfra] = useState(false)
+  const [requiereEqt, setRequiereEqt] = useState(false)
+
   const [formData, setFormData] = useState({
     nombre: '',
     tipo: 'convivencia',
+    modalidad: 'presencial',
+    es_apv: false,
     fecha_inicio: '',
     fecha_fin: '',
-    organizacion_id: defaultOrgId,
-    casa_retiro_id: '',
-    cupo_maximo: '30',
-    precio: '',
-    audiencia: 'cerrado',
-    modalidad: 'presencial',
-    estado: 'borrador',
-    descripcion: '',
+    coordinadores_propuestos: '',
+    asesor_propuesto: '',
+    asesor_voluntario: false,
+    ciudad: '',
+    codigo_postal: '',
+    diocesis: '',
+    provincia_evento: '',
+    pais_evento: 'Argentina',
+    notas: '',
   })
+
+  // Derive confraternidad from selected fraternidad
+  const fraternidadSeleccionada = fraternidades.find(f => f.id === fraternidadId)
+  const confraternidadId = fraternidadSeleccionada?.parent_id ?? confraternidades[0]?.id ?? ''
+  const confraternidadNombre = confraternidades.find(c => c.id === confraternidadId)?.nombre ?? '—'
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const target = e.target
+    const value = target.type === 'checkbox' ? (target as HTMLInputElement).checked : target.value
+    setFormData(prev => ({ ...prev, [target.name]: value }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -42,109 +64,194 @@ export default function NuevoEventoForm({ organizaciones, casasRetiro, defaultOr
     setError('')
 
     try {
+      const payload = {
+        ...formData,
+        fraternidad_id: fraternidadId,
+        organizacion_id: confraternidadId,
+        requiere_discernimiento_confra: requiereConfra,
+        requiere_discernimiento_eqt: requiereEqt,
+        estado: 'solicitud',
+      }
+
       const res = await fetch('/api/eventos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       })
 
       if (!res.ok) {
         const { error: apiError } = await res.json()
-        throw new Error(apiError ?? 'Error al crear el evento')
+        throw new Error(apiError ?? 'Error al enviar la solicitud')
       }
 
-      router.push('/eventos')
+      const { id } = await res.json()
+      router.push(`/eventos/${id}`)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Error al crear el evento')
+      setError(err instanceof Error ? err.message : 'Error inesperado')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
-  }
+  const fieldClass = 'w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm'
+  const readonlyClass = 'w-full rounded-md border border-border bg-muted/50 px-3 py-2 text-muted-foreground text-sm'
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-2xl">
       <Link href="/eventos" className="inline-flex items-center gap-2 text-primary hover:underline">
         <ArrowLeft className="h-4 w-4" />
         Volver a Eventos
       </Link>
 
-      <Card className="border-border bg-card max-w-2xl">
+      <Card className="border-border bg-card">
         <CardHeader>
-          <CardTitle className="text-foreground">Crear Nuevo Evento</CardTitle>
-          <CardDescription>Registra un nuevo evento en el sistema</CardDescription>
+          <CardTitle className="text-foreground uppercase tracking-wide text-sm">Solicitud de Eventos</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
-              <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-                {error}
-              </div>
+              <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
             )}
 
-            {organizaciones.length === 0 && (
+            {fraternidades.length === 0 && (
               <div className="rounded-lg bg-yellow-50 dark:bg-yellow-900/20 p-3 text-sm text-yellow-800 dark:text-yellow-400">
-                No tenés organizaciones asignadas. Contactá al administrador para que te asigne permisos.
+                No tenés fraternidades asignadas. Contactá al administrador para que te asigne permisos.
               </div>
             )}
 
-            {/* Nombre */}
-            <div className="space-y-2">
-              <Label htmlFor="nombre">Nombre *</Label>
-              <Input
-                id="nombre"
-                name="nombre"
-                placeholder="Convivencia San José 2026"
-                value={formData.nombre}
-                onChange={handleChange}
-                required
-              />
+            {/* Fecha solicitud + Solicitado por */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label>Fecha Solicitud</Label>
+                <div className={readonlyClass}>{today}</div>
+              </div>
+              <div className="space-y-1">
+                <Label>Solicitado por</Label>
+                <div className={readonlyClass}>{personaNombre || '—'}</div>
+              </div>
             </div>
 
-            {/* Tipo y Estado */}
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="tipo">Tipo *</Label>
+            {/* Fraternidad */}
+            <div className="space-y-1">
+              <Label htmlFor="fraternidad_id">Fraternidad *</Label>
+              {fraternidades.length === 1 ? (
+                <div className={readonlyClass}>{fraternidades[0].nombre}</div>
+              ) : (
+                <select
+                  id="fraternidad_id"
+                  value={fraternidadId}
+                  onChange={e => setFraternidadId(e.target.value)}
+                  required
+                  className={fieldClass}
+                >
+                  <option value="">— Seleccionar fraternidad —</option>
+                  {fraternidades.map(f => (
+                    <option key={f.id} value={f.id}>{f.nombre}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {/* Confraternidad (derived, readonly) */}
+            <div className="space-y-1">
+              <Label>Confraternidad</Label>
+              <div className={readonlyClass}>{confraternidadNombre}</div>
+            </div>
+
+            {/* Niveles de discernimiento */}
+            <div className="rounded-md border border-border p-4 space-y-3">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Niveles de discernimiento</p>
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="requiere_confra"
+                  checked={requiereConfra}
+                  onChange={e => setRequiereConfra(e.target.checked)}
+                  className="h-4 w-4 rounded border-border"
+                />
+                <label htmlFor="requiere_confra" className="text-sm text-foreground cursor-pointer">
+                  Requiere discernimiento Confraternidad / Delegado
+                </label>
+              </div>
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="requiere_eqt"
+                  checked={requiereEqt}
+                  onChange={e => setRequiereEqt(e.target.checked)}
+                  className="h-4 w-4 rounded border-border"
+                />
+                <label htmlFor="requiere_eqt" className="text-sm text-foreground cursor-pointer">
+                  Requiere discernimiento Equipo Timón
+                </label>
+              </div>
+            </div>
+
+            {/* Tipo + Nombre */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="tipo">Tipo de evento solicitado *</Label>
                 <select
                   id="tipo"
                   name="tipo"
                   value={formData.tipo}
                   onChange={handleChange}
                   required
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
+                  className={fieldClass}
                 >
                   <option value="convivencia">Convivencia</option>
                   <option value="retiro">Retiro</option>
                   <option value="taller">Taller</option>
                 </select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="estado">Estado</Label>
-                <select
-                  id="estado"
-                  name="estado"
-                  value={formData.estado}
+              <div className="space-y-1">
+                <Label htmlFor="nombre">Nombre del evento *</Label>
+                <Input
+                  id="nombre"
+                  name="nombre"
+                  placeholder="Convivencia San José 2026"
+                  value={formData.nombre}
                   onChange={handleChange}
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Modalidad + APV */}
+            <div className="grid gap-4 sm:grid-cols-2 items-end">
+              <div className="space-y-1">
+                <Label htmlFor="modalidad">Modalidad solicitada</Label>
+                <select
+                  id="modalidad"
+                  name="modalidad"
+                  value={formData.modalidad}
+                  onChange={handleChange}
+                  className={fieldClass}
                 >
-                  <option value="borrador">Borrador</option>
-                  <option value="solicitado">Solicitado</option>
-                  <option value="aprobado">Aprobado</option>
-                  <option value="publicado">Publicado</option>
-                  <option value="finalizado">Finalizado</option>
-                  <option value="cancelado">Cancelado</option>
+                  <option value="presencial">Presencial</option>
+                  <option value="virtual">Virtual</option>
+                  <option value="bimodal">Bimodal</option>
                 </select>
+              </div>
+              <div className="flex items-center gap-3 pb-2">
+                <input
+                  type="checkbox"
+                  id="es_apv"
+                  name="es_apv"
+                  checked={formData.es_apv}
+                  onChange={handleChange}
+                  className="h-4 w-4 rounded border-border"
+                />
+                <label htmlFor="es_apv" className="text-sm text-foreground cursor-pointer">
+                  Es de aporte voluntario APV
+                </label>
               </div>
             </div>
 
             {/* Fechas */}
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="fecha_inicio">Fecha de Inicio *</Label>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="fecha_inicio">Fecha inicio propuesta *</Label>
                 <Input
                   id="fecha_inicio"
                   name="fecha_inicio"
@@ -154,8 +261,8 @@ export default function NuevoEventoForm({ organizaciones, casasRetiro, defaultOr
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="fecha_fin">Fecha de Fin *</Label>
+              <div className="space-y-1">
+                <Label htmlFor="fecha_fin">Fecha fin propuesta *</Label>
                 <Input
                   id="fecha_fin"
                   name="fecha_fin"
@@ -167,118 +274,122 @@ export default function NuevoEventoForm({ organizaciones, casasRetiro, defaultOr
               </div>
             </div>
 
-            {/* Organización — solo las permitidas */}
-            <div className="space-y-2">
-              <Label htmlFor="organizacion_id">Organización</Label>
-              <select
-                id="organizacion_id"
-                name="organizacion_id"
-                value={formData.organizacion_id}
+            {/* Coordinadores */}
+            <div className="space-y-1">
+              <Label htmlFor="coordinadores_propuestos">Coordinador/es propuesto/s</Label>
+              <Input
+                id="coordinadores_propuestos"
+                name="coordinadores_propuestos"
+                placeholder="Nombre y apellido (hasta 3, separados por coma)"
+                value={formData.coordinadores_propuestos}
                 onChange={handleChange}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-              >
-                <option value="">Sin organización</option>
-                {organizaciones.map(org => (
-                  <option key={org.id} value={org.id}>
-                    {org.nombre} ({org.tipo})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Casa de Retiro */}
-            <div className="space-y-2">
-              <Label htmlFor="casa_retiro_id">Casa de Retiro</Label>
-              <select
-                id="casa_retiro_id"
-                name="casa_retiro_id"
-                value={formData.casa_retiro_id}
-                onChange={handleChange}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-              >
-                <option value="">Sin casa de retiro</option>
-                {casasRetiro.map(c => (
-                  <option key={c.id} value={c.id}>{c.nombre}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Cupo y Precio */}
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="cupo_maximo">Cupo Máximo</Label>
-                <Input
-                  id="cupo_maximo"
-                  name="cupo_maximo"
-                  type="number"
-                  min="1"
-                  value={formData.cupo_maximo}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="precio">Precio</Label>
-                <Input
-                  id="precio"
-                  name="precio"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={formData.precio}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
-
-            {/* Audiencia y Modalidad */}
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="audiencia">Audiencia</Label>
-                <select
-                  id="audiencia"
-                  name="audiencia"
-                  value={formData.audiencia}
-                  onChange={handleChange}
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-                >
-                  <option value="cerrado">Cerrado</option>
-                  <option value="abierto">Abierto</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="modalidad">Modalidad</Label>
-                <select
-                  id="modalidad"
-                  name="modalidad"
-                  value={formData.modalidad}
-                  onChange={handleChange}
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-                >
-                  <option value="presencial">Presencial</option>
-                  <option value="virtual">Virtual</option>
-                  <option value="bimodal">Bimodal</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Descripción */}
-            <div className="space-y-2">
-              <Label htmlFor="descripcion">Descripción</Label>
-              <textarea
-                id="descripcion"
-                name="descripcion"
-                placeholder="Descripción del evento..."
-                value={formData.descripcion}
-                onChange={handleChange}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm min-h-20"
               />
             </div>
 
-            {/* Buttons */}
-            <div className="flex gap-3 pt-6">
-              <Button type="submit" disabled={loading || organizaciones.length === 0}>
-                {loading ? 'Guardando...' : 'Crear Evento'}
+            {/* Asesor + voluntario */}
+            <div className="grid gap-4 sm:grid-cols-2 items-end">
+              <div className="space-y-1">
+                <Label htmlFor="asesor_propuesto">Asesor propuesto</Label>
+                <Input
+                  id="asesor_propuesto"
+                  name="asesor_propuesto"
+                  placeholder="Texto — puede ser persona externa"
+                  value={formData.asesor_propuesto}
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="flex items-center gap-3 pb-2">
+                <input
+                  type="checkbox"
+                  id="asesor_voluntario"
+                  name="asesor_voluntario"
+                  checked={formData.asesor_voluntario}
+                  onChange={handleChange}
+                  className="h-4 w-4 rounded border-border"
+                />
+                <label htmlFor="asesor_voluntario" className="text-sm text-foreground cursor-pointer">
+                  Es voluntario el asesor
+                </label>
+              </div>
+            </div>
+
+            {/* Ubicación */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="ciudad">Ciudad</Label>
+                <Input
+                  id="ciudad"
+                  name="ciudad"
+                  placeholder="Ciudad del evento"
+                  value={formData.ciudad}
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="codigo_postal">CP</Label>
+                <Input
+                  id="codigo_postal"
+                  name="codigo_postal"
+                  placeholder="Código postal"
+                  value={formData.codigo_postal}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-1">
+                <Label htmlFor="diocesis">Diócesis</Label>
+                <Input
+                  id="diocesis"
+                  name="diocesis"
+                  placeholder="Diócesis"
+                  value={formData.diocesis}
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="provincia_evento">Provincia</Label>
+                <Input
+                  id="provincia_evento"
+                  name="provincia_evento"
+                  placeholder="Provincia"
+                  value={formData.provincia_evento}
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="pais_evento">País</Label>
+                <Input
+                  id="pais_evento"
+                  name="pais_evento"
+                  placeholder="País"
+                  value={formData.pais_evento}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+
+            {/* Notas */}
+            <div className="space-y-1">
+              <Label htmlFor="notas">Notas aclaratorias y observaciones</Label>
+              <textarea
+                id="notas"
+                name="notas"
+                placeholder="Notas adicionales..."
+                value={formData.notas}
+                onChange={handleChange}
+                className={`${fieldClass} min-h-24`}
+              />
+            </div>
+
+            {/* Submit */}
+            <div className="flex gap-3 pt-2">
+              <Button
+                type="submit"
+                disabled={loading || fraternidades.length === 0 || !fraternidadId}
+              >
+                {loading ? 'Enviando...' : 'Enviar Solicitud'}
               </Button>
               <Link href="/eventos">
                 <Button type="button" variant="outline" className="bg-transparent">

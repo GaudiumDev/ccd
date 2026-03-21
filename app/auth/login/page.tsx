@@ -24,7 +24,7 @@ import { createClient } from "@/lib/supabase/client"
 
 export default function LoginPage() {
   const router = useRouter()
-  const [email, setEmail] = useState("")
+  const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -36,15 +36,16 @@ export default function LoginPage() {
     setError(null)
 
     const supabase = createClient()
+    const fakeEmail = `${username.toLowerCase().trim()}@ccd.internal`
     const { error } = await supabase.auth.signInWithPassword({
-      email,
+      email: fakeEmail,
       password,
     })
 
     if (error) {
       setError(
         error.message === "Invalid login credentials"
-          ? "Credenciales inválidas. Por favor verifica tu email y contraseña."
+          ? "Credenciales inválidas. Por favor verifica tu usuario y contraseña."
           : error.message,
       )
       setIsLoading(false)
@@ -87,15 +88,18 @@ export default function LoginPage() {
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="email">Correo Electrónico</Label>
+              <Label htmlFor="username">Usuario</Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="tu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="username"
+                type="text"
+                placeholder="tu.usuario"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 required
                 disabled={isLoading}
+                autoComplete="username"
+                autoCapitalize="none"
+                autoCorrect="off"
               />
             </div>
             <div className="space-y-2">
@@ -136,15 +140,6 @@ export default function LoginPage() {
                 "Ingresar"
               )}
             </Button>
-            <p className="text-center text-sm text-muted-foreground">
-              ¿No tienes una cuenta?{" "}
-              <Link
-                href="/auth/sign-up"
-                className="font-medium text-primary hover:underline"
-              >
-                Regístrate
-              </Link>
-            </p>
           </CardFooter>
         </form>
       </Card>

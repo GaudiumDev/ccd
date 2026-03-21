@@ -5,70 +5,91 @@ import { createClient } from '@/lib/supabase/server'
 import { getUserContext, canPerform } from '@/lib/auth/context'
 import NuevoEventoForm from './form'
 
-export default async function NuevoEventoPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ organizacion_id?: string }>
-}) {
+export default async function NuevoEventoPage() {
   const ctx = await getUserContext()
 
   if (!ctx) redirect('/auth/login')
 
-  // Only users with event.create permission can access this page
   if (!canPerform(ctx, 'event.create')) {
     redirect('/eventos')
   }
 
   const supabase = await createClient()
-  // null = all orgs (admin), [] = none, [...ids] = scoped
-  const allowedOrgIds = ctx.is_admin ? null : (ctx.org_ids.length > 0 ? ctx.org_ids : [])
 
-  // Load organizations filtered by permission
-  let orgsQuery = supabase
-    .from('organizaciones')
-    .select('id, nombre, tipo')
-    .is('fecha_baja', null)
-    .order('nombre')
+  // Load organizations the user has access to
+  let fraternidades: { id: string; nombre: string; parent_id: string | null }[] = []
+  let confraternidades: { id: string; nombre: string }[] = []
+  let personaNombre = ''
 
-  if (allowedOrgIds !== null && allowedOrgIds.length > 0) {
-    orgsQuery = orgsQuery.in('id', allowedOrgIds)
-  } else if (allowedOrgIds !== null && allowedOrgIds.length === 0) {
-    // No orgs allowed — pass empty list
-    const { searchParams: sp } = { searchParams: await searchParams }
-    return (
-      <NuevoEventoForm
-        organizaciones={[]}
-        casasRetiro={[]}
-        defaultOrgId={sp?.organizacion_id ?? ''}
-      />
-    )
+  // Get the user's persona name
+  if (ctx.persona_id) {
+    const { data: persona } = await supabase
+      .from('personas')
+      .select('nombre, apellido')
+      .eq('id', ctx.persona_id)
+      .single()
+    if (persona) {
+      personaNombre = `${persona.nombre} ${persona.apellido}`.trim()
+    }
   }
 
-  const [{ data: orgs }, sp] = await Promise.all([
-    orgsQuery,
-    searchParams,
-  ])
-
-  const organizaciones = (orgs ?? []).filter(o => o.tipo !== 'casa_retiro')
-  const casasRetiro = (orgs ?? []).filter(o => o.tipo === 'casa_retiro')
-
-  // Also load all casas_retiro regardless of permission (they are venues, not scoped)
-  let casasRetiroAll = casasRetiro
-  if (allowedOrgIds !== null) {
-    const { data: allCasas } = await supabase
+  if (ctx.is_admin) {
+    // Admins can pick any fraternidad
+    const { data: orgs } = await supabase
       .from('organizaciones')
-      .select('id, nombre, tipo')
-      .eq('tipo', 'casa_retiro')
+      .select('id, nombre, tipo, parent_id')
+      .is('fecha_baja', null)
+      .in('tipo', ['fraternidad', 'confraternidad'])
+      .order('nombre')
+
+    fraternidades = (orgs ?? []).filter(o => o.tipo === 'fraternidad')
+    confraternidades = (orgs ?? []).filter(o => o.tipo === 'confraternidad')
+  } else {
+    // Load only the orgs the user has explicit access to
+    if (ctx.org_ids.length === 0) {
+      // No orgs — show empty form with warning
+      return (
+        <NuevoEventoForm
+          fraternidades={[]}
+          confraternidades={[]}
+          personaNombre={personaNombre}
+          isAdmin={false}
+        />
+      )
+    }
+
+    const { data: orgs } = await supabase
+      .from('organizaciones')
+      .select('id, nombre, tipo, parent_id')
+      .in('id', ctx.org_ids)
       .is('fecha_baja', null)
       .order('nombre')
-    casasRetiroAll = allCasas ?? []
+
+    const userFraternidades = (orgs ?? []).filter(o => o.tipo === 'fraternidad')
+    fraternidades = userFraternidades
+
+    // Load confraternidades (parents of the user's fraternidades)
+    const parentIds = userFraternidades
+      .map(f => f.parent_id)
+      .filter(Boolean) as string[]
+
+    if (parentIds.length > 0) {
+      const { data: confras } = await supabase
+        .from('organizaciones')
+        .select('id, nombre')
+        .in('id', parentIds)
+        .is('fecha_baja', null)
+        .order('nombre')
+      confraternidades = confras ?? []
+    }
   }
 
   return (
     <NuevoEventoForm
-      organizaciones={organizaciones}
-      casasRetiro={casasRetiroAll}
-      defaultOrgId={sp?.organizacion_id ?? ''}
+      fraternidades={fraternidades}
+      confraternidades={confraternidades}
+      personaNombre={personaNombre}
+      isAdmin={ctx.is_admin}
     />
   )
 }

@@ -25,6 +25,7 @@ export async function POST(request: Request) {
     acepta_comunicaciones: body.acepta_comunicaciones ?? true,
   }
   if (body.email) insertData.email = body.email
+  if (body.nombre_usuario) insertData.nombre_usuario = body.nombre_usuario.toLowerCase().trim()
   if (body.email_ccd) insertData.email_ccd = body.email_ccd
   if (body.telefono) insertData.telefono = body.telefono
   if (body.tipo_documento) insertData.tipo_documento = body.tipo_documento
