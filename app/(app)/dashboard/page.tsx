@@ -19,7 +19,6 @@ import {
   DollarSign,
   FileText,
   TrendingUp,
-  Activity,
   ArrowRight,
   Clock,
   AlertCircle,
@@ -76,7 +75,21 @@ export default async function DashboardPage() {
   if (!ctx) redirect("/auth/login")
 
   const supabase = await createClient()
-  const primaryOrgId = ctx.org_ids[0] ?? null
+
+  // Determinar la org primaria del usuario: primero buscar su membresía activa
+  // en persona_organizacion (donde está inscripto como cecista). Si no tiene
+  // persona_id, caer a la primera org de sus roles/ministerios.
+  let primaryOrgId: string | null = ctx.org_ids[0] ?? null
+  if (ctx.persona_id) {
+    const { data: poRow } = await supabase
+      .from("persona_organizacion")
+      .select("organizacion_id")
+      .eq("persona_id", ctx.persona_id)
+      .is("fecha_fin", null)
+      .limit(1)
+      .single()
+    if (poRow?.organizacion_id) primaryOrgId = poRow.organizacion_id
+  }
 
   const canApprove =
     canPerform(ctx, "event.approve_confra") ||
@@ -99,27 +112,19 @@ export default async function DashboardPage() {
     fraternidadesCountResult,
     eventosCountResult,
     proximosCountResult,
-    pendientesResult,
-    cecistasResult,
     proximosEventosResult,
     misEventosResult,
     discernimientoContraResult,
     discernimientoEqtResult,
     misRechazadosResult,
   ] = await Promise.all([
-    // 1. Count personas
+    // 1. Count personas (non-admin count se calcula en el bloque cecistas más abajo)
     ctx.is_admin
       ? supabase
           .from("personas")
           .select("id", { count: "exact", head: true })
           .is("fecha_baja", null)
-      : primaryOrgId
-        ? supabase
-            .from("persona_organizacion")
-            .select("persona_id", { count: "exact", head: true })
-            .eq("organizacion_id", primaryOrgId)
-            .is("fecha_fin", null)
-        : Promise.resolve({ count: 0, error: null }),
+      : Promise.resolve({ count: 0, error: null }),
 
     // 2a. Count confraternidades
     ctx.is_admin
@@ -163,52 +168,7 @@ export default async function DashboardPage() {
       return q
     })(),
 
-    // 5. Pendientes de aprobación (solo si puede aprobar)
-    canApprove
-      ? (() => {
-          const pendingStates: string[] = []
-          if (canPerform(ctx, "event.approve_confra")) {
-            pendingStates.push("solicitado")
-          }
-          if (canPerform(ctx, "event.approve_eqt")) {
-            pendingStates.push("solicitado")
-          }
-          const uniqueStates = [...new Set(pendingStates)]
-          let q = supabase
-            .from("eventos")
-            .select(
-              "id, nombre, estado, tipo, fecha_inicio, organizacion:organizaciones!organizacion_id(nombre)",
-            )
-            .in("estado", uniqueStates)
-            .order("created_at", { ascending: true })
-            .limit(5)
-          if (!ctx.is_admin && primaryOrgId)
-            q = q.eq("organizacion_id", primaryOrgId)
-          return q
-        })()
-      : Promise.resolve({ data: null, error: null }),
-
-    // 6. Cecistas de mi org (solo si hay org primaria)
-    primaryOrgId
-      ? supabase
-          .from("persona_organizacion")
-          .select(
-            `
-            persona_id,
-            personas!persona_id(
-              id,
-              nombre,
-              apellido,
-              persona_modos(modo, fecha_fin)
-            )
-          `,
-          )
-          .eq("organizacion_id", primaryOrgId)
-          .is("fecha_fin", null)
-          .limit(8)
-      : Promise.resolve({ data: null, error: null }),
-
-    // 7. Próximos eventos lista (reemplaza mock)
+    // 5. Próximos eventos lista (reemplaza mock)
     (() => {
       let q = supabase
         .from("eventos")
@@ -282,13 +242,77 @@ export default async function DashboardPage() {
       : Promise.resolve({ data: null, error: null }),
   ])
 
-  const totalPersonas = personasCountResult.count ?? 0
+  let totalPersonas = personasCountResult.count ?? 0
   const totalConfraternidades = confraternidadesCountResult.count ?? 0
   const totalFraternidades = fraternidadesCountResult.count ?? 0
   const totalEventos = eventosCountResult.count ?? 0
   const proximosCount = proximosCountResult.count ?? 0
-  const pendientes = (pendientesResult as any).data as any[] | null
-  const cecistas = (cecistasResult as any).data as any[] | null
+
+  // Pendientes: misma lógica que eventos/page.tsx, con filtrado post-fetch por rol
+  let pendientes: any[] | null = null
+  if (canApprove) {
+    const canApproveConfra = canPerform(ctx, "event.approve_confra")
+    const canApproveEqt = canPerform(ctx, "event.approve_eqt")
+    const pendingStates: string[] = []
+    if (canApproveConfra) {
+      pendingStates.push("solicitud", "discernimiento_confra")
+    }
+    if (canApproveEqt) {
+      pendingStates.push("discernimiento_eqt")
+      if (!pendingStates.includes("solicitud")) pendingStates.push("solicitud")
+    }
+    const { data: pendingData } = await supabase
+      .from("eventos")
+      .select(
+        "id, nombre, tipo, estado, fecha_inicio, requiere_discernimiento_confra, organizacion:organizaciones!organizacion_id(id, nombre)",
+      )
+      .in("estado", pendingStates)
+      .order("fecha_solicitud", { ascending: true })
+      .limit(10)
+    pendientes = (pendingData ?? []).filter((ev: any) => {
+      const confraId = ev.organizacion?.id as string | null
+      const requiereConfra = ev.requiere_discernimiento_confra ?? false
+      if (ev.estado === "discernimiento_eqt" && canApproveEqt) return true
+      if (ev.estado === "solicitud") {
+        if (!requiereConfra && canApproveEqt) return true
+        if (requiereConfra && canApproveConfra) {
+          if (ctx.is_admin) return true
+          return confraId ? ctx.org_ids.includes(confraId) : false
+        }
+      }
+      if (ev.estado === "discernimiento_confra" && canApproveConfra) {
+        if (ctx.is_admin) return true
+        return confraId ? ctx.org_ids.includes(confraId) : false
+      }
+      return false
+    })
+  }
+
+  // Cecistas: two-step fetch — same pattern as /personas page
+  // Also derives totalPersonas for non-admin (consistent with fecha_baja filter)
+  let cecistas: any[] | null = null
+  if (primaryOrgId) {
+    const { data: orgRows } = await supabase
+      .from("persona_organizacion")
+      .select("persona_id")
+      .eq("organizacion_id", primaryOrgId)
+      .is("fecha_fin", null)
+    const ids = (orgRows ?? []).map((r: any) => r.persona_id)
+    if (ids.length > 0) {
+      const { data, count } = await supabase
+        .from("personas")
+        .select("id, nombre, apellido, persona_modos(modo, fecha_fin)", { count: "exact" })
+        .in("id", ids)
+        .is("fecha_baja", null)
+        .limit(8)
+      cecistas = data
+      totalPersonas = count ?? 0
+    } else {
+      cecistas = []
+      totalPersonas = 0
+    }
+  }
+
   const proximosEventos = (proximosEventosResult as any).data as any[] | null
   const misEventos = (misEventosResult as any).data as any[] | null
   const discernimientoConfra = (discernimientoContraResult as any).data as
@@ -474,7 +498,7 @@ export default async function DashboardPage() {
                 </div>
               ))}
             </div>
-            <Link href="/eventos?estado=solicitado" className="block mt-4">
+            <Link href="/eventos?estado=solicitud" className="block mt-4">
               <Button variant="outline" className="w-full bg-transparent">
                 Ver todas las solicitudes
                 <ArrowRight className="h-4 w-4 ml-2" />
@@ -503,9 +527,7 @@ export default async function DashboardPage() {
               </p>
             ) : (
               <div className="space-y-2">
-                {cecistas.map((row: any) => {
-                  const persona = row.personas
-                  if (!persona) return null
+                {cecistas.map((persona: any) => {
                   const currentModo = Array.isArray(persona.persona_modos)
                     ? persona.persona_modos.find(
                         (m: any) => m.fecha_fin === null,
