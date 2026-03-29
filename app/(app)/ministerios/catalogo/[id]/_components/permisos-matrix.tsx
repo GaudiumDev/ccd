@@ -4,6 +4,12 @@ import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
+// Permisos que se muestran indentados bajo otro permiso (relación visual, no en DB)
+const PERMISSION_CHILDREN: Record<string, string[]> = {
+  'event.approve': ['event.approve_confra', 'event.approve_eqt'],
+}
+const ALL_CHILD_CLAVES = new Set(Object.values(PERMISSION_CHILDREN).flat())
+
 interface Permiso {
   id: string
   clave: string
@@ -99,6 +105,62 @@ export function PermisosMatrix({
     )
   }
 
+  const renderPermiso = (permiso: Permiso, indented = false) => {
+    const isActive = activos.has(permiso.id)
+    const isLoading = cargando.has(permiso.id)
+    const errorMsg = errores[permiso.id]
+    const childClaves = PERMISSION_CHILDREN[permiso.clave]
+    const children = childClaves
+      ? childClaves
+          .map(clave =>
+            Object.values(permisosPorCategoria)
+              .flat()
+              .find((p: Permiso) => p.clave === clave)
+          )
+          .filter(Boolean) as Permiso[]
+      : []
+
+    return (
+      <div key={permiso.id}>
+        <div className={`flex items-start gap-3 rounded-lg border p-3 ${indented ? 'border-border/50 bg-muted/30' : 'border-border'}`}>
+          <div className="relative flex items-center justify-center w-5 h-5 mt-0.5 shrink-0">
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            ) : (
+              <input
+                type="checkbox"
+                id={`perm-${permiso.id}`}
+                checked={isActive}
+                onChange={e => togglePermiso(permiso.id, e.target.checked)}
+                className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
+              />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <label
+              htmlFor={`perm-${permiso.id}`}
+              className="text-sm font-medium text-foreground cursor-pointer"
+            >
+              {permiso.nombre}
+            </label>
+            {permiso.descripcion && (
+              <p className="text-xs text-muted-foreground mt-0.5">{permiso.descripcion}</p>
+            )}
+            <p className="text-xs text-muted-foreground/60 mt-0.5 font-mono">{permiso.clave}</p>
+            {errorMsg && (
+              <p className="text-xs text-destructive mt-1">{errorMsg}</p>
+            )}
+          </div>
+        </div>
+        {children.length > 0 && (
+          <div className="ml-6 mt-1 space-y-1 border-l-2 border-border/40 pl-3">
+            {children.map(child => renderPermiso(child, true))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {categorias.map(categoria => (
@@ -107,44 +169,9 @@ export function PermisosMatrix({
             {categoriaLabel[categoria] ?? categoria}
           </h3>
           <div className="space-y-2">
-            {permisosPorCategoria[categoria].map((permiso: Permiso) => {
-              const isActive = activos.has(permiso.id)
-              const isLoading = cargando.has(permiso.id)
-              const errorMsg = errores[permiso.id]
-
-              return (
-                <div key={permiso.id} className="flex items-start gap-3 rounded-lg border border-border p-3">
-                  <div className="relative flex items-center justify-center w-5 h-5 mt-0.5 shrink-0">
-                    {isLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                    ) : (
-                      <input
-                        type="checkbox"
-                        id={`perm-${permiso.id}`}
-                        checked={isActive}
-                        onChange={e => togglePermiso(permiso.id, e.target.checked)}
-                        className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
-                      />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <label
-                      htmlFor={`perm-${permiso.id}`}
-                      className="text-sm font-medium text-foreground cursor-pointer"
-                    >
-                      {permiso.nombre}
-                    </label>
-                    {permiso.descripcion && (
-                      <p className="text-xs text-muted-foreground mt-0.5">{permiso.descripcion}</p>
-                    )}
-                    <p className="text-xs text-muted-foreground/60 mt-0.5 font-mono">{permiso.clave}</p>
-                    {errorMsg && (
-                      <p className="text-xs text-destructive mt-1">{errorMsg}</p>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
+            {permisosPorCategoria[categoria]
+              .filter((p: Permiso) => !ALL_CHILD_CLAVES.has(p.clave))
+              .map((permiso: Permiso) => renderPermiso(permiso))}
           </div>
         </div>
       ))}

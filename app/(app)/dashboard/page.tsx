@@ -1,8 +1,8 @@
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic"
 
-import { redirect } from 'next/navigation'
-import { getUserContext, canPerform } from '@/lib/auth/context'
-import { createClient } from '@/lib/supabase/server'
+import { redirect } from "next/navigation"
+import { getUserContext, canPerform } from "@/lib/auth/context"
+import { createClient } from "@/lib/supabase/server"
 import {
   Card,
   CardContent,
@@ -27,99 +27,139 @@ import {
 import Link from "next/link"
 
 const ROLE_LABELS: Record<string, string> = {
-  admin_general: 'Administrador General',
-  tecnico_confraternidad: 'Técnico de Confraternidad',
-  responsable_fraternidad: 'Responsable de Fraternidad',
-  usuario_carga: 'Usuario de Carga',
-  solo_lectura: 'Solo Lectura',
+  admin_general: "Administrador General",
+  tecnico_confraternidad: "Técnico de Confraternidad",
+  responsable_fraternidad: "Responsable de Fraternidad",
+  usuario_carga: "Usuario de Carga",
+  solo_lectura: "Solo Lectura",
 }
 
 const ESTADO_EVENT_COLORS: Record<string, string> = {
-  borrador: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
-  solicitado: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-  aprobado: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  publicado: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  finalizado: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
-  cancelado: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
+  borrador: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+  solicitud:
+    "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+  discernimiento_confra:
+    "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+  discernimiento_eqt:
+    "bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-200",
+  aprobado: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+  publicado:
+    "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+  finalizado: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+  rechazado: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
+  cancelado: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
+}
+
+const ESTADO_LABELS: Record<string, string> = {
+  borrador: "Borrador",
+  solicitud: "Solicitud",
+  discernimiento_confra: "Disc. Confra",
+  discernimiento_eqt: "Disc. EqT",
+  aprobado: "Aprobado",
+  publicado: "Publicado",
+  finalizado: "Finalizado",
+  rechazado: "Rechazado",
+  cancelado: "Cancelado",
 }
 
 const MODO_LABELS: Record<string, string> = {
-  colaborador: 'Colaborador',
-  servidor: 'Servidor',
-  asesor: 'Asesor',
-  familiar: 'Familiar',
-  orante: 'Orante',
-  intercesor: 'Intercesor',
+  colaborador: "Colaborador",
+  servidor: "Servidor",
+  asesor: "Asesor",
+  familiar: "Familiar",
+  orante: "Orante",
+  intercesor: "Intercesor",
 }
 
 export default async function DashboardPage() {
   const ctx = await getUserContext()
-  if (!ctx) redirect('/auth/login')
+  if (!ctx) redirect("/auth/login")
 
   const supabase = await createClient()
   const primaryOrgId = ctx.org_ids[0] ?? null
 
   const canApprove =
-    canPerform(ctx, 'event.approve_confra') || canPerform(ctx, 'event.approve_eqt')
-  const canCreatePerson = canPerform(ctx, 'person.create')
-  const canCreateOrg = canPerform(ctx, 'organization.create')
-  const canCreateEvent = canPerform(ctx, 'event.create')
+    canPerform(ctx, "event.approve_confra") ||
+    canPerform(ctx, "event.approve_eqt")
+  const canApproveConfra = canPerform(ctx, "event.approve_confra")
+  const canApproveEqt = canPerform(ctx, "event.approve_eqt")
+  const canCreatePerson = canPerform(ctx, "person.create")
+  const canCreateOrg = canPerform(ctx, "organization.create")
+  const canCreateEvent = canPerform(ctx, "event.create")
+  const hasPersonaId = ctx.persona_id !== null
 
   // ── Queries paralelas ────────────────────────────────────────────────────────
 
-  const today = new Date().toISOString().split('T')[0]
-  const in30 = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0]
+  const today = new Date().toISOString().split("T")[0]
+  const in30 = new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0]
 
   const [
     personasCountResult,
-    organizacionesCountResult,
+    confraternidadesCountResult,
+    fraternidadesCountResult,
     eventosCountResult,
     proximosCountResult,
     pendientesResult,
     cecistasResult,
     proximosEventosResult,
+    misEventosResult,
+    discernimientoContraResult,
+    discernimientoEqtResult,
+    misRechazadosResult,
   ] = await Promise.all([
     // 1. Count personas
     ctx.is_admin
       ? supabase
-          .from('personas')
-          .select('id', { count: 'exact', head: true })
-          .is('fecha_baja', null)
+          .from("personas")
+          .select("id", { count: "exact", head: true })
+          .is("fecha_baja", null)
       : primaryOrgId
         ? supabase
-            .from('persona_organizacion')
-            .select('persona_id', { count: 'exact', head: true })
-            .eq('organizacion_id', primaryOrgId)
-            .is('fecha_fin', null)
+            .from("persona_organizacion")
+            .select("persona_id", { count: "exact", head: true })
+            .eq("organizacion_id", primaryOrgId)
+            .is("fecha_fin", null)
         : Promise.resolve({ count: 0, error: null }),
 
-    // 2. Count organizaciones
+    // 2a. Count confraternidades
     ctx.is_admin
       ? supabase
-          .from('organizaciones')
-          .select('id', { count: 'exact', head: true })
-          .is('fecha_baja', null)
+          .from("organizaciones")
+          .select("id", { count: "exact", head: true })
+          .eq("tipo", "confraternidad")
+          .is("fecha_baja", null)
       : Promise.resolve({ count: ctx.org_ids.length, error: null }),
+
+    // 2b. Count fraternidades
+    ctx.is_admin
+      ? supabase
+          .from("organizaciones")
+          .select("id", { count: "exact", head: true })
+          .eq("tipo", "fraternidad")
+          .is("fecha_baja", null)
+      : Promise.resolve({ count: 0, error: null }),
 
     // 3. Count eventos activos (aprobado + publicado)
     (() => {
       let q = supabase
-        .from('eventos')
-        .select('id', { count: 'exact', head: true })
-        .in('estado', ['aprobado', 'publicado'])
-      if (!ctx.is_admin && primaryOrgId) q = q.eq('organizacion_id', primaryOrgId)
+        .from("eventos")
+        .select("id", { count: "exact", head: true })
+        .in("estado", ["aprobado", "publicado"])
+      if (!ctx.is_admin && primaryOrgId)
+        q = q.eq("organizacion_id", primaryOrgId)
       return q
     })(),
 
     // 4. Count próximos eventos (30 días)
     (() => {
       let q = supabase
-        .from('eventos')
-        .select('id', { count: 'exact', head: true })
-        .in('estado', ['aprobado', 'publicado'])
-        .gte('fecha_inicio', today)
-        .lte('fecha_inicio', in30)
-      if (!ctx.is_admin && primaryOrgId) q = q.eq('organizacion_id', primaryOrgId)
+        .from("eventos")
+        .select("id", { count: "exact", head: true })
+        .in("estado", ["aprobado", "publicado"])
+        .gte("fecha_inicio", today)
+        .lte("fecha_inicio", in30)
+      if (!ctx.is_admin && primaryOrgId)
+        q = q.eq("organizacion_id", primaryOrgId)
       return q
     })(),
 
@@ -127,20 +167,23 @@ export default async function DashboardPage() {
     canApprove
       ? (() => {
           const pendingStates: string[] = []
-          if (canPerform(ctx, 'event.approve_confra')) {
-            pendingStates.push('solicitado')
+          if (canPerform(ctx, "event.approve_confra")) {
+            pendingStates.push("solicitado")
           }
-          if (canPerform(ctx, 'event.approve_eqt')) {
-            pendingStates.push('solicitado')
+          if (canPerform(ctx, "event.approve_eqt")) {
+            pendingStates.push("solicitado")
           }
           const uniqueStates = [...new Set(pendingStates)]
           let q = supabase
-            .from('eventos')
-            .select('id, nombre, estado, tipo, fecha_inicio, organizacion:organizaciones!organizacion_id(nombre)')
-            .in('estado', uniqueStates)
-            .order('created_at', { ascending: true })
+            .from("eventos")
+            .select(
+              "id, nombre, estado, tipo, fecha_inicio, organizacion:organizaciones!organizacion_id(nombre)",
+            )
+            .in("estado", uniqueStates)
+            .order("created_at", { ascending: true })
             .limit(5)
-          if (!ctx.is_admin && primaryOrgId) q = q.eq('organizacion_id', primaryOrgId)
+          if (!ctx.is_admin && primaryOrgId)
+            q = q.eq("organizacion_id", primaryOrgId)
           return q
         })()
       : Promise.resolve({ data: null, error: null }),
@@ -148,8 +191,9 @@ export default async function DashboardPage() {
     // 6. Cecistas de mi org (solo si hay org primaria)
     primaryOrgId
       ? supabase
-          .from('persona_organizacion')
-          .select(`
+          .from("persona_organizacion")
+          .select(
+            `
             persona_id,
             personas!persona_id(
               id,
@@ -157,43 +201,116 @@ export default async function DashboardPage() {
               apellido,
               persona_modos(modo, fecha_fin)
             )
-          `)
-          .eq('organizacion_id', primaryOrgId)
-          .is('fecha_fin', null)
+          `,
+          )
+          .eq("organizacion_id", primaryOrgId)
+          .is("fecha_fin", null)
           .limit(8)
       : Promise.resolve({ data: null, error: null }),
 
     // 7. Próximos eventos lista (reemplaza mock)
     (() => {
       let q = supabase
-        .from('eventos')
-        .select('id, nombre, tipo, estado, fecha_inicio, organizacion:organizaciones!organizacion_id(nombre)')
-        .in('estado', ['aprobado', 'publicado'])
-        .gte('fecha_inicio', today)
-        .order('fecha_inicio', { ascending: true })
+        .from("eventos")
+        .select(
+          "id, nombre, tipo, estado, fecha_inicio, organizacion:organizaciones!organizacion_id(nombre)",
+        )
+        .in("estado", ["aprobado", "publicado"])
+        .gte("fecha_inicio", today)
+        .order("fecha_inicio", { ascending: true })
         .limit(5)
-      if (!ctx.is_admin && primaryOrgId) q = q.eq('organizacion_id', primaryOrgId)
+      if (!ctx.is_admin && primaryOrgId)
+        q = q.eq("organizacion_id", primaryOrgId)
       return q
     })(),
+
+    // 8. Mis eventos solicitados (eventos en tránsito que yo solicité)
+    canCreateEvent && hasPersonaId
+      ? supabase
+          .from("eventos")
+          .select("id, nombre, estado, tipo, fecha_inicio")
+          .eq("solicitado_por", ctx.persona_id!)
+          .in("estado", [
+            "solicitud",
+            "discernimiento_confra",
+            "discernimiento_eqt",
+            "aprobado",
+            "publicado",
+          ])
+          .order("created_at", { ascending: false })
+          .limit(5)
+      : Promise.resolve({ data: null, error: null }),
+
+    // 9. En Discernimiento Confra/Delegado (para quienes pueden aprobar a nivel confra)
+    canApproveConfra
+      ? (() => {
+          let q = supabase
+            .from("eventos")
+            .select(
+              "id, nombre, estado, tipo, fecha_inicio, organizacion:organizaciones!organizacion_id(nombre)",
+            )
+            .eq("estado", "discernimiento_confra")
+            .order("fecha_solicitud", { ascending: true })
+            .limit(5)
+          if (!ctx.is_admin && primaryOrgId)
+            q = q.eq("organizacion_id", primaryOrgId)
+          return q
+        })()
+      : Promise.resolve({ data: null, error: null }),
+
+    // 10. En Discernimiento EqT (solo admin_general / approve_eqt)
+    canApproveEqt
+      ? supabase
+          .from("eventos")
+          .select(
+            "id, nombre, estado, tipo, fecha_inicio, organizacion:organizaciones!organizacion_id(nombre)",
+          )
+          .eq("estado", "discernimiento_eqt")
+          .order("fecha_solicitud", { ascending: true })
+          .limit(5)
+      : Promise.resolve({ data: null, error: null }),
+
+    // 11. Mis eventos rechazados
+    canCreateEvent && hasPersonaId
+      ? supabase
+          .from("eventos")
+          .select("id, nombre, estado, motivo_rechazo, fecha_rechazo")
+          .eq("solicitado_por", ctx.persona_id!)
+          .eq("estado", "rechazado")
+          .order("fecha_rechazo", { ascending: false })
+          .limit(5)
+      : Promise.resolve({ data: null, error: null }),
   ])
 
   const totalPersonas = personasCountResult.count ?? 0
-  const totalOrganizaciones = organizacionesCountResult.count ?? 0
+  const totalConfraternidades = confraternidadesCountResult.count ?? 0
+  const totalFraternidades = fraternidadesCountResult.count ?? 0
   const totalEventos = eventosCountResult.count ?? 0
   const proximosCount = proximosCountResult.count ?? 0
   const pendientes = (pendientesResult as any).data as any[] | null
   const cecistas = (cecistasResult as any).data as any[] | null
   const proximosEventos = (proximosEventosResult as any).data as any[] | null
+  const misEventos = (misEventosResult as any).data as any[] | null
+  const discernimientoConfra = (discernimientoContraResult as any).data as
+    | any[]
+    | null
+  const discernimientoEqt = (discernimientoEqtResult as any).data as
+    | any[]
+    | null
+  const misRechazados = (misRechazadosResult as any).data as any[] | null
 
   const primaryRole = ctx.roles[0]?.rol ?? null
-  const roleName = primaryRole ? (ROLE_LABELS[primaryRole] ?? primaryRole) : null
+  const roleName = ctx.ministerio_nombre
+    ?? ((primaryRole && primaryRole !== 'solo_lectura') ? (ROLE_LABELS[primaryRole] ?? primaryRole) : null)
 
   return (
     <div className="space-y-8">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-4xl font-bold text-foreground">Panel de Inicio</h1>
+          <h1 className="text-4xl font-bold text-foreground">
+            Panel de Inicio
+          </h1>
           <p className="mt-2 text-lg text-muted-foreground">
             Plataforma de gestión para Convivencia con Dios
           </p>
@@ -210,19 +327,23 @@ export default async function DashboardPage() {
         <Card className="border-border bg-card hover:border-primary/50 transition-colors">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-foreground">
-              {primaryOrgId ? 'Cecistas en mi org' : 'Personas'}
+              {primaryOrgId ? "Cecistas en mi org" : "Personas"}
             </CardTitle>
             <Users className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">{totalPersonas}</div>
+            <div className="text-2xl font-bold text-foreground">
+              {totalPersonas}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {primaryOrgId ? 'En tu organización' : 'Registradas en el sistema'}
+              {primaryOrgId
+                ? "En tu organización"
+                : "Registradas en el sistema"}
             </p>
           </CardContent>
         </Card>
 
-        {canPerform(ctx, 'view.all') && (
+        {canPerform(ctx, "view.all") && (
           <Card className="border-border bg-card hover:border-primary/50 transition-colors">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-foreground">
@@ -231,10 +352,23 @@ export default async function DashboardPage() {
               <Building2 className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-foreground">{totalOrganizaciones}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {ctx.is_admin ? 'En la plataforma' : 'Asignadas a tu perfil'}
-              </p>
+              <div className="text-2xl font-bold text-foreground">
+                {totalConfraternidades + totalFraternidades}
+              </div>
+              {ctx.is_admin ? (
+                <div className="flex gap-3 mt-1">
+                  <p className="text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground">{totalConfraternidades}</span> confra
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground">{totalFraternidades}</span> frat
+                  </p>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Asignadas a tu perfil
+                </p>
+              )}
             </CardContent>
           </Card>
         )}
@@ -247,7 +381,9 @@ export default async function DashboardPage() {
             <Calendar className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">{totalEventos}</div>
+            <div className="text-2xl font-bold text-foreground">
+              {totalEventos}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">
               Aprobados o publicados
             </p>
@@ -262,7 +398,9 @@ export default async function DashboardPage() {
             <TrendingUp className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">{proximosCount}</div>
+            <div className="text-2xl font-bold text-foreground">
+              {proximosCount}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">
               En los próximos 30 días
             </p>
@@ -297,9 +435,7 @@ export default async function DashboardPage() {
               <AlertCircle className="h-5 w-5 text-amber-500" />
               Solicitudes pendientes de aprobación
             </CardTitle>
-            <CardDescription>
-              Eventos que requieren tu revisión
-            </CardDescription>
+            <CardDescription>Eventos que requieren tu revisión</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -309,18 +445,28 @@ export default async function DashboardPage() {
                   className="flex items-center justify-between rounded-lg border border-border p-3"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground truncate">{evento.nombre}</p>
+                    <p className="font-medium text-foreground truncate">
+                      {evento.nombre}
+                    </p>
                     <p className="text-xs text-muted-foreground">
-                      {evento.organizacion?.nombre ?? '—'}
-                      {evento.fecha_inicio ? ` · ${new Date(evento.fecha_inicio).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+                      {evento.organizacion?.nombre ?? "—"}
+                      {evento.fecha_inicio
+                        ? ` · ${new Date(evento.fecha_inicio).toLocaleDateString("es-AR", { day: "numeric", month: "short", year: "numeric" })}`
+                        : ""}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 ml-3 shrink-0">
-                    <span className={`text-xs px-2 py-1 rounded font-medium ${ESTADO_EVENT_COLORS[evento.estado] ?? ''}`}>
+                    <span
+                      className={`text-xs px-2 py-1 rounded font-medium ${ESTADO_EVENT_COLORS[evento.estado] ?? ""}`}
+                    >
                       {evento.estado}
                     </span>
                     <Link href={`/eventos/${evento.id}`}>
-                      <Button variant="outline" size="sm" className="h-7 text-xs">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs"
+                      >
                         Ver
                       </Button>
                     </Link>
@@ -361,7 +507,9 @@ export default async function DashboardPage() {
                   const persona = row.personas
                   if (!persona) return null
                   const currentModo = Array.isArray(persona.persona_modos)
-                    ? persona.persona_modos.find((m: any) => m.fecha_fin === null)
+                    ? persona.persona_modos.find(
+                        (m: any) => m.fecha_fin === null,
+                      )
                     : null
                   return (
                     <Link
@@ -382,7 +530,10 @@ export default async function DashboardPage() {
                 })}
               </div>
             )}
-            <Link href={`/personas?organizacion_id=${primaryOrgId}`} className="block mt-4">
+            <Link
+              href={`/personas?organizacion_id=${primaryOrgId}`}
+              className="block mt-4"
+            >
               <Button variant="outline" className="w-full bg-transparent">
                 Ver todas
                 <ArrowRight className="h-4 w-4 ml-2" />
@@ -444,6 +595,233 @@ export default async function DashboardPage() {
         </Card>
       )}
 
+      {/* Mis eventos solicitados */}
+      {canCreateEvent &&
+        hasPersonaId &&
+        misEventos &&
+        misEventos.length > 0 && (
+          <Card className="border-border bg-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-foreground">
+                <Calendar className="h-5 w-5 text-primary" />
+                Mis eventos solicitados
+              </CardTitle>
+              <CardDescription>
+                Eventos que solicitaste y están en proceso
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {misEventos.map((evento: any) => (
+                  <Link
+                    key={evento.id}
+                    href={`/eventos/${evento.id}`}
+                    className="flex items-center justify-between rounded-lg border border-border p-3 hover:border-primary/50 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground truncate">
+                        {evento.nombre}
+                      </p>
+                      {evento.fecha_inicio && (
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(evento.fecha_inicio).toLocaleDateString(
+                            "es-AR",
+                            { day: "numeric", month: "short", year: "numeric" },
+                          )}
+                        </p>
+                      )}
+                    </div>
+                    <span
+                      className={`text-xs px-2 py-1 rounded font-medium ml-3 shrink-0 ${ESTADO_EVENT_COLORS[evento.estado] ?? ""}`}
+                    >
+                      {ESTADO_LABELS[evento.estado] ?? evento.estado}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+              <Link href="/eventos" className="block mt-4">
+                <Button variant="outline" className="w-full bg-transparent">
+                  Ver todos mis eventos
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        )}
+
+      {/* En Discernimiento Confra/Delegado */}
+      {canApproveConfra &&
+        discernimientoConfra &&
+        discernimientoConfra.length > 0 && (
+          <Card className="border-orange-200 dark:border-orange-900 bg-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-foreground">
+                <AlertCircle className="h-5 w-5 text-orange-500" />
+                En Discernimiento Confra / Delegado
+              </CardTitle>
+              <CardDescription>
+                Eventos esperando aprobación a nivel confraternidad
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {discernimientoConfra.map((evento: any) => (
+                  <div
+                    key={evento.id}
+                    className="flex items-center justify-between rounded-lg border border-border p-3"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground truncate">
+                        {evento.nombre}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {evento.organizacion?.nombre ?? "—"}
+                        {evento.fecha_inicio
+                          ? ` · ${new Date(evento.fecha_inicio).toLocaleDateString("es-AR", { day: "numeric", month: "short", year: "numeric" })}`
+                          : ""}
+                      </p>
+                    </div>
+                    <Link
+                      href={`/eventos/${evento.id}`}
+                      className="ml-3 shrink-0"
+                    >
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs"
+                      >
+                        Ver
+                      </Button>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+              <Link
+                href="/eventos?estado=discernimiento_confra"
+                className="block mt-4"
+              >
+                <Button variant="outline" className="w-full bg-transparent">
+                  Ver todos en discernimiento confra
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        )}
+
+      {/* En Discernimiento EqT */}
+      {canApproveEqt && discernimientoEqt && discernimientoEqt.length > 0 && (
+        <Card className="border-sky-200 dark:border-sky-900 bg-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <AlertCircle className="h-5 w-5 text-sky-500" />
+              En Discernimiento Equipo Timón
+            </CardTitle>
+            <CardDescription>
+              Eventos esperando aprobación del Equipo Timón
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {discernimientoEqt.map((evento: any) => (
+                <div
+                  key={evento.id}
+                  className="flex items-center justify-between rounded-lg border border-border p-3"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-foreground truncate">
+                      {evento.nombre}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {evento.organizacion?.nombre ?? "—"}
+                      {evento.fecha_inicio
+                        ? ` · ${new Date(evento.fecha_inicio).toLocaleDateString("es-AR", { day: "numeric", month: "short", year: "numeric" })}`
+                        : ""}
+                    </p>
+                  </div>
+                  <Link
+                    href={`/eventos/${evento.id}`}
+                    className="ml-3 shrink-0"
+                  >
+                    <Button variant="outline" size="sm" className="h-7 text-xs">
+                      Ver
+                    </Button>
+                  </Link>
+                </div>
+              ))}
+            </div>
+            <Link
+              href="/eventos?estado=discernimiento_eqt"
+              className="block mt-4"
+            >
+              <Button variant="outline" className="w-full bg-transparent">
+                Ver todos en discernimiento EqT
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Mis eventos rechazados */}
+      {canCreateEvent &&
+        hasPersonaId &&
+        misRechazados &&
+        misRechazados.length > 0 && (
+          <Card className="border-red-200 dark:border-red-900 bg-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-foreground">
+                <AlertCircle className="h-5 w-5 text-red-500" />
+                Mis eventos rechazados
+              </CardTitle>
+              <CardDescription>
+                Eventos que fueron rechazados y requieren tu atención
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {misRechazados.map((evento: any) => (
+                  <Link
+                    key={evento.id}
+                    href={`/eventos/${evento.id}`}
+                    className="flex items-start justify-between rounded-lg border border-border p-3 hover:border-red-300 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground truncate">
+                        {evento.nombre}
+                      </p>
+                      {evento.motivo_rechazo && (
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                          Motivo: {evento.motivo_rechazo}
+                        </p>
+                      )}
+                      {evento.fecha_rechazo && (
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(evento.fecha_rechazo).toLocaleDateString(
+                            "es-AR",
+                            { day: "numeric", month: "short", year: "numeric" },
+                          )}
+                        </p>
+                      )}
+                    </div>
+                    <span
+                      className={`text-xs px-2 py-1 rounded font-medium ml-3 shrink-0 ${ESTADO_EVENT_COLORS.rechazado}`}
+                    >
+                      Rechazado
+                    </span>
+                  </Link>
+                ))}
+              </div>
+              <Link href="/eventos?estado=rechazado" className="block mt-4">
+                <Button variant="outline" className="w-full bg-transparent">
+                  Ver todos los rechazados
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        )}
+
       {/* Próximos Eventos */}
       <Card className="border-border bg-card">
         <CardHeader>
@@ -469,19 +847,28 @@ export default async function DashboardPage() {
                   className="flex items-start justify-between rounded-lg border border-border p-3 hover:border-primary/50 transition-colors"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground truncate">{evento.nombre}</p>
+                    <p className="font-medium text-foreground truncate">
+                      {evento.nombre}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       {evento.fecha_inicio
-                        ? new Date(evento.fecha_inicio).toLocaleDateString('es-AR', {
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric',
-                          })
-                        : 'Fecha por definir'}
-                      {evento.organizacion?.nombre ? ` · ${evento.organizacion.nombre}` : ''}
+                        ? new Date(evento.fecha_inicio).toLocaleDateString(
+                            "es-AR",
+                            {
+                              day: "numeric",
+                              month: "long",
+                              year: "numeric",
+                            },
+                          )
+                        : "Fecha por definir"}
+                      {evento.organizacion?.nombre
+                        ? ` · ${evento.organizacion.nombre}`
+                        : ""}
                     </p>
                   </div>
-                  <span className={`text-xs px-2 py-1 rounded font-medium ml-3 shrink-0 ${ESTADO_EVENT_COLORS[evento.estado] ?? ''}`}>
+                  <span
+                    className={`text-xs px-2 py-1 rounded font-medium ml-3 shrink-0 ${ESTADO_EVENT_COLORS[evento.estado] ?? ""}`}
+                  >
                     {evento.estado}
                   </span>
                 </Link>
@@ -498,7 +885,7 @@ export default async function DashboardPage() {
       </Card>
 
       {/* Estado del sistema */}
-      <Card className="border-border bg-card">
+      {/* <Card className="border-border bg-card">
         <CardHeader>
           <CardTitle className="text-foreground">Información del Sistema</CardTitle>
           <CardDescription>Estado actual de la plataforma</CardDescription>
@@ -521,7 +908,7 @@ export default async function DashboardPage() {
             </div>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
     </div>
   )
 }

@@ -12,7 +12,8 @@ export async function POST(request: Request) {
   const body = await request.json()
   const { organizacion_id, fraternidad_id } = body
 
-  if (!canPerform(ctx, 'event.create', organizacion_id ?? null)) {
+  const scopeId = fraternidad_id ?? organizacion_id ?? null
+  if (!canPerform(ctx, 'event.create', scopeId)) {
     return NextResponse.json(
       { error: 'No tenés permiso para crear eventos en esta organización' },
       { status: 403 }

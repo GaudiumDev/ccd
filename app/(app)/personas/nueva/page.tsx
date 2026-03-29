@@ -13,13 +13,19 @@ import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { LocationFields } from '@/components/location-fields'
 
-interface RolSistema {
+interface Organizacion {
   id: string
   nombre: string
-  descripcion: string | null
+  tipo: string
 }
 
-interface Organizacion {
+interface Ministerio {
+  id: string
+  nombre: string
+  tipo: string
+}
+
+interface Evento {
   id: string
   nombre: string
   tipo: string
@@ -38,8 +44,18 @@ export default function NewPersonaPage() {
   const router = useRouter()
   const supabase = createClient()
 
-  const [roles, setRoles] = useState<RolSistema[]>([])
   const [organizaciones, setOrganizaciones] = useState<Organizacion[]>([])
+  const [ministerios, setMinisterios] = useState<Ministerio[]>([])
+  const [eventos, setEventos] = useState<Evento[]>([])
+  const [crearAcceso, setCrearAcceso] = useState(false)
+  const [incluirAsignacion, setIncluirAsignacion] = useState(false)
+  const [asignacion, setAsignacion] = useState({
+    ministerio_id: '',
+    organizacion_id: '',
+    evento_id: '',
+    fecha_inicio: new Date().toISOString().split('T')[0],
+    notas: '',
+  })
 
   const [formData, setFormData] = useState({
     nombre_usuario: '',
@@ -61,8 +77,6 @@ export default function NewPersonaPage() {
     confraternidad_id: '',
     fraternidad_id: '',
     modo_inicial: '',
-    rol_sistema_id: '',
-    organizacion_id: '',
     estado_eclesial: 'laico',
     estado_vida: '',
     diocesis: '',
@@ -78,12 +92,14 @@ export default function NewPersonaPage() {
 
   useEffect(() => {
     const load = async () => {
-      const [{ data: rolesData }, { data: orgsData }] = await Promise.all([
-        supabase.from('roles_sistema').select('id, nombre, descripcion').eq('activo', true).order('nivel_acceso', { ascending: false }),
+      const [{ data: orgsData }, { data: ministeriosData }, { data: eventosData }] = await Promise.all([
         supabase.from('organizaciones').select('id, nombre, tipo').eq('estado', 'activa').order('nombre'),
+        supabase.from('ministerios').select('id, nombre, tipo').eq('activo', true).order('nombre'),
+        supabase.from('eventos').select('id, nombre, tipo').order('nombre'),
       ])
-      if (rolesData) setRoles(rolesData)
       if (orgsData) setOrganizaciones(orgsData)
+      if (ministeriosData) setMinisterios(ministeriosData)
+      if (eventosData) setEventos(eventosData)
     }
     load()
   }, [])
@@ -95,7 +111,8 @@ export default function NewPersonaPage() {
 
     try {
       if (!formData.documento) throw new Error('El número de documento es requerido (se usará como contraseña inicial)')
-      if (formData.rol_sistema_id && !formData.nombre_usuario) throw new Error('El nombre de usuario es requerido para crear el acceso al sistema')
+      if (crearAcceso && !formData.nombre_usuario) throw new Error('El nombre de usuario es requerido para crear el acceso al sistema')
+      if (incluirAsignacion && !asignacion.ministerio_id) throw new Error('Seleccioná un ministerio para la asignación')
 
       const res = await fetch('/api/personas', {
         method: 'POST',
@@ -125,22 +142,34 @@ export default function NewPersonaPage() {
         }
       }
 
-      // Create system access only if a role was selected
-      if (formData.rol_sistema_id) {
-      const inviteRes = await fetch('/api/personas/invite', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nombre_usuario: formData.nombre_usuario,
-          persona_id: personaId,
-          rol_sistema_id: formData.rol_sistema_id || null,
-          organizacion_id: formData.organizacion_id || null,
-        }),
-      })
-      if (!inviteRes.ok) {
-        const { error: inviteError } = await inviteRes.json()
-        throw new Error(`Persona creada, pero no se pudo crear el acceso: ${inviteError}`)
+      // Create system access if requested
+      if (crearAcceso && formData.nombre_usuario) {
+        const inviteRes = await fetch('/api/personas/invite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nombre_usuario: formData.nombre_usuario,
+            persona_id: personaId,
+          }),
+        })
+        if (!inviteRes.ok) {
+          const { error: inviteError } = await inviteRes.json()
+          throw new Error(`Persona creada, pero no se pudo crear el acceso: ${inviteError}`)
+        }
       }
+
+      // Create ministry assignment if requested
+      if (crearAcceso && incluirAsignacion && asignacion.ministerio_id) {
+        const { error: asigError } = await supabase.from('asignaciones_ministerio').insert({
+          persona_id: personaId,
+          ministerio_id: asignacion.ministerio_id,
+          organizacion_id: asignacion.organizacion_id || null,
+          evento_id: asignacion.evento_id || null,
+          fecha_inicio: asignacion.fecha_inicio,
+          notas: asignacion.notas || null,
+          estado: 'activo',
+        })
+        if (asigError) throw new Error(`Persona creada, pero no se pudo guardar la asignación: ${asigError.message}`)
       }
 
       router.push('/personas')
@@ -496,60 +525,127 @@ export default function NewPersonaPage() {
             <CardDescription>El documento se usará como contraseña inicial. El nombre de usuario se usará para iniciar sesión.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="rol_sistema_id">Rol del Sistema</Label>
-                <select
-                  id="rol_sistema_id"
-                  name="rol_sistema_id"
-                  value={formData.rol_sistema_id}
-                  onChange={handleChange}
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-                >
-                  <option value="">Sin acceso al sistema</option>
-                  {roles.map(r => (
-                    <option key={r.id} value={r.id}>
-                      {r.nombre}{r.descripcion ? ` — ${r.descripcion}` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="organizacion_id">Organización</Label>
-                <select
-                  id="organizacion_id"
-                  name="organizacion_id"
-                  value={formData.organizacion_id}
-                  onChange={handleChange}
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-                >
-                  <option value="">Global (sin organización)</option>
-                  {organizaciones.map(o => (
-                    <option key={o.id} value={o.id}>
-                      {o.nombre} ({o.tipo})
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div className="flex items-center gap-2">
+              <input
+                id="crear_acceso"
+                type="checkbox"
+                checked={crearAcceso}
+                onChange={e => {
+                  setCrearAcceso(e.target.checked)
+                  if (!e.target.checked) setIncluirAsignacion(false)
+                }}
+                className="h-4 w-4 rounded border-border"
+              />
+              <Label htmlFor="crear_acceso">Crear acceso al sistema</Label>
             </div>
 
-            {formData.rol_sistema_id && (
-              <div className="space-y-2">
-                <Label htmlFor="nombre_usuario">Nombre de Usuario *</Label>
-                <Input
-                  id="nombre_usuario"
-                  name="nombre_usuario"
-                  type="text"
-                  placeholder="ej: juan.garcia"
-                  value={formData.nombre_usuario}
-                  onChange={handleChange}
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Solo letras minúsculas, números, puntos y guiones bajos. 3–30 caracteres.
-                </p>
-              </div>
+            {crearAcceso && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="nombre_usuario">Nombre de Usuario *</Label>
+                  <Input
+                    id="nombre_usuario"
+                    name="nombre_usuario"
+                    type="text"
+                    placeholder="ej: juan.garcia"
+                    value={formData.nombre_usuario}
+                    onChange={handleChange}
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Solo letras minúsculas, números, puntos y guiones bajos. 3–30 caracteres.
+                  </p>
+                </div>
+
+                <div className="border-t border-border pt-4">
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="incluir_asignacion"
+                      type="checkbox"
+                      checked={incluirAsignacion}
+                      onChange={e => setIncluirAsignacion(e.target.checked)}
+                      className="h-4 w-4 rounded border-border"
+                    />
+                    <Label htmlFor="incluir_asignacion">Agregar asignación de ministerio</Label>
+                  </div>
+
+                  {incluirAsignacion && (
+                    <div className="mt-4 space-y-4">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="asig_ministerio_id">Ministerio *</Label>
+                          <select
+                            id="asig_ministerio_id"
+                            value={asignacion.ministerio_id}
+                            onChange={e => setAsignacion(a => ({ ...a, ministerio_id: e.target.value }))}
+                            className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
+                          >
+                            <option value="">Seleccionar ministerio...</option>
+                            {ministerios.map(m => (
+                              <option key={m.id} value={m.id}>
+                                {m.nombre} — {m.tipo}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="asig_organizacion_id">Organización</Label>
+                          <select
+                            id="asig_organizacion_id"
+                            value={asignacion.organizacion_id}
+                            onChange={e => setAsignacion(a => ({ ...a, organizacion_id: e.target.value }))}
+                            className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
+                          >
+                            <option value="">Global (sin restricción)</option>
+                            {organizaciones.map(o => (
+                              <option key={o.id} value={o.id}>{o.nombre}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="asig_evento_id">Evento (opcional)</Label>
+                        <select
+                          id="asig_evento_id"
+                          value={asignacion.evento_id}
+                          onChange={e => setAsignacion(a => ({ ...a, evento_id: e.target.value }))}
+                          className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
+                        >
+                          <option value="">Sin evento específico</option>
+                          {eventos.map(ev => (
+                            <option key={ev.id} value={ev.id}>{ev.nombre} ({ev.tipo})</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="asig_fecha_inicio">Fecha de inicio</Label>
+                        <Input
+                          id="asig_fecha_inicio"
+                          type="date"
+                          value={asignacion.fecha_inicio}
+                          onChange={e => setAsignacion(a => ({ ...a, fecha_inicio: e.target.value }))}
+                          className="w-48"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="asig_notas">Notas (opcional)</Label>
+                        <textarea
+                          id="asig_notas"
+                          rows={3}
+                          placeholder="Observaciones sobre esta asignación..."
+                          value={asignacion.notas}
+                          onChange={e => setAsignacion(a => ({ ...a, notas: e.target.value }))}
+                          className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm resize-none"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </CardContent>
         </Card>

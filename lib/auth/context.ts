@@ -30,6 +30,8 @@ export type UserContext = {
   /** Claves de permisos cargadas desde rol_permisos en DB.
    *  Vacío si la migración 005 no ha sido ejecutada (fallback a rolePermissions). */
   db_permissions: string[]
+  /** Nombre del ministerio institucional principal del usuario (si tiene asignación activa). */
+  ministerio_nombre: string | null
 }
 
 /**
@@ -106,6 +108,7 @@ export async function getUserContext(): Promise<UserContext | null> {
   let ministerioNivelMax = 0
   let ministerioIsAdmin = false
   let ministerioOrgIds: string[] = []
+  let ministerioNombre: string | null = null
 
   const persona_id = perfil?.persona_id ?? null
   if (persona_id) {
@@ -126,6 +129,7 @@ export async function getUserContext(): Promise<UserContext | null> {
     for (const a of asignaciones ?? []) {
       const min = a.ministerio as any
       if (!min) continue
+      if (!ministerioNombre && min.nombre) ministerioNombre = min.nombre
       const nivelAcceso = min.nivel_acceso ?? 0
       ministerioNivelMax = Math.max(ministerioNivelMax, nivelAcceso)
       if (nivelAcceso >= 100) ministerioIsAdmin = true
@@ -135,6 +139,21 @@ export async function getUserContext(): Promise<UserContext | null> {
         if (clave && !ministerioPermissions.includes(clave)) {
           ministerioPermissions.push(clave)
         }
+      }
+    }
+  }
+
+  // Expandir ministerioOrgIds para incluir orgs hijas (fraternidades bajo la confraternidad asignada)
+  if (ministerioOrgIds.length > 0) {
+    const { data: childOrgs } = await supabase
+      .from('organizaciones')
+      .select('id')
+      .in('parent_id', ministerioOrgIds)
+      .is('fecha_baja', null)
+
+    for (const org of childOrgs ?? []) {
+      if (!ministerioOrgIds.includes(org.id)) {
+        ministerioOrgIds.push(org.id)
       }
     }
   }
@@ -153,6 +172,7 @@ export async function getUserContext(): Promise<UserContext | null> {
     is_admin: merged_is_admin,
     nivel_max: merged_nivel_max,
     db_permissions,
+    ministerio_nombre: ministerioNombre,
   }
 }
 
