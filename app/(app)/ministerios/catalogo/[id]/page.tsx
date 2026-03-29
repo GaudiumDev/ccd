@@ -86,7 +86,7 @@ export default async function MinisterioDetailPage({
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4"
         >
           <ArrowLeft className="h-4 w-4" />
-          Volver al Catálogo de Roles
+          Volver al Listado de Roles
         </Link>
         <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
           <Briefcase className="h-8 w-8 text-primary" />

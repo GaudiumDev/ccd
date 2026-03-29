@@ -39,7 +39,7 @@ export default async function MinisteriosPage() {
                 </div>
                 <div>
                   <CardTitle className="text-foreground">
-                    Catálogo de Roles
+                    Listado de Roles
                   </CardTitle>
                   <CardDescription>
                     Define roles y sus permisos de sistema

@@ -172,11 +172,11 @@ export default function NuevoMinisterioPage() {
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4"
         >
           <ArrowLeft className="h-4 w-4" />
-          Volver al Catálogo de Roles
+          Volver al Listado de Roles
         </Link>
         <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
           <Briefcase className="h-8 w-8 text-primary" />
-          Nuevo Rol en Ministerio
+          Nuevo Rol
         </h1>
         <p className="mt-2 text-muted-foreground">
           Define los datos y permisos del rol. Todo se guarda al hacer clic en

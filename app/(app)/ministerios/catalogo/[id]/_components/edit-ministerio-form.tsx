@@ -50,6 +50,7 @@ export function EditMinisterioForm({ ministerio, nivelCalculado }: Props) {
   const [nivel, setNivel] = useState(nivelCalculado)
   const [nombre, setNombre] = useState(ministerio.nombre)
   const [tipo, setTipo] = useState(ministerio.tipo)
+  const [nivelOrg, setNivelOrg] = useState(ministerio.nivel)
   const [activo, setActivo] = useState(ministerio.activo)
   const [saving, setSaving] = useState(false)
   const [deactivating, setDeactivating] = useState(false)
@@ -63,7 +64,7 @@ export function EditMinisterioForm({ ministerio, nivelCalculado }: Props) {
   }
 
   const isReadOnly = ministerio.tipo === 'sistema'
-  const isDirty = nombre !== ministerio.nombre || tipo !== ministerio.tipo
+  const isDirty = nombre !== ministerio.nombre || tipo !== ministerio.tipo || nivelOrg !== ministerio.nivel
 
   async function handleSave() {
     if (!isDirty) return
@@ -73,7 +74,7 @@ export function EditMinisterioForm({ ministerio, nivelCalculado }: Props) {
     const supabase = createClient()
     const { error: err } = await supabase
       .from('ministerios')
-      .update({ nombre: nombre.trim(), tipo })
+      .update({ nombre: nombre.trim(), tipo, nivel: nivelOrg })
       .eq('id', ministerio.id)
     setSaving(false)
     if (err) {
@@ -151,7 +152,21 @@ export function EditMinisterioForm({ ministerio, nivelCalculado }: Props) {
 
         <div className="space-y-2">
           <Label>Nivel organizacional</Label>
-          <Input value={nivelLabel[ministerio.nivel] ?? ministerio.nivel} disabled className="text-sm capitalize" />
+          {isReadOnly ? (
+            <Input value={nivelLabel[nivelOrg] ?? nivelOrg} disabled className="text-sm capitalize" />
+          ) : (
+            <Select value={nivelOrg} onValueChange={setNivelOrg}>
+              <SelectTrigger className="text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="comunidad">Comunidad</SelectItem>
+                <SelectItem value="confraternidad">Confraternidad</SelectItem>
+                <SelectItem value="fraternidad">Fraternidad</SelectItem>
+                <SelectItem value="evento">Evento</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         <div className="space-y-2">
