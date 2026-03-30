@@ -22,9 +22,9 @@ const estadoClases: Record<string, string> = {
 
 const estadoLabel: Record<string, string> = {
   borrador: 'Borrador',
-  solicitud: 'Solicitud',
-  discernimiento_confra: 'Disc. Confra/Delegado',
-  discernimiento_eqt: 'Disc. Equipo Timón',
+  solicitud: 'Pend. Disc. Confra',
+  discernimiento_confra: 'Pend. Disc. EqT',
+  discernimiento_eqt: 'Disc. EqT',
   aprobado: 'Aprobado',
   publicado: 'Publicado',
   rechazado: 'Rechazado',
@@ -57,7 +57,7 @@ type EventoRow = {
   organizacion: { nombre: string } | null
 }
 
-function EventoItem({ evento }: { evento: EventoRow }) {
+function EventoItem({ evento, isPendiente }: { evento: EventoRow; isPendiente?: boolean }) {
   return (
     <div className="flex items-center justify-between rounded-lg border border-border p-4 hover:bg-muted/50 transition-colors">
       <div className="flex-1 min-w-0">
@@ -74,16 +74,24 @@ function EventoItem({ evento }: { evento: EventoRow }) {
         </div>
       </div>
       <div className="flex items-center gap-2 ml-4 shrink-0">
-        <Link href={`/eventos/${evento.id}`}>
-          <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-            <Eye className="h-4 w-4" />
-          </Button>
-        </Link>
-        <Link href={`/eventos/${evento.id}/editar`}>
-          <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-            <Edit2 className="h-4 w-4" />
-          </Button>
-        </Link>
+        {isPendiente ? (
+          <Link href={`/eventos/${evento.id}`}>
+            <Button size="sm">Dar discernimiento</Button>
+          </Link>
+        ) : (
+          <>
+            <Link href={`/eventos/${evento.id}`}>
+              <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                <Eye className="h-4 w-4" />
+              </Button>
+            </Link>
+            <Link href={`/eventos/${evento.id}/editar`}>
+              <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                <Edit2 className="h-4 w-4" />
+              </Button>
+            </Link>
+          </>
+        )}
       </div>
     </div>
   )
@@ -118,16 +126,16 @@ export default async function EventosPage({
     if (canApproveConfra || canApproveTimon) {
       const pendingStates: string[] = []
       if (canApproveConfra) {
-        pendingStates.push('solicitud', 'discernimiento_confra')
+        pendingStates.push('solicitud')
       }
       if (canApproveTimon) {
-        pendingStates.push('discernimiento_eqt')
+        pendingStates.push('discernimiento_confra', 'discernimiento_eqt')
         if (!pendingStates.includes('solicitud')) pendingStates.push('solicitud')
       }
 
       const { data: pendingData } = await supabase
         .from('eventos')
-        .select('id, nombre, tipo, estado, fecha_inicio, fecha_fin, requiere_discernimiento_confra, organizacion:organizaciones!organizacion_id(nombre, id)')
+        .select('id, nombre, tipo, estado, fecha_inicio, fecha_fin, requiere_discernimiento_confra, requiere_discernimiento_eqt, organizacion:organizaciones!organizacion_id(nombre, id)')
         .in('estado', pendingStates)
         .order('fecha_solicitud', { ascending: true })
 
@@ -135,20 +143,21 @@ export default async function EventosPage({
       pendientes = (pendingData ?? []).filter((ev: any) => {
         const confraId = ev.organizacion?.id as string | null
         const requiereConfra = ev.requiere_discernimiento_confra ?? false
+        const requiereEqt = ev.requiere_discernimiento_eqt ?? false
 
+        // discernimiento_confra = confra done, EqT needs to act
+        if (ev.estado === 'discernimiento_confra' && canApproveTimon) return true
+        // discernimiento_eqt = legacy state, also EqT's turn
         if (ev.estado === 'discernimiento_eqt' && canApproveTimon) return true
 
         if (ev.estado === 'solicitud') {
-          if (!requiereConfra && canApproveTimon) return true
+          // EqT acts directly when no confra step required
+          if (!requiereConfra && requiereEqt && canApproveTimon) return true
+          // Confra acts on solicitud
           if (requiereConfra && canApproveConfra) {
             if (ctx.is_admin) return true
             return confraId ? ctx.org_ids.includes(confraId) : false
           }
-        }
-
-        if (ev.estado === 'discernimiento_confra' && canApproveConfra) {
-          if (ctx.is_admin) return true
-          return confraId ? ctx.org_ids.includes(confraId) : false
         }
 
         return false
@@ -185,7 +194,7 @@ export default async function EventosPage({
           </CardHeader>
           <CardContent className="space-y-3">
             {pendientes.map(ev => (
-              <EventoItem key={ev.id} evento={ev} />
+              <EventoItem key={ev.id} evento={ev} isPendiente />
             ))}
           </CardContent>
         </Card>

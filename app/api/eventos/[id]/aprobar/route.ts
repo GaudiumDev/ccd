@@ -115,9 +115,8 @@ export async function POST(
       )
     }
   } else if (estadoActual === 'discernimiento_confra') {
-    requiredPermission = 'event.approve_confra'
-    requiredOrgId = confraternidadId ?? null
-    nivel = 'confra'
+    requiredPermission = 'event.approve_eqt'
+    nivel = 'eqt'
   } else if (estadoActual === 'discernimiento_eqt') {
     requiredPermission = 'event.approve_eqt'
     nivel = 'eqt'
@@ -167,20 +166,20 @@ export async function POST(
 
   // Compute next state
   // Flows:
-  //   confra + eqt: solicitud → discernimiento_confra → discernimiento_eqt → aprobado
-  //   solo confra:  solicitud → discernimiento_confra → aprobado
-  //   solo eqt:     solicitud → discernimiento_eqt → aprobado
+  //   confra + eqt: solicitud → (confra acts) → discernimiento_confra → (EqT acts) → aprobado
+  //   solo confra:  solicitud → (confra acts) → discernimiento_confra → aprobado (no eqt required)
+  //   solo eqt:     solicitud → (EqT acts) → aprobado
   let nextEstado: string
   if (accion === 'rechazar') {
     nextEstado = 'rechazado'
   } else if (estadoActual === 'solicitud' && requiereConfra) {
+    // Confra discerned — move to discernimiento_confra (EqT's turn next, or done if no EqT needed)
     nextEstado = 'discernimiento_confra'
   } else if (estadoActual === 'solicitud' && requiereEqt) {
-    nextEstado = 'discernimiento_eqt'
-  } else if (estadoActual === 'discernimiento_confra' && requiereEqt) {
-    nextEstado = 'discernimiento_eqt'
+    // No confra needed, EqT acts directly → aprobado
+    nextEstado = 'aprobado'
   } else {
-    // discernimiento_confra sin eqt, o discernimiento_eqt → aprobado
+    // discernimiento_confra (EqT acting) or discernimiento_eqt → aprobado
     nextEstado = 'aprobado'
   }
 

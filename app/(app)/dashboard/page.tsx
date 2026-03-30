@@ -51,8 +51,8 @@ const ESTADO_EVENT_COLORS: Record<string, string> = {
 
 const ESTADO_LABELS: Record<string, string> = {
   borrador: "Borrador",
-  solicitud: "Solicitud",
-  discernimiento_confra: "Disc. Confra",
+  solicitud: "Pend. Disc. Confra",
+  discernimiento_confra: "Pend. Disc. EqT",
   discernimiento_eqt: "Disc. EqT",
   aprobado: "Aprobado",
   publicado: "Publicado",
@@ -255,16 +255,16 @@ export default async function DashboardPage() {
     const canApproveEqt = canPerform(ctx, "event.approve_eqt")
     const pendingStates: string[] = []
     if (canApproveConfra) {
-      pendingStates.push("solicitud", "discernimiento_confra")
+      pendingStates.push("solicitud")
     }
     if (canApproveEqt) {
-      pendingStates.push("discernimiento_eqt")
+      pendingStates.push("discernimiento_confra", "discernimiento_eqt")
       if (!pendingStates.includes("solicitud")) pendingStates.push("solicitud")
     }
     const { data: pendingData } = await supabase
       .from("eventos")
       .select(
-        "id, nombre, tipo, estado, fecha_inicio, requiere_discernimiento_confra, organizacion:organizaciones!organizacion_id(id, nombre)",
+        "id, nombre, tipo, estado, fecha_inicio, requiere_discernimiento_confra, requiere_discernimiento_eqt, organizacion:organizaciones!organizacion_id(id, nombre)",
       )
       .in("estado", pendingStates)
       .order("fecha_solicitud", { ascending: true })
@@ -272,17 +272,19 @@ export default async function DashboardPage() {
     pendientes = (pendingData ?? []).filter((ev: any) => {
       const confraId = ev.organizacion?.id as string | null
       const requiereConfra = ev.requiere_discernimiento_confra ?? false
+      const requiereEqt = ev.requiere_discernimiento_eqt ?? false
+      // discernimiento_confra = confra done, EqT needs to act
+      if (ev.estado === "discernimiento_confra" && canApproveEqt) return true
+      // discernimiento_eqt = legacy state, also EqT's turn
       if (ev.estado === "discernimiento_eqt" && canApproveEqt) return true
       if (ev.estado === "solicitud") {
-        if (!requiereConfra && canApproveEqt) return true
+        // EqT acts directly when no confra step required
+        if (!requiereConfra && requiereEqt && canApproveEqt) return true
+        // Confra acts on solicitud
         if (requiereConfra && canApproveConfra) {
           if (ctx.is_admin) return true
           return confraId ? ctx.org_ids.includes(confraId) : false
         }
-      }
-      if (ev.estado === "discernimiento_confra" && canApproveConfra) {
-        if (ctx.is_admin) return true
-        return confraId ? ctx.org_ids.includes(confraId) : false
       }
       return false
     })
@@ -483,15 +485,14 @@ export default async function DashboardPage() {
                     <span
                       className={`text-xs px-2 py-1 rounded font-medium ${ESTADO_EVENT_COLORS[evento.estado] ?? ""}`}
                     >
-                      {evento.estado}
+                      {ESTADO_LABELS[evento.estado] ?? evento.estado}
                     </span>
                     <Link href={`/eventos/${evento.id}`}>
                       <Button
-                        variant="outline"
                         size="sm"
                         className="h-7 text-xs"
                       >
-                        Ver
+                        Dar discernimiento
                       </Button>
                     </Link>
                   </div>

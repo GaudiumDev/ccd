@@ -24,9 +24,9 @@ const estadoClases: Record<string, string> = {
 
 const estadoLabel: Record<string, string> = {
   borrador: 'Borrador',
-  solicitud: 'Solicitud',
-  discernimiento_confra: 'Discernimiento Confra/Delegado',
-  discernimiento_eqt: 'Discernimiento Equipo Timón',
+  solicitud: 'Pend. Disc. Confra/Delegado',
+  discernimiento_confra: 'Pend. Disc. Equipo Timón',
+  discernimiento_eqt: 'Disc. Equipo Timón',
   aprobado: 'Aprobado',
   publicado: 'Publicado',
   rechazado: 'Rechazado',
@@ -130,6 +130,7 @@ export default async function EventoDetailPage({
     // Confra level — show if requiereConfra and user can approve_confra
     if (requiereConfra && canPerform(ctx, 'event.approve_confra', confraId)) {
       if (evento.disc_confra_estado) {
+        // Already discerned — show read-only
         discNiveles.push({
           nivel: 'confra',
           title: 'Discernimiento Confraternidad / Delegado',
@@ -139,7 +140,8 @@ export default async function EventoDetailPage({
             notas: evento.disc_confra_notas ?? null,
           },
         })
-      } else if (estado === 'solicitud' || estado === 'discernimiento_confra') {
+      } else if (estado === 'solicitud') {
+        // Confra needs to act on this solicitud
         discNiveles.push({
           nivel: 'confra',
           title: 'Discernimiento Confraternidad / Delegado',
@@ -159,7 +161,11 @@ export default async function EventoDetailPage({
             notas: evento.disc_eqt_notas ?? null,
           },
         })
-      } else if (estado === 'discernimiento_eqt' || (estado === 'solicitud' && !requiereConfra)) {
+      } else if (
+        estado === 'discernimiento_confra' ||
+        estado === 'discernimiento_eqt' ||
+        (estado === 'solicitud' && !requiereConfra)
+      ) {
         discNiveles.push({
           nivel: 'eqt',
           title: 'Discernimiento Equipo Timón',
