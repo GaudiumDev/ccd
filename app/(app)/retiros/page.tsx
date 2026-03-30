@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import Link from "next/link"
+import { formatDateLong } from "@/lib/utils"
 import { Calendar, MapPin, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -71,14 +72,7 @@ export default async function RetirosPage() {
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4" />
                           <span>
-                            {new Date(retiro.fecha_inicio).toLocaleDateString("es-AR", {
-                              day: "numeric",
-                              month: "long",
-                            })} — {new Date(retiro.fecha_fin).toLocaleDateString("es-AR", {
-                              day: "numeric",
-                              month: "long",
-                              year: "numeric"
-                            })}
+                            {formatDateLong(retiro.fecha_inicio, false)} — {formatDateLong(retiro.fecha_fin)}
                           </span>
                         </div>
                         {retiro.casa_retiro && (

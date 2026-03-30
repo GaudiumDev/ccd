@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { Calendar, User } from "lucide-react"
+import { formatDateLong } from "@/lib/utils"
 import { Card, CardContent } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/server"
 import { RegistrationActions } from "./registration-actions"
@@ -83,11 +84,7 @@ export default async function AdminRegistrationsPage() {
                     )}
 
                     <p className="text-xs text-muted-foreground">
-                      Inscripto: {new Date(insc.fecha_inscripcion).toLocaleDateString("es-AR", {
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
-                      })}
+                      Inscripto: {formatDateLong(insc.fecha_inscripcion)}
                     </p>
                   </div>
 

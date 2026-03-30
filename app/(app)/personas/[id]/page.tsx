@@ -7,14 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft, Edit2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { getUserContext, canPerform } from "@/lib/auth/context"
+import { formatDateAR } from "@/lib/utils"
 
 function formatDate(date: string | null) {
-  if (!date) return "—"
-  return new Date(date).toLocaleDateString("es-AR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  })
+  return formatDateAR(date)
 }
 
 const estadoVidaLabel: Record<string, string> = {

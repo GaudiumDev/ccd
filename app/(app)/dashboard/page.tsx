@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic"
 
 import { redirect } from "next/navigation"
+import { formatDateShort, formatDateLong } from "@/lib/utils"
 import { getUserContext, canPerform } from "@/lib/auth/context"
 import { createClient } from "@/lib/supabase/server"
 import {
@@ -303,7 +304,9 @@ export default async function DashboardPage() {
     if (ids.length > 0) {
       const { data, count } = await supabase
         .from("personas")
-        .select("id, nombre, apellido, persona_modos(modo, fecha_fin)", { count: "exact" })
+        .select("id, nombre, apellido, persona_modos(modo, fecha_fin)", {
+          count: "exact",
+        })
         .in("id", ids)
         .is("fecha_baja", null)
         .limit(8)
@@ -326,8 +329,11 @@ export default async function DashboardPage() {
   const misRechazados = (misRechazadosResult as any).data as any[] | null
 
   const primaryRole = ctx.roles[0]?.rol ?? null
-  const roleName = ctx.ministerio_nombre
-    ?? ((primaryRole && primaryRole !== 'solo_lectura') ? (ROLE_LABELS[primaryRole] ?? primaryRole) : null)
+  const roleName =
+    ctx.ministerio_nombre ??
+    (primaryRole && primaryRole !== "solo_lectura"
+      ? (ROLE_LABELS[primaryRole] ?? primaryRole)
+      : null)
 
   return (
     <div className="space-y-8">
@@ -384,10 +390,16 @@ export default async function DashboardPage() {
               {ctx.is_admin ? (
                 <div className="flex gap-3 mt-1">
                   <p className="text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground">{totalConfraternidades}</span> confra
+                    <span className="font-medium text-foreground">
+                      {totalConfraternidades}
+                    </span>{" "}
+                    confra
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground">{totalFraternidades}</span> frat
+                    <span className="font-medium text-foreground">
+                      {totalFraternidades}
+                    </span>{" "}
+                    frat
                   </p>
                 </div>
               ) : (
@@ -477,7 +489,7 @@ export default async function DashboardPage() {
                     <p className="text-xs text-muted-foreground">
                       {evento.organizacion?.nombre ?? "—"}
                       {evento.fecha_inicio
-                        ? ` · ${new Date(evento.fecha_inicio).toLocaleDateString("es-AR", { day: "numeric", month: "short", year: "numeric" })}`
+                        ? ` · ${formatDateShort(evento.fecha_inicio)}`
                         : ""}
                     </p>
                   </div>
@@ -488,11 +500,8 @@ export default async function DashboardPage() {
                       {ESTADO_LABELS[evento.estado] ?? evento.estado}
                     </span>
                     <Link href={`/eventos/${evento.id}`}>
-                      <Button
-                        size="sm"
-                        className="h-7 text-xs"
-                      >
-                        Dar discernimiento
+                      <Button size="sm" className="h-7 text-xs">
+                        Discernir
                       </Button>
                     </Link>
                   </div>
@@ -647,10 +656,7 @@ export default async function DashboardPage() {
                       </p>
                       {evento.fecha_inicio && (
                         <p className="text-xs text-muted-foreground">
-                          {new Date(evento.fecha_inicio).toLocaleDateString(
-                            "es-AR",
-                            { day: "numeric", month: "short", year: "numeric" },
-                          )}
+                          {formatDateShort(evento.fecha_inicio)}
                         </p>
                       )}
                     </div>
@@ -700,7 +706,7 @@ export default async function DashboardPage() {
                       <p className="text-xs text-muted-foreground">
                         {evento.organizacion?.nombre ?? "—"}
                         {evento.fecha_inicio
-                          ? ` · ${new Date(evento.fecha_inicio).toLocaleDateString("es-AR", { day: "numeric", month: "short", year: "numeric" })}`
+                          ? ` · ${formatDateShort(evento.fecha_inicio)}`
                           : ""}
                       </p>
                     </div>
@@ -758,7 +764,7 @@ export default async function DashboardPage() {
                     <p className="text-xs text-muted-foreground">
                       {evento.organizacion?.nombre ?? "—"}
                       {evento.fecha_inicio
-                        ? ` · ${new Date(evento.fecha_inicio).toLocaleDateString("es-AR", { day: "numeric", month: "short", year: "numeric" })}`
+                        ? ` · ${formatDateShort(evento.fecha_inicio)}`
                         : ""}
                     </p>
                   </div>
@@ -820,10 +826,7 @@ export default async function DashboardPage() {
                       )}
                       {evento.fecha_rechazo && (
                         <p className="text-xs text-muted-foreground">
-                          {new Date(evento.fecha_rechazo).toLocaleDateString(
-                            "es-AR",
-                            { day: "numeric", month: "short", year: "numeric" },
-                          )}
+                          {formatDateShort(evento.fecha_rechazo)}
                         </p>
                       )}
                     </div>
@@ -874,16 +877,7 @@ export default async function DashboardPage() {
                       {evento.nombre}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {evento.fecha_inicio
-                        ? new Date(evento.fecha_inicio).toLocaleDateString(
-                            "es-AR",
-                            {
-                              day: "numeric",
-                              month: "long",
-                              year: "numeric",
-                            },
-                          )
-                        : "Fecha por definir"}
+                      {evento.fecha_inicio ? formatDateLong(evento.fecha_inicio) : "Fecha por definir"}
                       {evento.organizacion?.nombre
                         ? ` · ${evento.organizacion.nombre}`
                         : ""}

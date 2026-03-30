@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
+import { formatDateAR } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { DollarSign, Plus, Edit2 } from 'lucide-react'
@@ -105,7 +106,7 @@ export default async function PagosPage() {
                         ${Number(pago.monto).toFixed(2)}
                       </td>
                       <td className="py-3 px-4 text-muted-foreground">
-                        {new Date(pago.fecha_pago).toLocaleDateString('es-AR')}
+                        {formatDateAR(pago.fecha_pago)}
                       </td>
                       <td className="py-3 px-4 text-muted-foreground">{pago.medio_pago}</td>
                       <td className="py-3 px-4">

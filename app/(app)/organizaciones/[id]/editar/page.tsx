@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
+import { formatDateAR } from '@/lib/utils'
 import Link from 'next/link'
 import { useRouter, useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -497,14 +498,10 @@ export default function EditarOrganizacionPage() {
                     <td className="py-2 px-3 text-muted-foreground">{asig.evento?.nombre ?? '—'}</td>
                     <td className="py-2 px-3 capitalize">{asig.estado}</td>
                     <td className="py-2 px-3 text-muted-foreground">
-                      {asig.fecha_inicio
-                        ? new Date(asig.fecha_inicio).toLocaleDateString('es-AR')
-                        : '—'}
+                      {asig.fecha_inicio ? formatDateAR(asig.fecha_inicio) : '—'}
                     </td>
                     <td className="py-2 px-3 text-muted-foreground">
-                      {asig.fecha_fin
-                        ? new Date(asig.fecha_fin).toLocaleDateString('es-AR')
-                        : '—'}
+                      {asig.fecha_fin ? formatDateAR(asig.fecha_fin) : '—'}
                     </td>
                   </tr>
                 ))}

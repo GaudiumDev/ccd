@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import Link from "next/link"
+import { formatDateLong } from "@/lib/utils"
 import { notFound } from "next/navigation"
 import { Calendar, MapPin, Users, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -88,14 +89,7 @@ export default async function RetiroDetailPage({
                     <div className="flex items-center gap-2">
                       <Calendar className="h-5 w-5" />
                       <span>
-                        {new Date(retiro.fecha_inicio).toLocaleDateString("es-AR", {
-                          day: "numeric",
-                          month: "long",
-                        })} — {new Date(retiro.fecha_fin).toLocaleDateString("es-AR", {
-                          day: "numeric",
-                          month: "long",
-                          year: "numeric"
-                        })}
+                        {formatDateLong(retiro.fecha_inicio, false)} — {formatDateLong(retiro.fecha_fin)}
                       </span>
                     </div>
                     {retiro.casa_retiro && (

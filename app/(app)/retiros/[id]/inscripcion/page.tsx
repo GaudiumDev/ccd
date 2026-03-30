@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from "react"
+import { formatDateAR } from "@/lib/utils"
 import Link from "next/link"
 import { useRouter, useParams } from "next/navigation"
 import { ArrowLeft, Loader2, CheckCircle } from "lucide-react"
@@ -216,8 +217,7 @@ export default function InscripcionRetiroPage() {
                     <div className="mt-2 space-y-1 text-sm text-muted-foreground">
                       <p>Retiro: {evento.nombre}</p>
                       <p>
-                        Fecha: {new Date(evento.fecha_inicio).toLocaleDateString("es-AR")} —{" "}
-                        {new Date(evento.fecha_fin).toLocaleDateString("es-AR")}
+                        Fecha: {formatDateAR(evento.fecha_inicio)} — {formatDateAR(evento.fecha_fin)}
                       </p>
                       <p className="text-base font-semibold text-foreground">
                         Total: {evento.precio ? `$${Number(evento.precio).toFixed(2)}` : "Gratis"}

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft, Edit2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
+import { formatDateAR } from "@/lib/utils"
 
 const tipoLabel: Record<string, string> = {
   comunidad: "Comunidad",
@@ -275,12 +276,12 @@ export default async function OrganizacionDetailPage({
                     <td className="py-2 px-3 capitalize">{asig.estado}</td>
                     <td className="py-2 px-3 text-muted-foreground">
                       {asig.fecha_inicio
-                        ? new Date(asig.fecha_inicio).toLocaleDateString("es-AR")
+                        ? formatDateAR(asig.fecha_inicio)
                         : "—"}
                     </td>
                     <td className="py-2 px-3 text-muted-foreground">
                       {asig.fecha_fin
-                        ? new Date(asig.fecha_fin).toLocaleDateString("es-AR")
+                        ? formatDateAR(asig.fecha_fin)
                         : "—"}
                     </td>
                   </tr>

@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import Link from "next/link"
+import { formatDateAR } from "@/lib/utils"
 import { Calendar, Users, Building2, ArrowRight } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -106,7 +107,7 @@ export default async function AdminDashboardPage() {
                       <p className="text-sm text-muted-foreground">{insc.evento?.nombre}</p>
                     </div>
                     <span className="text-sm text-muted-foreground">
-                      {new Date(insc.fecha_inscripcion).toLocaleDateString("es-AR")}
+                      {formatDateAR(insc.fecha_inscripcion)}
                     </span>
                   </div>
                 ))}
