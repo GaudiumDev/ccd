@@ -89,24 +89,28 @@ function NivelDiscernimiento({
     setError('')
 
     try {
-      // Compute diff — only send fields that actually changed
+      // Compute diff — send all fields that actually changed
       const camposConCambio: Record<string, unknown> = {}
-      if (resultado === 'aprobado_con_modificaciones') {
-        for (const [campo, nuevoStr] of Object.entries(cambios)) {
-          const originalStr = String(evento[campo as keyof EventoCamposEditables] ?? '')
-          if (nuevoStr === originalStr) continue
-          if (campo === 'asesor_voluntario') {
-            camposConCambio[campo] = nuevoStr === 'true'
-          } else if (campo === 'cupo_maximo') {
-            camposConCambio[campo] = nuevoStr === '' ? null : Number(nuevoStr)
-          } else {
-            camposConCambio[campo] = nuevoStr === '' ? null : nuevoStr
-          }
+      for (const [campo, nuevoStr] of Object.entries(cambios)) {
+        const originalStr = String(evento[campo as keyof EventoCamposEditables] ?? '')
+        if (nuevoStr === originalStr) continue
+        if (campo === 'asesor_voluntario') {
+          camposConCambio[campo] = nuevoStr === 'true'
+        } else if (campo === 'cupo_maximo') {
+          camposConCambio[campo] = nuevoStr === '' ? null : Number(nuevoStr)
+        } else {
+          camposConCambio[campo] = nuevoStr === '' ? null : nuevoStr
         }
       }
 
+      // Auto-upgrade to "con modificaciones" if fields were changed
+      const resultadoFinal =
+        Object.keys(camposConCambio).length > 0 && resultado === 'aprobado_sin_modificaciones'
+          ? 'aprobado_con_modificaciones'
+          : resultado
+
       const payload: Record<string, unknown> = {
-        resultado_discernimiento: resultado,
+        resultado_discernimiento: resultadoFinal,
         notas_discernimiento: notas || undefined,
       }
       if (Object.keys(camposConCambio).length > 0) {
@@ -204,14 +208,13 @@ function NivelDiscernimiento({
             />
           </div>
 
-          {/* Campos editables — solo cuando se aprueba con modificaciones */}
-          {resultado === 'aprobado_con_modificaciones' && (
-            <div className="space-y-3 rounded-md border border-border p-4 bg-muted/30">
+          {/* Campos editables — siempre visibles para proponer cambios */}
+          <div className="space-y-3 rounded-md border border-border p-4 bg-muted/30">
               <p className="text-xs font-medium text-foreground uppercase tracking-wide">
-                Modificaciones al evento
+                Datos del evento
               </p>
               <p className="text-xs text-muted-foreground">
-                Completá solo los campos que querés modificar. Los demás quedan como están.
+                Podés proponer cambios a los campos. Si modificás algo, el discernimiento se registrará como "con modificaciones".
               </p>
 
               {/* Nombre */}
@@ -360,7 +363,6 @@ function NivelDiscernimiento({
                 />
               </div>
             </div>
-          )}
 
           <Button
             size="sm"
