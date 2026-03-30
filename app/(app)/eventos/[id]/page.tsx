@@ -71,6 +71,8 @@ export default async function EventoDetailPage({
       organizacion_id,
       disc_confra_estado, disc_confra_fecha, disc_confra_notas,
       disc_eqt_estado, disc_eqt_fecha, disc_eqt_notas,
+      disc_confra_por_persona:personas!disc_confra_por(nombre, apellido),
+      disc_eqt_por_persona:personas!disc_eqt_por(nombre, apellido),
       confraternidad:organizaciones!organizacion_id(id, nombre),
       fraternidad:organizaciones!fraternidad_id(id, nombre),
       casa_retiro:organizaciones!casa_retiro_id(id, nombre),
@@ -109,6 +111,70 @@ export default async function EventoDetailPage({
   const solicitadoPor = evento.solicitado_por_persona as { nombre: string; apellido: string } | null
   const aprobadoPor = evento.aprobado_por_persona as { nombre: string; apellido: string } | null
   const rechazadoPor = evento.rechazado_por_persona as { nombre: string; apellido: string } | null
+  const discConfraPor = evento.disc_confra_por_persona as { nombre: string; apellido: string } | null
+  const discEqtPor = evento.disc_eqt_por_persona as { nombre: string; apellido: string } | null
+
+  const estadoDiscLabel: Record<string, string> = {
+    aprobado_sin_modificaciones: 'Aprobado sin modificaciones',
+    aprobado_con_modificaciones: 'Aprobado con modificaciones',
+    rechazado: 'Rechazado',
+  }
+
+  type EntradaHistorial = {
+    fecha: string
+    label: string
+    persona: string | null
+    extra?: string
+    tipo: 'solicitud' | 'discernimiento' | 'aprobacion' | 'rechazo'
+  }
+
+  const timelineHistorial: EntradaHistorial[] = []
+
+  if (evento.fecha_solicitud) {
+    timelineHistorial.push({
+      fecha: evento.fecha_solicitud,
+      label: 'Solicitud enviada',
+      persona: solicitadoPor ? `${solicitadoPor.nombre} ${solicitadoPor.apellido}` : null,
+      tipo: 'solicitud',
+    })
+  }
+  if (evento.disc_confra_fecha && evento.disc_confra_estado) {
+    timelineHistorial.push({
+      fecha: evento.disc_confra_fecha,
+      label: `Disc. Confraternidad — ${estadoDiscLabel[evento.disc_confra_estado] ?? evento.disc_confra_estado}`,
+      persona: discConfraPor ? `${discConfraPor.nombre} ${discConfraPor.apellido}` : null,
+      extra: evento.disc_confra_notas ?? undefined,
+      tipo: 'discernimiento',
+    })
+  }
+  if (evento.disc_eqt_fecha && evento.disc_eqt_estado) {
+    timelineHistorial.push({
+      fecha: evento.disc_eqt_fecha,
+      label: `Disc. Equipo Timón — ${estadoDiscLabel[evento.disc_eqt_estado] ?? evento.disc_eqt_estado}`,
+      persona: discEqtPor ? `${discEqtPor.nombre} ${discEqtPor.apellido}` : null,
+      extra: evento.disc_eqt_notas ?? undefined,
+      tipo: 'discernimiento',
+    })
+  }
+  if (evento.fecha_aprobacion) {
+    timelineHistorial.push({
+      fecha: evento.fecha_aprobacion,
+      label: 'Aprobado',
+      persona: aprobadoPor ? `${aprobadoPor.nombre} ${aprobadoPor.apellido}` : null,
+      tipo: 'aprobacion',
+    })
+  }
+  if (evento.fecha_rechazo) {
+    timelineHistorial.push({
+      fecha: evento.fecha_rechazo,
+      label: 'Rechazado',
+      persona: rechazadoPor ? `${rechazadoPor.nombre} ${rechazadoPor.apellido}` : null,
+      extra: evento.motivo_rechazo ?? undefined,
+      tipo: 'rechazo',
+    })
+  }
+
+  timelineHistorial.sort((a, b) => a.fecha.localeCompare(b.fecha))
 
   const canEdit = ctx && canPerform(ctx, 'event.update', evento.organizacion_id ?? null)
 
@@ -333,25 +399,28 @@ export default async function EventoDetailPage({
           )}
 
           {/* Historial */}
-          <div className="border-t border-border pt-4 space-y-2">
+          <div className="border-t border-border pt-4 space-y-3">
             <p className="text-xs text-muted-foreground uppercase tracking-wide">Historial</p>
-            <div className="space-y-1 text-sm text-muted-foreground">
-              {solicitadoPor && (
-                <p>
-                  Solicitado por: <span className="text-foreground">{solicitadoPor.nombre} {solicitadoPor.apellido}</span>
-                  {evento.fecha_solicitud && ` el ${formatDateAR(evento.fecha_solicitud)}`}
-                </p>
-              )}
-              {aprobadoPor && (
-                <p>
-                  Aprobado por: <span className="text-foreground">{aprobadoPor.nombre} {aprobadoPor.apellido}</span>
-                  {evento.fecha_aprobacion && ` el ${formatDateAR(evento.fecha_aprobacion)}`}
-                </p>
-              )}
-            </div>
+
+            {timelineHistorial.length > 0 && (
+              <div className="space-y-1.5">
+                {timelineHistorial.map((entrada, i) => (
+                  <div key={i} className="text-xs text-muted-foreground border-l-2 border-border pl-2">
+                    <span className={`font-medium ${entrada.tipo === 'rechazo' ? 'text-destructive' : entrada.tipo === 'aprobacion' ? 'text-foreground' : 'text-foreground'}`}>
+                      {entrada.label}
+                    </span>
+                    {entrada.persona && <span> · {entrada.persona}</span>}
+                    <span> · {formatDateAR(entrada.fecha)}</span>
+                    {entrada.extra && (
+                      <p className="mt-0.5 pl-1 text-muted-foreground italic">{entrada.extra}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
 
             {cambiosHistorial && cambiosHistorial.length > 0 && (
-              <div className="mt-2 space-y-1.5">
+              <div className="space-y-1.5">
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">Cambios registrados</p>
                 {(cambiosHistorial as Array<{
                   id: string
