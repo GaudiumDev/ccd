@@ -180,7 +180,7 @@ export default async function AsignacionesPage({
                       Persona
                     </th>
                     <th className="text-left py-3 px-4 font-semibold text-foreground">
-                      Rol en Ministerio
+                      Rol
                     </th>
                     <th className="text-left py-3 px-4 font-semibold text-foreground">
                       Organización
@@ -265,7 +265,7 @@ export default async function AsignacionesPage({
               <p className="mt-2 text-muted-foreground">
                 {q || ministerioFiltro
                   ? "Ajusta los filtros de búsqueda"
-                  : "Asigna un rol en ministerio a una persona para comenzar"}
+                  : "Asigna un rol a una persona para comenzar"}
               </p>
               {!q && !ministerioFiltro && (
                 <Link

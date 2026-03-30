@@ -59,7 +59,7 @@ export default async function PersonaDetailPage({
     supabase
       .from("personas")
       .select(
-        "id, nombre, apellido, email, email_ccd, telefono, tipo_documento, documento, fecha_nacimiento, direccion, direccion_nro, localidad, codigo_postal, provincia, pais, notas, estado, created_at, acepta_comunicaciones, estado_eclesial, estado_vida, diocesis, categoria_persona, parroquia, socio_asociacion, referente_comunidad, cecista_dedicado, intercesor_dies_natalis",
+        "id, nombre, apellido, email, email_ccd, telefono, tipo_documento, documento, fecha_nacimiento, direccion, direccion_nro, localidad, codigo_postal, provincia, pais, notas, estado, created_at, acepta_comunicaciones, estado_eclesial, estado_vida, diocesis, categoria_persona, parroquia, socio_asociacion, referente_comunidad, cecista_dedicado, intercesor_dies_natalis, nombre_usuario",
       )
       .eq("id", id)
       .single(),
@@ -148,6 +148,9 @@ export default async function PersonaDetailPage({
             <Field label="Fecha de nacimiento" value={formatDate(persona.fecha_nacimiento)} />
             <Field label="Mail Personal" value={persona.email} />
             <Field label="Mail CcD" value={persona.email_ccd} />
+            {persona.nombre_usuario && (
+              <Field label="Nombre de usuario" value={persona.nombre_usuario} />
+            )}
             {persona.tipo_documento && (
               <Field
                 label="Documento"
@@ -293,21 +296,21 @@ export default async function PersonaDetailPage({
         </CardContent>
       </Card>
 
-      {/* Asignaciones de Ministerio */}
+      {/* Asignaciones de Rol */}
       <Card className="border-border bg-card">
         <CardHeader>
           <CardTitle className="text-sm font-semibold text-foreground uppercase tracking-wide">
-            Asignaciones de Ministerio
+            Asignaciones de Rol
           </CardTitle>
         </CardHeader>
         <CardContent>
           {(asignaciones ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground">Sin asignaciones de ministerio registradas.</p>
+            <p className="text-sm text-muted-foreground">Sin asignaciones de rol registradas.</p>
           ) : (
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Ministerio</th>
+                  <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Rol</th>
                   <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Organización</th>
                   <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Desde</th>
                   <th className="text-left py-2 font-medium text-muted-foreground">Hasta</th>

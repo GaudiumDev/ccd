@@ -62,7 +62,7 @@ export function MinisterioDetailClient({
         <div className="lg:col-span-2">
           <Card className="border-border bg-card">
             <CardHeader>
-              <CardTitle className="text-foreground">Permisos del Rol en Ministerio</CardTitle>
+              <CardTitle className="text-foreground">Permisos del Rol</CardTitle>
               <CardDescription>
                 Activa o desactiva permisos. El nivel de acceso se recalcula automáticamente.
                 {isAdmin && (

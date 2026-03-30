@@ -123,7 +123,7 @@ export default function NuevoMinisterioPage() {
         : form.tipo
 
     if (!tipoFinal) {
-      setError("Especificá el tipo de ministerio")
+      setError("Especificá el tipo de rol")
       setLoading(false)
       return
     }
@@ -145,7 +145,7 @@ export default function NuevoMinisterioPage() {
     if (err) {
       setError(
         err.message.includes("unique")
-          ? "Ya existe un rol en ministerio con ese nombre"
+          ? "Ya existe un rol con ese nombre"
           : "Error al crear el rol: " + err.message,
       )
       setLoading(false)
@@ -190,7 +190,7 @@ export default function NuevoMinisterioPage() {
           <Card className="border-border bg-card">
             <CardHeader>
               <CardTitle className="text-foreground">
-                Datos del Rol en Ministerio
+                Datos del Rol
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -208,7 +208,7 @@ export default function NuevoMinisterioPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="tipo">Ministerio *</Label>
+                <Label htmlFor="tipo">Tipo de Rol *</Label>
                 <select
                   id="tipo"
                   required
@@ -290,7 +290,7 @@ export default function NuevoMinisterioPage() {
 
               <div className="flex gap-3 pt-2">
                 <Button type="submit" disabled={loading}>
-                  {loading ? "Creando..." : "Crear Rol en Ministerio"}
+                  {loading ? "Creando..." : "Crear Rol"}
                 </Button>
                 <Link href="/ministerios/catalogo">
                   <Button type="button" variant="outline">
@@ -307,7 +307,7 @@ export default function NuevoMinisterioPage() {
           <Card className="border-border bg-card">
             <CardHeader>
               <CardTitle className="text-foreground">
-                Permisos del Rol en Ministerio
+                Permisos del Rol
               </CardTitle>
               <CardDescription>
                 Seleccioná los permisos que tendrá este rol. El nivel de acceso

@@ -128,7 +128,7 @@ export default function NuevaAsignacionPage() {
     setError(null)
 
     if (!form.persona_id || !form.ministerio_id) {
-      setError("Debes seleccionar una persona y un rol en ministerio")
+      setError("Debes seleccionar una persona y un rol")
       setLoading(false)
       return
     }
@@ -220,10 +220,10 @@ export default function NuevaAsignacionPage() {
         </Link>
         <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
           <UserCheck className="h-8 w-8 text-primary" />
-          Nueva Asignación de Rol en Ministerio
+          Nueva Asignación de Rol
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Asigna un rol en ministerio a una persona. Los permisos de sistema del
+          Asigna un rol a una persona. Los permisos de sistema del
           rol se activan automáticamente.
         </p>
       </div>
@@ -263,7 +263,7 @@ export default function NuevaAsignacionPage() {
                 </select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="ministerio_id">Rol en Ministerio *</Label>
+                <Label htmlFor="ministerio_id">Rol *</Label>
                 <select
                   id="ministerio_id"
                   required
@@ -454,7 +454,7 @@ export default function NuevaAsignacionPage() {
 
             <div className="flex gap-3 pt-2">
               <Button type="submit" disabled={loading}>
-                {loading ? "Asignando..." : "Asignar Rol en Ministerio"}
+                {loading ? "Asignando..." : "Asignar Rol"}
               </Button>
               <Link href="/ministerios/asignaciones">
                 <Button type="button" variant="outline">

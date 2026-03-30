@@ -238,11 +238,11 @@ export default async function OrganizacionDetailPage({
         </CardContent>
       </Card>
 
-      {/* Roles y Ministerios */}
+      {/* Roles */}
       <Card className="border-border bg-card">
         <CardHeader>
           <CardTitle className="text-sm font-semibold text-foreground uppercase tracking-wide">
-            Roles y Ministerios de la Organización
+            Roles de la Organización
           </CardTitle>
         </CardHeader>
         <CardContent>

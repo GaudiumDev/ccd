@@ -1,17 +1,23 @@
-'use client'
+"use client"
 
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic"
 
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
-import { LocationFields } from '@/components/location-fields'
+import { useState, useEffect } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { ArrowLeft } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
+import { LocationFields } from "@/components/location-fields"
 
 interface Organizacion {
   id: string
@@ -32,15 +38,15 @@ interface Evento {
 }
 
 const NO_CECISTA_CATEGORIAS = [
-  { value: 'voluntario', label: 'Voluntario' },
-  { value: 'convivente', label: 'Convivente' },
-  { value: 'cooperador', label: 'Cooperador' },
-  { value: 'contacto_casa_retiro', label: 'Contacto Casa Retiro' },
+  { value: "voluntario", label: "Voluntario" },
+  { value: "convivente", label: "Convivente" },
+  { value: "cooperador", label: "Cooperador" },
+  { value: "contacto_casa_retiro", label: "Contacto Casa Retiro" },
 ]
 
 export default function NewPersonaPage() {
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError] = useState("")
   const router = useRouter()
   const supabase = createClient()
 
@@ -50,52 +56,64 @@ export default function NewPersonaPage() {
   const [crearAcceso, setCrearAcceso] = useState(false)
   const [incluirAsignacion, setIncluirAsignacion] = useState(false)
   const [asignacion, setAsignacion] = useState({
-    ministerio_id: '',
-    organizacion_id: '',
-    evento_id: '',
-    fecha_inicio: new Date().toISOString().split('T')[0],
-    notas: '',
+    ministerio_id: "",
+    organizacion_id: "",
+    evento_id: "",
+    fecha_inicio: new Date().toISOString().split("T")[0],
+    notas: "",
   })
 
   const [formData, setFormData] = useState({
-    nombre_usuario: '',
-    nombre: '',
-    apellido: '',
-    email: '',
-    email_ccd: '',
-    telefono: '',
-    tipo_documento: '',
-    documento: '',
-    fecha_nacimiento: '',
-    direccion: '',
-    direccion_nro: '',
-    localidad: '',
-    codigo_postal: '',
-    provincia: '',
-    pais: 'Argentina',
+    nombre_usuario: "",
+    nombre: "",
+    apellido: "",
+    email: "",
+    email_ccd: "",
+    telefono: "",
+    tipo_documento: "",
+    documento: "",
+    fecha_nacimiento: "",
+    direccion: "",
+    direccion_nro: "",
+    localidad: "",
+    codigo_postal: "",
+    provincia: "",
+    pais: "Argentina",
     acepta_comunicaciones: true,
-    confraternidad_id: '',
-    fraternidad_id: '',
-    modo_inicial: '',
-    estado_eclesial: 'laico',
-    estado_vida: '',
-    diocesis: '',
-    categoria_persona: '',
-    parroquia: '',
+    confraternidad_id: "",
+    fraternidad_id: "",
+    modo_inicial: "",
+    estado_eclesial: "laico",
+    estado_vida: "",
+    diocesis: "",
+    categoria_persona: "",
+    parroquia: "",
     socio_asociacion: false,
     referente_comunidad: false,
     cecista_dedicado: false,
-    intercesor_dies_natalis: '',
+    intercesor_dies_natalis: "",
   })
 
   const [categoriasNoCecista, setCategoriasNoCecista] = useState<string[]>([])
 
   useEffect(() => {
     const load = async () => {
-      const [{ data: orgsData }, { data: ministeriosData }, { data: eventosData }] = await Promise.all([
-        supabase.from('organizaciones').select('id, nombre, tipo').eq('estado', 'activa').order('nombre'),
-        supabase.from('ministerios').select('id, nombre, tipo').eq('activo', true).order('nombre'),
-        supabase.from('eventos').select('id, nombre, tipo').order('nombre'),
+      const [
+        { data: orgsData },
+        { data: ministeriosData },
+        { data: eventosData },
+      ] = await Promise.all([
+        supabase
+          .from("organizaciones")
+          .select("id, nombre, tipo")
+          .eq("estado", "activa")
+          .order("nombre"),
+        supabase
+          .from("ministerios")
+          .select("id, nombre, tipo")
+          .eq("activo", true)
+          .order("nombre"),
+        supabase.from("eventos").select("id, nombre, tipo").order("nombre"),
       ])
       if (orgsData) setOrganizaciones(orgsData)
       if (ministeriosData) setMinisterios(ministeriosData)
@@ -107,46 +125,66 @@ export default function NewPersonaPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    setError('')
+    setError("")
 
     try {
-      if (!formData.documento) throw new Error('El número de documento es requerido (se usará como contraseña inicial)')
-      if (crearAcceso && !formData.nombre_usuario) throw new Error('El nombre de usuario es requerido para crear el acceso al sistema')
-      if (incluirAsignacion && !asignacion.ministerio_id) throw new Error('Seleccioná un ministerio para la asignación')
+      if (!formData.documento)
+        throw new Error(
+          "El número de documento es requerido (se usará como contraseña inicial)",
+        )
+      if (crearAcceso && !formData.nombre_usuario)
+        throw new Error(
+          "El nombre de usuario es requerido para crear el acceso al sistema",
+        )
+      if (incluirAsignacion && !asignacion.ministerio_id)
+        throw new Error("Seleccioná un ministerio para la asignación")
 
-      const res = await fetch('/api/personas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, categorias_no_cecista: categoriasNoCecista }),
+      const res = await fetch("/api/personas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...formData,
+          categorias_no_cecista: categoriasNoCecista,
+        }),
       })
 
       if (!res.ok) {
         const { error: apiError } = await res.json()
-        throw new Error(apiError ?? 'Error al crear la persona')
+        throw new Error(apiError ?? "Error al crear la persona")
       }
 
       const { id: personaId } = await res.json()
 
       // Create org relationships for cecista
-      const today = new Date().toISOString().split('T')[0]
-      if (formData.categoria_persona === 'cecista') {
+      const today = new Date().toISOString().split("T")[0]
+      if (formData.categoria_persona === "cecista") {
         const orgInserts = []
         if (formData.confraternidad_id) {
-          orgInserts.push({ persona_id: personaId, organizacion_id: formData.confraternidad_id, tipo_relacion: 'confraternidad', fecha_inicio: today })
+          orgInserts.push({
+            persona_id: personaId,
+            organizacion_id: formData.confraternidad_id,
+            tipo_relacion: "confraternidad",
+            fecha_inicio: today,
+          })
         }
         if (formData.fraternidad_id) {
-          orgInserts.push({ persona_id: personaId, organizacion_id: formData.fraternidad_id, tipo_relacion: 'fraternidad', fecha_inicio: today })
+          orgInserts.push({
+            persona_id: personaId,
+            organizacion_id: formData.fraternidad_id,
+            tipo_relacion: "fraternidad",
+            fecha_inicio: today,
+          })
         }
         if (orgInserts.length > 0) {
-          await supabase.from('persona_organizacion').insert(orgInserts)
+          await supabase.from("persona_organizacion").insert(orgInserts)
         }
       }
 
       // Create system access if requested
       if (crearAcceso && formData.nombre_usuario) {
-        const inviteRes = await fetch('/api/personas/invite', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const inviteRes = await fetch("/api/personas/invite", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             nombre_usuario: formData.nombre_usuario,
             persona_id: personaId,
@@ -154,57 +192,79 @@ export default function NewPersonaPage() {
         })
         if (!inviteRes.ok) {
           const { error: inviteError } = await inviteRes.json()
-          throw new Error(`Persona creada, pero no se pudo crear el acceso: ${inviteError}`)
+          throw new Error(
+            `Persona creada, pero no se pudo crear el acceso: ${inviteError}`,
+          )
         }
       }
 
       // Create ministry assignment if requested
       if (crearAcceso && incluirAsignacion && asignacion.ministerio_id) {
-        const { error: asigError } = await supabase.from('asignaciones_ministerio').insert({
-          persona_id: personaId,
-          ministerio_id: asignacion.ministerio_id,
-          organizacion_id: asignacion.organizacion_id || null,
-          evento_id: asignacion.evento_id || null,
-          fecha_inicio: asignacion.fecha_inicio,
-          notas: asignacion.notas || null,
-          estado: 'activo',
-        })
-        if (asigError) throw new Error(`Persona creada, pero no se pudo guardar la asignación: ${asigError.message}`)
+        const { error: asigError } = await supabase
+          .from("asignaciones_ministerio")
+          .insert({
+            persona_id: personaId,
+            ministerio_id: asignacion.ministerio_id,
+            organizacion_id: asignacion.organizacion_id || null,
+            evento_id: asignacion.evento_id || null,
+            fecha_inicio: asignacion.fecha_inicio,
+            notas: asignacion.notas || null,
+            estado: "activo",
+          })
+        if (asigError)
+          throw new Error(
+            `Persona creada, pero no se pudo guardar la asignación: ${asigError.message}`,
+          )
       }
 
-      router.push('/personas')
+      router.push("/personas")
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Error al crear la persona'
+      const msg =
+        err instanceof Error ? err.message : "Error al crear la persona"
       setError(msg)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
+  ) => {
     const { name, value, type } = e.target
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
+      [name]:
+        type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
     }))
   }
 
   const handleToggleCategoriaNoCecista = (categoria: string) => {
-    setCategoriasNoCecista(prev =>
-      prev.includes(categoria) ? prev.filter(c => c !== categoria) : [...prev, categoria]
+    setCategoriasNoCecista((prev) =>
+      prev.includes(categoria)
+        ? prev.filter((c) => c !== categoria)
+        : [...prev, categoria],
     )
   }
 
   return (
     <div className="space-y-6">
-      <Link href="/personas" className="inline-flex items-center gap-2 text-primary hover:underline">
+      <Link
+        href="/personas"
+        className="inline-flex items-center gap-2 text-primary hover:underline"
+      >
         <ArrowLeft className="h-4 w-4" />
         Volver a Personas
       </Link>
 
       <div>
-        <h1 className="text-2xl font-bold text-foreground md:text-3xl">Nueva Persona</h1>
-        <p className="mt-1 text-muted-foreground">Completa el formulario para registrar una nueva persona en el sistema</p>
+        <h1 className="text-2xl font-bold text-foreground md:text-3xl">
+          Nueva Persona
+        </h1>
+        <p className="mt-1 text-muted-foreground">
+          Completa el formulario para registrar una nueva persona en el sistema
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">
@@ -224,33 +284,73 @@ export default function NewPersonaPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="nombre">Nombre *</Label>
-                <Input id="nombre" name="nombre" placeholder="Juan" value={formData.nombre} onChange={handleChange} required />
+                <Input
+                  id="nombre"
+                  name="nombre"
+                  placeholder="Juan"
+                  value={formData.nombre}
+                  onChange={handleChange}
+                  required
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="apellido">Apellido *</Label>
-                <Input id="apellido" name="apellido" placeholder="García" value={formData.apellido} onChange={handleChange} required />
+                <Input
+                  id="apellido"
+                  name="apellido"
+                  placeholder="García"
+                  value={formData.apellido}
+                  onChange={handleChange}
+                  required
+                />
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="telefono">Teléfono</Label>
-                <Input id="telefono" name="telefono" placeholder="+54 9 11 1234 5678" value={formData.telefono} onChange={handleChange} />
+                <Input
+                  id="telefono"
+                  name="telefono"
+                  placeholder="+54 9 11 1234 5678"
+                  value={formData.telefono}
+                  onChange={handleChange}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="fecha_nacimiento">Fecha de Nacimiento</Label>
-                <Input id="fecha_nacimiento" name="fecha_nacimiento" type="date" value={formData.fecha_nacimiento} onChange={handleChange} />
+                <Input
+                  id="fecha_nacimiento"
+                  name="fecha_nacimiento"
+                  type="date"
+                  value={formData.fecha_nacimiento}
+                  onChange={handleChange}
+                />
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="email">Mail Personal</Label>
-                <Input id="email" name="email" type="email" placeholder="juan@example.com" value={formData.email} onChange={handleChange} />
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="juan@example.com"
+                  value={formData.email}
+                  onChange={handleChange}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email_ccd">Mail CcD</Label>
-                <Input id="email_ccd" name="email_ccd" type="email" placeholder="juan@ccd.org" value={formData.email_ccd} onChange={handleChange} />
+                <Input
+                  id="email_ccd"
+                  name="email_ccd"
+                  type="email"
+                  placeholder="juan@ccd.org"
+                  value={formData.email_ccd}
+                  onChange={handleChange}
+                />
               </div>
             </div>
 
@@ -273,18 +373,37 @@ export default function NewPersonaPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="documento">Nro Documento *</Label>
-                <Input id="documento" name="documento" placeholder="12345678" value={formData.documento} onChange={handleChange} required />
+                <Input
+                  id="documento"
+                  name="documento"
+                  placeholder="12345678"
+                  value={formData.documento}
+                  onChange={handleChange}
+                  required
+                />
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-[1fr_auto]">
               <div className="space-y-2">
                 <Label htmlFor="direccion">Dirección Calle</Label>
-                <Input id="direccion" name="direccion" placeholder="Calle Principal" value={formData.direccion} onChange={handleChange} />
+                <Input
+                  id="direccion"
+                  name="direccion"
+                  placeholder="Calle Principal"
+                  value={formData.direccion}
+                  onChange={handleChange}
+                />
               </div>
               <div className="space-y-2 w-28">
                 <Label htmlFor="direccion_nro">Dirección Nro</Label>
-                <Input id="direccion_nro" name="direccion_nro" placeholder="123" value={formData.direccion_nro} onChange={handleChange} />
+                <Input
+                  id="direccion_nro"
+                  name="direccion_nro"
+                  placeholder="123"
+                  value={formData.direccion_nro}
+                  onChange={handleChange}
+                />
               </div>
             </div>
 
@@ -294,11 +413,21 @@ export default function NewPersonaPage() {
               localidad={formData.localidad}
               codigoPostal={formData.codigo_postal}
               diocesis={formData.diocesis}
-              onPaisChange={(val) => setFormData((prev) => ({ ...prev, pais: val }))}
-              onProvinciaChange={(val) => setFormData((prev) => ({ ...prev, provincia: val }))}
-              onLocalidadChange={(val) => setFormData((prev) => ({ ...prev, localidad: val }))}
-              onCodigoPostalChange={(val) => setFormData((prev) => ({ ...prev, codigo_postal: val }))}
-              onDiocesisChange={(val) => setFormData((prev) => ({ ...prev, diocesis: val }))}
+              onPaisChange={(val) =>
+                setFormData((prev) => ({ ...prev, pais: val }))
+              }
+              onProvinciaChange={(val) =>
+                setFormData((prev) => ({ ...prev, provincia: val }))
+              }
+              onLocalidadChange={(val) =>
+                setFormData((prev) => ({ ...prev, localidad: val }))
+              }
+              onCodigoPostalChange={(val) =>
+                setFormData((prev) => ({ ...prev, codigo_postal: val }))
+              }
+              onDiocesisChange={(val) =>
+                setFormData((prev) => ({ ...prev, diocesis: val }))
+              }
             />
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -321,7 +450,13 @@ export default function NewPersonaPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="parroquia">Parroquia</Label>
-                <Input id="parroquia" name="parroquia" placeholder="Ej: Parroquia San José" value={formData.parroquia} onChange={handleChange} />
+                <Input
+                  id="parroquia"
+                  name="parroquia"
+                  placeholder="Ej: Parroquia San José"
+                  value={formData.parroquia}
+                  onChange={handleChange}
+                />
               </div>
             </div>
 
@@ -349,7 +484,9 @@ export default function NewPersonaPage() {
         <Card className="border-border">
           <CardHeader>
             <CardTitle className="text-foreground">Relación con CcD</CardTitle>
-            <CardDescription>Categoría institucional y pertenencia a la comunidad</CardDescription>
+            <CardDescription>
+              Categoría institucional y pertenencia a la comunidad
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid gap-4 md:grid-cols-3">
@@ -377,7 +514,9 @@ export default function NewPersonaPage() {
                     onChange={handleChange}
                     className="h-4 w-4 rounded border-border"
                   />
-                  <Label htmlFor="referente_comunidad">Referente de Comunidad</Label>
+                  <Label htmlFor="referente_comunidad">
+                    Referente de Comunidad
+                  </Label>
                 </div>
                 <div className="flex items-center gap-2">
                   <input
@@ -393,17 +532,19 @@ export default function NewPersonaPage() {
               </div>
             </div>
 
-            {formData.categoria_persona === 'no_cecista' && (
+            {formData.categoria_persona === "no_cecista" && (
               <div className="space-y-2">
                 <Label>Si es No Cecista</Label>
                 <div className="flex flex-wrap gap-4">
-                  {NO_CECISTA_CATEGORIAS.map(cat => (
+                  {NO_CECISTA_CATEGORIAS.map((cat) => (
                     <div key={cat.value} className="flex items-center gap-2">
                       <input
                         id={`cat_nc_${cat.value}`}
                         type="checkbox"
                         checked={categoriasNoCecista.includes(cat.value)}
-                        onChange={() => handleToggleCategoriaNoCecista(cat.value)}
+                        onChange={() =>
+                          handleToggleCategoriaNoCecista(cat.value)
+                        }
                         className="h-4 w-4 rounded border-border"
                       />
                       <Label htmlFor={`cat_nc_${cat.value}`}>{cat.label}</Label>
@@ -413,7 +554,7 @@ export default function NewPersonaPage() {
               </div>
             )}
 
-            {formData.categoria_persona === 'cecista' && (
+            {formData.categoria_persona === "cecista" && (
               <>
                 <div className="flex items-center gap-2">
                   <input
@@ -438,9 +579,13 @@ export default function NewPersonaPage() {
                       className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
                     >
                       <option value="">Sin confraternidad</option>
-                      {organizaciones.filter(o => o.tipo === 'confraternidad').map(o => (
-                        <option key={o.id} value={o.id}>{o.nombre}</option>
-                      ))}
+                      {organizaciones
+                        .filter((o) => o.tipo === "confraternidad")
+                        .map((o) => (
+                          <option key={o.id} value={o.id}>
+                            {o.nombre}
+                          </option>
+                        ))}
                     </select>
                   </div>
                   <div className="space-y-2">
@@ -453,9 +598,13 @@ export default function NewPersonaPage() {
                       className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
                     >
                       <option value="">Sin fraternidad</option>
-                      {organizaciones.filter(o => o.tipo === 'fraternidad').map(o => (
-                        <option key={o.id} value={o.id}>{o.nombre}</option>
-                      ))}
+                      {organizaciones
+                        .filter((o) => o.tipo === "fraternidad")
+                        .map((o) => (
+                          <option key={o.id} value={o.id}>
+                            {o.nombre}
+                          </option>
+                        ))}
                     </select>
                   </div>
                 </div>
@@ -471,7 +620,9 @@ export default function NewPersonaPage() {
                 onChange={handleChange}
                 className="h-4 w-4 rounded border-border"
               />
-              <Label htmlFor="acepta_comunicaciones">Acepta recibir comunicaciones</Label>
+              <Label htmlFor="acepta_comunicaciones">
+                Acepta recibir comunicaciones
+              </Label>
             </div>
           </CardContent>
         </Card>
@@ -479,8 +630,12 @@ export default function NewPersonaPage() {
         {/* Modo de Participación */}
         <Card className="border-border">
           <CardHeader>
-            <CardTitle className="text-foreground">Modo de Participación</CardTitle>
-            <CardDescription>Estado institucional inicial en la comunidad</CardDescription>
+            <CardTitle className="text-foreground">
+              Modo de Participación
+            </CardTitle>
+            <CardDescription>
+              Estado institucional inicial en la comunidad
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -502,9 +657,11 @@ export default function NewPersonaPage() {
               </select>
             </div>
 
-            {formData.modo_inicial === 'intercesor' && (
+            {formData.modo_inicial === "intercesor" && (
               <div className="space-y-2">
-                <Label htmlFor="intercesor_dies_natalis">Intercesor Dies Natalis</Label>
+                <Label htmlFor="intercesor_dies_natalis">
+                  Intercesor Dies Natalis
+                </Label>
                 <Input
                   id="intercesor_dies_natalis"
                   name="intercesor_dies_natalis"
@@ -522,7 +679,10 @@ export default function NewPersonaPage() {
         <Card className="border-border">
           <CardHeader>
             <CardTitle className="text-foreground">Acceso al Sistema</CardTitle>
-            <CardDescription>El documento se usará como contraseña inicial. El nombre de usuario se usará para iniciar sesión.</CardDescription>
+            <CardDescription>
+              El documento se usará como contraseña inicial. El nombre de
+              usuario se usará para iniciar sesión.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-2">
@@ -530,7 +690,7 @@ export default function NewPersonaPage() {
                 id="crear_acceso"
                 type="checkbox"
                 checked={crearAcceso}
-                onChange={e => {
+                onChange={(e) => {
                   setCrearAcceso(e.target.checked)
                   if (!e.target.checked) setIncluirAsignacion(false)
                 }}
@@ -554,7 +714,8 @@ export default function NewPersonaPage() {
                     autoCorrect="off"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Solo letras minúsculas, números, puntos y guiones bajos. 3–30 caracteres.
+                    Solo letras minúsculas, números, puntos y guiones bajos.
+                    3–30 caracteres.
                   </p>
                 </div>
 
@@ -564,25 +725,32 @@ export default function NewPersonaPage() {
                       id="incluir_asignacion"
                       type="checkbox"
                       checked={incluirAsignacion}
-                      onChange={e => setIncluirAsignacion(e.target.checked)}
+                      onChange={(e) => setIncluirAsignacion(e.target.checked)}
                       className="h-4 w-4 rounded border-border"
                     />
-                    <Label htmlFor="incluir_asignacion">Agregar asignación de ministerio</Label>
+                    <Label htmlFor="incluir_asignacion">
+                      Agregar asignación de Rol
+                    </Label>
                   </div>
 
                   {incluirAsignacion && (
                     <div className="mt-4 space-y-4">
                       <div className="grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
-                          <Label htmlFor="asig_ministerio_id">Ministerio *</Label>
+                          <Label htmlFor="asig_ministerio_id">Rol *</Label>
                           <select
                             id="asig_ministerio_id"
                             value={asignacion.ministerio_id}
-                            onChange={e => setAsignacion(a => ({ ...a, ministerio_id: e.target.value }))}
+                            onChange={(e) =>
+                              setAsignacion((a) => ({
+                                ...a,
+                                ministerio_id: e.target.value,
+                              }))
+                            }
                             className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
                           >
-                            <option value="">Seleccionar ministerio...</option>
-                            {ministerios.map(m => (
+                            <option value="">Seleccionar rol...</option>
+                            {ministerios.map((m) => (
                               <option key={m.id} value={m.id}>
                                 {m.nombre} — {m.tipo}
                               </option>
@@ -590,43 +758,68 @@ export default function NewPersonaPage() {
                           </select>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="asig_organizacion_id">Organización</Label>
+                          <Label htmlFor="asig_organizacion_id">
+                            Organización
+                          </Label>
                           <select
                             id="asig_organizacion_id"
                             value={asignacion.organizacion_id}
-                            onChange={e => setAsignacion(a => ({ ...a, organizacion_id: e.target.value }))}
+                            onChange={(e) =>
+                              setAsignacion((a) => ({
+                                ...a,
+                                organizacion_id: e.target.value,
+                              }))
+                            }
                             className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
                           >
                             <option value="">Global (sin restricción)</option>
-                            {organizaciones.map(o => (
-                              <option key={o.id} value={o.id}>{o.nombre}</option>
+                            {organizaciones.map((o) => (
+                              <option key={o.id} value={o.id}>
+                                {o.nombre}
+                              </option>
                             ))}
                           </select>
                         </div>
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="asig_evento_id">Evento (opcional)</Label>
+                        <Label htmlFor="asig_evento_id">
+                          Evento (opcional)
+                        </Label>
                         <select
                           id="asig_evento_id"
                           value={asignacion.evento_id}
-                          onChange={e => setAsignacion(a => ({ ...a, evento_id: e.target.value }))}
+                          onChange={(e) =>
+                            setAsignacion((a) => ({
+                              ...a,
+                              evento_id: e.target.value,
+                            }))
+                          }
                           className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
                         >
                           <option value="">Sin evento específico</option>
-                          {eventos.map(ev => (
-                            <option key={ev.id} value={ev.id}>{ev.nombre} ({ev.tipo})</option>
+                          {eventos.map((ev) => (
+                            <option key={ev.id} value={ev.id}>
+                              {ev.nombre} ({ev.tipo})
+                            </option>
                           ))}
                         </select>
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="asig_fecha_inicio">Fecha de inicio</Label>
+                        <Label htmlFor="asig_fecha_inicio">
+                          Fecha de inicio
+                        </Label>
                         <Input
                           id="asig_fecha_inicio"
                           type="date"
                           value={asignacion.fecha_inicio}
-                          onChange={e => setAsignacion(a => ({ ...a, fecha_inicio: e.target.value }))}
+                          onChange={(e) =>
+                            setAsignacion((a) => ({
+                              ...a,
+                              fecha_inicio: e.target.value,
+                            }))
+                          }
                           className="w-48"
                         />
                       </div>
@@ -638,7 +831,12 @@ export default function NewPersonaPage() {
                           rows={3}
                           placeholder="Observaciones sobre esta asignación..."
                           value={asignacion.notas}
-                          onChange={e => setAsignacion(a => ({ ...a, notas: e.target.value }))}
+                          onChange={(e) =>
+                            setAsignacion((a) => ({
+                              ...a,
+                              notas: e.target.value,
+                            }))
+                          }
                           className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm resize-none"
                         />
                       </div>
@@ -652,7 +850,7 @@ export default function NewPersonaPage() {
 
         <div className="flex gap-3">
           <Button type="submit" disabled={loading}>
-            {loading ? 'Guardando...' : 'Crear Persona'}
+            {loading ? "Guardando..." : "Crear Persona"}
           </Button>
           <Link href="/personas">
             <Button type="button" variant="outline" className="bg-transparent">

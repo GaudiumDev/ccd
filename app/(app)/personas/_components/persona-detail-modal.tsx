@@ -32,6 +32,7 @@ type PersonaDetalle = {
   referente_comunidad: boolean | null
   cecista_dedicado: boolean | null
   intercesor_dies_natalis: string | null
+  nombre_usuario: string | null
 }
 
 type PersonaModo = {
@@ -96,7 +97,7 @@ export default function PersonaDetailModal({ personaId }: { personaId: string })
     Promise.all([
       supabase
         .from('personas')
-        .select('id, nombre, apellido, email, email_ccd, telefono, tipo_documento, documento, fecha_nacimiento, direccion, direccion_nro, localidad, codigo_postal, provincia, pais, notas, estado, created_at, acepta_comunicaciones, estado_eclesial, estado_vida, diocesis, categoria_persona, parroquia, socio_asociacion, referente_comunidad, cecista_dedicado, intercesor_dies_natalis')
+        .select('id, nombre, apellido, email, email_ccd, telefono, tipo_documento, documento, fecha_nacimiento, direccion, direccion_nro, localidad, codigo_postal, provincia, pais, notas, estado, created_at, acepta_comunicaciones, estado_eclesial, estado_vida, diocesis, categoria_persona, parroquia, socio_asociacion, referente_comunidad, cecista_dedicado, intercesor_dies_natalis, nombre_usuario')
         .eq('id', personaId)
         .single(),
       supabase
@@ -167,6 +168,12 @@ export default function PersonaDetailModal({ personaId }: { personaId: string })
             <dt className="text-muted-foreground">Mail CcD</dt>
             <dd className="text-foreground">{persona.email_ccd ?? '—'}</dd>
           </div>
+          {persona.nombre_usuario && (
+            <div>
+              <dt className="text-muted-foreground">Nombre de usuario</dt>
+              <dd className="text-foreground">{persona.nombre_usuario}</dd>
+            </div>
+          )}
           {persona.tipo_documento && (
             <div>
               <dt className="text-muted-foreground">Documento</dt>
@@ -324,16 +331,16 @@ export default function PersonaDetailModal({ personaId }: { personaId: string })
 
       <hr className="border-border" />
 
-      {/* Asignaciones de Ministerio */}
+      {/* Asignaciones de Rol */}
       <div>
-        <SectionTitle>Asignaciones de Ministerio</SectionTitle>
+        <SectionTitle>Asignaciones de Rol</SectionTitle>
         {asignaciones.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Sin asignaciones de ministerio registradas.</p>
+          <p className="text-sm text-muted-foreground">Sin asignaciones de rol registradas.</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
-                <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Ministerio</th>
+                <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Rol</th>
                 <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Organización</th>
                 <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Desde</th>
                 <th className="text-left py-2 font-medium text-muted-foreground">Hasta</th>

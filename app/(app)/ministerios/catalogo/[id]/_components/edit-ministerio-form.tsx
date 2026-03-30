@@ -114,11 +114,11 @@ export function EditMinisterioForm({ ministerio, nivelCalculado }: Props) {
   return (
     <Card className="border-border bg-card">
       <CardHeader>
-        <CardTitle className="text-foreground">Datos del Rol en Ministerio</CardTitle>
+        <CardTitle className="text-foreground">Datos del Rol</CardTitle>
         <CardDescription>
           {isReadOnly
             ? 'Rol del sistema — nombre y tipo no se pueden modificar'
-            : 'Editá el nombre y tipo del rol en ministerio'}
+            : 'Editá el nombre y tipo del rol'}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
