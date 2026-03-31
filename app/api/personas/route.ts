@@ -65,6 +65,7 @@ export async function POST(request: Request) {
         persona_id: persona.id,
         modo: body.modo_inicial,
         fecha_inicio: today,
+        documento_url: body.documento_url_modo ?? null,
       })
     if (modoError) {
       return NextResponse.json({ error: modoError.message }, { status: 400 })

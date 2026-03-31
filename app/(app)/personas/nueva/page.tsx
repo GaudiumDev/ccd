@@ -15,7 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Paperclip, X } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { LocationFields } from "@/components/location-fields"
 
@@ -95,6 +95,7 @@ export default function NewPersonaPage() {
   })
 
   const [categoriasNoCecista, setCategoriasNoCecista] = useState<string[]>([])
+  const [modoAdjunto, setModoAdjunto] = useState<File | null>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -139,12 +140,25 @@ export default function NewPersonaPage() {
       if (incluirAsignacion && !asignacion.ministerio_id)
         throw new Error("Seleccioná un ministerio para la asignación")
 
+      let documentoUrlModo: string | null = null
+      if (formData.modo_inicial && modoAdjunto) {
+        const ext = modoAdjunto.name.split(".").pop()
+        const path = `modos/${Date.now()}.${ext}`
+        const { error: uploadError } = await supabase.storage
+          .from("asignaciones-adjuntos")
+          .upload(path, modoAdjunto)
+        if (uploadError) throw new Error("Error al subir el adjunto: " + uploadError.message)
+        const { data: urlData } = supabase.storage.from("asignaciones-adjuntos").getPublicUrl(path)
+        documentoUrlModo = urlData.publicUrl
+      }
+
       const res = await fetch("/api/personas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
           categorias_no_cecista: categoriasNoCecista,
+          documento_url_modo: documentoUrlModo,
         }),
       })
 
@@ -670,6 +684,46 @@ export default function NewPersonaPage() {
                   onChange={handleChange}
                   className="w-48"
                 />
+              </div>
+            )}
+
+            {formData.modo_inicial && (
+              <div className="space-y-2">
+                <Label>Adjunto (opcional)</Label>
+                {modoAdjunto ? (
+                  <div className="flex items-center gap-3 rounded-md border border-border bg-muted px-3 py-2.5 text-sm">
+                    <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate font-medium text-foreground">{modoAdjunto.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {(modoAdjunto.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setModoAdjunto(null)}
+                      className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label
+                    htmlFor="modo_adjunto"
+                    className="flex cursor-pointer flex-col items-center gap-2 rounded-md border border-dashed border-border bg-muted/40 px-4 py-5 text-sm text-muted-foreground transition-colors hover:border-primary hover:bg-muted/70 hover:text-foreground"
+                  >
+                    <Paperclip className="h-5 w-5" />
+                    <span>Hacé clic para seleccionar</span>
+                    <span className="text-xs">PDF, Word o imagen — máx. 10 MB</span>
+                    <input
+                      id="modo_adjunto"
+                      type="file"
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                      className="sr-only"
+                      onChange={(e) => setModoAdjunto(e.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                )}
               </div>
             )}
           </CardContent>

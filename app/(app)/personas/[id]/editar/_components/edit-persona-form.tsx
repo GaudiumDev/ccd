@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Loader2, X, Check } from "lucide-react"
+import { ArrowLeft, Loader2, X, Check, Paperclip } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -49,6 +49,7 @@ type HistorialModo = {
   fecha_inicio: string
   fecha_fin: string | null
   motivo_fin: string | null
+  documento_url: string | null
 }
 
 type AsignacionActiva = {
@@ -192,6 +193,7 @@ export function EditPersonaForm({
   // Section B: Participation mode
   const [nuevoModo, setNuevoModo] = useState("")
   const [motivoFin, setMotivoFin] = useState("")
+  const [modoAdjunto, setModoAdjunto] = useState<File | null>(null)
   const [modoLoading, setModoLoading] = useState(false)
   const [modoError, setModoError] = useState<string | null>(null)
 
@@ -260,6 +262,7 @@ export function EditPersonaForm({
     organizacion_id: "",
     fecha_inicio: today,
   })
+  const [asigAdjunto, setAsigAdjunto] = useState<File | null>(null)
   const [asigLoading, setAsigLoading] = useState(false)
   const [closingId, setClosingId] = useState<string | null>(null)
   const [asigError, setAsigError] = useState<string | null>(null)
@@ -323,6 +326,22 @@ export function EditPersonaForm({
 
     const supabase = createClient()
 
+    let documentoUrl: string | null = null
+    if (modoAdjunto) {
+      const ext = modoAdjunto.name.split(".").pop()
+      const path = `modos/${persona.id}/${Date.now()}.${ext}`
+      const { error: uploadError } = await supabase.storage
+        .from("asignaciones-adjuntos")
+        .upload(path, modoAdjunto)
+      if (uploadError) {
+        setModoError("Error al subir el adjunto: " + uploadError.message)
+        setModoLoading(false)
+        return
+      }
+      const { data: urlData } = supabase.storage.from("asignaciones-adjuntos").getPublicUrl(path)
+      documentoUrl = urlData.publicUrl
+    }
+
     if (modoActual) {
       const { error: closeError } = await supabase
         .from("persona_modos")
@@ -340,6 +359,7 @@ export function EditPersonaForm({
       persona_id: persona.id,
       modo: nuevoModo,
       fecha_inicio: today,
+      documento_url: documentoUrl,
     })
 
     if (insertError) {
@@ -347,6 +367,7 @@ export function EditPersonaForm({
     } else {
       setNuevoModo("")
       setMotivoFin("")
+      setModoAdjunto(null)
       router.refresh()
     }
     setModoLoading(false)
@@ -377,10 +398,28 @@ export function EditPersonaForm({
     setAsigLoading(true)
 
     const supabase = createClient()
+
+    let documentoUrl: string | null = null
+    if (asigAdjunto) {
+      const ext = asigAdjunto.name.split(".").pop()
+      const path = `${persona.id}/${Date.now()}.${ext}`
+      const { error: uploadError } = await supabase.storage
+        .from("asignaciones-adjuntos")
+        .upload(path, asigAdjunto)
+      if (uploadError) {
+        setAsigError("Error al subir el adjunto: " + uploadError.message)
+        setAsigLoading(false)
+        return
+      }
+      const { data: urlData } = supabase.storage.from("asignaciones-adjuntos").getPublicUrl(path)
+      documentoUrl = urlData.publicUrl
+    }
+
     const insertData: Record<string, unknown> = {
       persona_id: persona.id,
       ministerio_id: newAsig.ministerio_id,
       fecha_inicio: newAsig.fecha_inicio,
+      documento_url: documentoUrl,
     }
     if (newAsig.organizacion_id) insertData.organizacion_id = newAsig.organizacion_id
 
@@ -390,6 +429,7 @@ export function EditPersonaForm({
       setAsigError(error.message)
     } else {
       setNewAsig({ ministerio_id: "", organizacion_id: "", fecha_inicio: today })
+      setAsigAdjunto(null)
       router.refresh()
     }
     setAsigLoading(false)
@@ -849,6 +889,47 @@ export function EditPersonaForm({
                 </div>
               )}
             </div>
+            {nuevoModo && (
+              <div className="space-y-2">
+                <Label>Adjunto (opcional)</Label>
+                {modoAdjunto ? (
+                  <div className="flex items-center gap-3 rounded-md border border-border bg-muted px-3 py-2.5 text-sm">
+                    <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate font-medium text-foreground">{modoAdjunto.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {(modoAdjunto.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setModoAdjunto(null)}
+                      disabled={modoLoading}
+                      className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label
+                    htmlFor="modo_adjunto_edit"
+                    className="flex cursor-pointer flex-col items-center gap-2 rounded-md border border-dashed border-border bg-muted/40 px-4 py-5 text-sm text-muted-foreground transition-colors hover:border-primary hover:bg-muted/70 hover:text-foreground"
+                  >
+                    <Paperclip className="h-5 w-5" />
+                    <span>Hacé clic para seleccionar</span>
+                    <span className="text-xs">PDF, Word o imagen — máx. 10 MB</span>
+                    <input
+                      id="modo_adjunto_edit"
+                      type="file"
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                      className="sr-only"
+                      disabled={modoLoading}
+                      onChange={(e) => setModoAdjunto(e.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                )}
+              </div>
+            )}
             <Button type="submit" variant="outline" disabled={modoLoading || !nuevoModo}>
               {modoLoading ? (
                 <>
@@ -872,6 +953,7 @@ export function EditPersonaForm({
                       <th className="px-4 py-2 text-left font-medium text-muted-foreground">Desde</th>
                       <th className="px-4 py-2 text-left font-medium text-muted-foreground">Hasta</th>
                       <th className="px-4 py-2 text-left font-medium text-muted-foreground">Motivo</th>
+                      <th className="px-4 py-2 text-left font-medium text-muted-foreground">Adjunto</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -881,6 +963,21 @@ export function EditPersonaForm({
                         <td className="px-4 py-2 text-muted-foreground">{m.fecha_inicio}</td>
                         <td className="px-4 py-2 text-muted-foreground">{m.fecha_fin ?? "—"}</td>
                         <td className="px-4 py-2 text-muted-foreground">{m.motivo_fin ?? "—"}</td>
+                        <td className="px-4 py-2">
+                          {m.documento_url ? (
+                            <a
+                              href={m.documento_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-primary text-xs hover:underline"
+                            >
+                              <Paperclip className="h-3 w-3" />
+                              Ver
+                            </a>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -989,6 +1086,45 @@ export function EditPersonaForm({
                 onChange={e => setNewAsig(prev => ({ ...prev, fecha_inicio: e.target.value }))}
                 disabled={asigLoading}
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Adjunto (opcional)</Label>
+              {asigAdjunto ? (
+                <div className="flex items-center gap-3 rounded-md border border-border bg-muted px-3 py-2.5 text-sm">
+                  <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate font-medium text-foreground">{asigAdjunto.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {(asigAdjunto.size / 1024 / 1024).toFixed(2)} MB
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAsigAdjunto(null)}
+                    disabled={asigLoading}
+                    className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <label
+                  htmlFor="asig_adjunto"
+                  className="flex cursor-pointer flex-col items-center gap-2 rounded-md border border-dashed border-border bg-muted/40 px-4 py-5 text-sm text-muted-foreground transition-colors hover:border-primary hover:bg-muted/70 hover:text-foreground"
+                >
+                  <Paperclip className="h-5 w-5" />
+                  <span>Hacé clic para seleccionar</span>
+                  <span className="text-xs">PDF, Word o imagen — máx. 10 MB</span>
+                  <input
+                    id="asig_adjunto"
+                    type="file"
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    className="sr-only"
+                    disabled={asigLoading}
+                    onChange={(e) => setAsigAdjunto(e.target.files?.[0] ?? null)}
+                  />
+                </label>
+              )}
             </div>
             <Button type="submit" variant="outline" disabled={asigLoading || !newAsig.ministerio_id}>
               {asigLoading ? (

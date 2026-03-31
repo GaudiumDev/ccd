@@ -33,7 +33,7 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
       .maybeSingle(),
     supabase
       .from("persona_modos")
-      .select("id, modo, fecha_inicio, fecha_fin, motivo_fin")
+      .select("id, modo, fecha_inicio, fecha_fin, motivo_fin, documento_url")
       .eq("persona_id", id)
       .order("fecha_inicio", { ascending: false }),
     supabase
