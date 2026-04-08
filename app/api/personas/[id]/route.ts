@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getUserContext, canPerform } from '@/lib/auth/context'
+import { translateSupabaseError } from '@/lib/errors/supabase'
 
 export async function PATCH(
   request: Request,
@@ -70,6 +71,9 @@ export async function PATCH(
   if (body.estado_vida !== undefined) updateData.estado_vida = body.estado_vida || null
   if (body.intercesor_dies_natalis !== undefined) updateData.intercesor_dies_natalis = body.intercesor_dies_natalis || null
   if (body.nombre_usuario !== undefined) updateData.nombre_usuario = body.nombre_usuario ? body.nombre_usuario.toLowerCase().trim() : null
+  if (body.nivel_estudios !== undefined) updateData.nivel_estudios = body.nivel_estudios || null
+  if (body.anio_ingreso !== undefined) updateData.anio_ingreso = body.anio_ingreso || null
+  if (body.acompanante_id !== undefined) updateData.acompanante_id = body.acompanante_id || null
 
   const { error } = await supabase
     .from('personas')
@@ -77,7 +81,7 @@ export async function PATCH(
     .eq('id', id)
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 })
+    return NextResponse.json({ error: translateSupabaseError(error.message) }, { status: 400 })
   }
 
   return NextResponse.json({ ok: true })

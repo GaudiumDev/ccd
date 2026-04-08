@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getUserContext, canPerform } from '@/lib/auth/context'
+import { translateSupabaseError } from '@/lib/errors/supabase'
 
 export async function POST(request: Request) {
   const ctx = await getUserContext()
@@ -46,6 +47,9 @@ export async function POST(request: Request) {
   if (body.referente_comunidad !== undefined) insertData.referente_comunidad = body.referente_comunidad
   if (body.cecista_dedicado !== undefined) insertData.cecista_dedicado = body.cecista_dedicado
   if (body.intercesor_dies_natalis) insertData.intercesor_dies_natalis = body.intercesor_dies_natalis
+  if (body.nivel_estudios) insertData.nivel_estudios = body.nivel_estudios
+  if (body.anio_ingreso) insertData.anio_ingreso = body.anio_ingreso
+  if (body.acompanante_id) insertData.acompanante_id = body.acompanante_id
 
   const { data: persona, error: personaError } = await supabase
     .from('personas')
@@ -54,7 +58,7 @@ export async function POST(request: Request) {
     .single()
 
   if (personaError) {
-    return NextResponse.json({ error: personaError.message }, { status: 400 })
+    return NextResponse.json({ error: translateSupabaseError(personaError.message) }, { status: 400 })
   }
 
   if (body.modo_inicial && persona) {
@@ -68,7 +72,7 @@ export async function POST(request: Request) {
         documento_url: body.documento_url_modo ?? null,
       })
     if (modoError) {
-      return NextResponse.json({ error: modoError.message }, { status: 400 })
+      return NextResponse.json({ error: translateSupabaseError(modoError.message) }, { status: 400 })
     }
   }
 
@@ -79,7 +83,7 @@ export async function POST(request: Request) {
     }))
     const { error: catError } = await supabase.from('persona_categoria_no_cecista').insert(rows)
     if (catError) {
-      return NextResponse.json({ error: catError.message }, { status: 400 })
+      return NextResponse.json({ error: translateSupabaseError(catError.message) }, { status: 400 })
     }
   }
 

@@ -21,6 +21,14 @@ const estadoVidaLabel: Record<string, string> = {
   consagrado: "Consagrado/a",
 }
 
+const nivelEstudiosLabel: Record<string, string> = {
+  primario: "Primario",
+  secundario: "Secundario",
+  terciario: "Terciario",
+  universitario: "Universitario",
+  posgrado_doctorado: "Posgrado / Doctorado",
+}
+
 const categoriaNoCecistaLabel: Record<string, string> = {
   voluntario: "Voluntario",
   convivente: "Convivente",
@@ -51,11 +59,12 @@ export default async function PersonaDetailPage({
     { data: asignaciones },
     { data: categoriasNoCecista },
     { data: personaOrgs },
+    { data: acompanoA },
   ] = await Promise.all([
     supabase
       .from("personas")
       .select(
-        "id, nombre, apellido, email, email_ccd, telefono, tipo_documento, documento, fecha_nacimiento, direccion, direccion_nro, localidad, codigo_postal, provincia, pais, notas, estado, created_at, acepta_comunicaciones, estado_eclesial, estado_vida, diocesis, categoria_persona, parroquia, socio_asociacion, referente_comunidad, cecista_dedicado, intercesor_dies_natalis, nombre_usuario",
+        "id, nombre, apellido, email, email_ccd, telefono, tipo_documento, documento, fecha_nacimiento, direccion, direccion_nro, localidad, codigo_postal, provincia, pais, notas, estado, created_at, acepta_comunicaciones, estado_eclesial, estado_vida, diocesis, categoria_persona, parroquia, socio_asociacion, referente_comunidad, cecista_dedicado, intercesor_dies_natalis, nombre_usuario, nivel_estudios, anio_ingreso, acompanante_id, acompanante:personas!acompanante_id(id, nombre, apellido)",
       )
       .eq("id", id)
       .single(),
@@ -80,6 +89,11 @@ export default async function PersonaDetailPage({
       .select("tipo_relacion, organizacion:organizaciones!organizacion_id(nombre)")
       .eq("persona_id", id)
       .is("fecha_fin", null),
+    supabase
+      .from("personas")
+      .select("id, nombre, apellido")
+      .eq("acompanante_id", id)
+      .is("fecha_baja", null),
   ])
 
   if (error || !persona) notFound()
@@ -175,6 +189,44 @@ export default async function PersonaDetailPage({
                 label="Estado de vida"
                 value={estadoVidaLabel[persona.estado_vida] ?? persona.estado_vida}
               />
+            )}
+            {persona.nivel_estudios && (
+              <Field
+                label="Nivel de estudios"
+                value={nivelEstudiosLabel[persona.nivel_estudios] ?? persona.nivel_estudios}
+              />
+            )}
+            {persona.anio_ingreso && (
+              <Field label="Año de ingreso" value={String(persona.anio_ingreso)} />
+            )}
+            {(persona as any).acompanante && (
+              <div>
+                <dt className="text-muted-foreground text-sm">Acompañante</dt>
+                <dd className="text-foreground text-sm">
+                  <Link
+                    href={`/personas/${(persona as any).acompanante.id}`}
+                    className="text-primary hover:underline"
+                  >
+                    {(persona as any).acompanante.apellido}, {(persona as any).acompanante.nombre}
+                  </Link>
+                </dd>
+              </div>
+            )}
+            {(acompanoA ?? []).length > 0 && (
+              <div>
+                <dt className="text-muted-foreground text-sm">Acompañó a</dt>
+                <dd className="text-foreground text-sm flex flex-col gap-0.5">
+                  {(acompanoA ?? []).map((p) => (
+                    <Link
+                      key={p.id}
+                      href={`/personas/${p.id}`}
+                      className="text-primary hover:underline"
+                    >
+                      {p.apellido}, {p.nombre}
+                    </Link>
+                  ))}
+                </dd>
+              </div>
             )}
             <Field label="Fecha de registro" value={formatDate(persona.created_at)} />
             <Field

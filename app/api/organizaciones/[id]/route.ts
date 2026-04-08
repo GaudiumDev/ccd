@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getUserContext, canPerform } from '@/lib/auth/context'
+import { translateSupabaseError } from '@/lib/errors/supabase'
 
 export async function PATCH(
   request: Request,
@@ -58,7 +59,7 @@ export async function PATCH(
     .eq('id', id)
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 })
+    return NextResponse.json({ error: translateSupabaseError(error.message) }, { status: 400 })
   }
 
   return NextResponse.json({ ok: true })

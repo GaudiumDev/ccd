@@ -2,6 +2,7 @@ import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getUserContext, canPerform } from '@/lib/auth/context'
+import { translateSupabaseError } from '@/lib/errors/supabase'
 
 export async function PATCH(
   request: Request,
@@ -49,7 +50,7 @@ export async function PATCH(
     if (personaError.code === '23505') {
       return NextResponse.json({ error: 'El nombre de usuario ya está en uso. Elegí otro.' }, { status: 409 })
     }
-    return NextResponse.json({ error: personaError.message }, { status: 400 })
+    return NextResponse.json({ error: translateSupabaseError(personaError.message) }, { status: 400 })
   }
 
   // Find the Supabase auth user via perfiles_usuario
@@ -72,7 +73,7 @@ export async function PATCH(
         await supabase.from('personas').update({ nombre_usuario: null }).eq('id', id)
         return NextResponse.json({ error: 'El nombre de usuario ya está en uso. Elegí otro.' }, { status: 409 })
       }
-      return NextResponse.json({ error: authError.message }, { status: 400 })
+      return NextResponse.json({ error: translateSupabaseError(authError.message) }, { status: 400 })
     }
   }
 

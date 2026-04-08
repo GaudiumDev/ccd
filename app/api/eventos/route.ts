@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getUserContext, canPerform } from '@/lib/auth/context'
+import { translateSupabaseError } from '@/lib/errors/supabase'
 
 export async function POST(request: Request) {
   const ctx = await getUserContext()
@@ -60,7 +61,7 @@ export async function POST(request: Request) {
     .single()
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 })
+    return NextResponse.json({ error: translateSupabaseError(error.message) }, { status: 400 })
   }
 
   return NextResponse.json({ id: data.id })

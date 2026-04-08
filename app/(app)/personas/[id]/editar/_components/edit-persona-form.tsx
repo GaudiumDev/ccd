@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/client"
+import { translateSupabaseError } from "@/lib/errors/supabase"
 import { LocationFields } from "@/components/location-fields"
 
 type Persona = {
@@ -39,6 +40,9 @@ type Persona = {
   cecista_dedicado: boolean | null
   intercesor_dies_natalis: string | null
   nombre_usuario: string | null
+  nivel_estudios: string | null
+  anio_ingreso: number | null
+  acompanante_id: string | null
 }
 
 type ModoActual = { id: string; modo: string; fecha_inicio: string } | null
@@ -71,6 +75,15 @@ type HistorialAsignacion = {
 
 type Ministerio = { id: string; nombre: string; tipo: string; nivel: string }
 type Organizacion = { id: string; nombre: string; tipo: string }
+type PersonaOpcion = { id: string; nombre: string; apellido: string }
+
+const NIVELES_ESTUDIOS = [
+  { value: "primario", label: "Primario" },
+  { value: "secundario", label: "Secundario" },
+  { value: "terciario", label: "Terciario" },
+  { value: "universitario", label: "Universitario" },
+  { value: "posgrado_doctorado", label: "Posgrado / Doctorado" },
+]
 
 interface Props {
   persona: Persona
@@ -85,6 +98,7 @@ interface Props {
   fraternidadActualId: string | null
   personaOrgConfraternidadId: string | null
   personaOrgFraternidadId: string | null
+  todasPersonas: PersonaOpcion[]
 }
 
 const modoLabels: Record<string, string> = {
@@ -123,6 +137,7 @@ export function EditPersonaForm({
   fraternidadActualId,
   personaOrgConfraternidadId,
   personaOrgFraternidadId,
+  todasPersonas,
 }: Props) {
   const router = useRouter()
   const today = new Date().toISOString().split("T")[0]
@@ -155,6 +170,9 @@ export function EditPersonaForm({
     cecista_dedicado: persona.cecista_dedicado ?? false,
     intercesor_dies_natalis: persona.intercesor_dies_natalis ?? "",
     nombre_usuario: persona.nombre_usuario ?? "",
+    nivel_estudios: persona.nivel_estudios ?? "",
+    anio_ingreso: persona.anio_ingreso?.toString() ?? "",
+    acompanante_id: persona.acompanante_id ?? "",
   })
   const [basicLoading, setBasicLoading] = useState(false)
   const [basicError, setBasicError] = useState<string | null>(null)
@@ -224,7 +242,7 @@ export function EditPersonaForm({
           tipo_relacion: "confraternidad",
           fecha_inicio: today,
         }).select("id").single()
-        if (error) { setOrgError(error.message); setOrgLoading(false); return }
+        if (error) { setOrgError(translateSupabaseError(error.message)); setOrgLoading(false); return }
         setCurrentOrgConfraternidadId(newRec?.id ?? null)
       } else {
         setCurrentOrgConfraternidadId(null)
@@ -243,7 +261,7 @@ export function EditPersonaForm({
           tipo_relacion: "fraternidad",
           fecha_inicio: today,
         }).select("id").single()
-        if (error) { setOrgError(error.message); setOrgLoading(false); return }
+        if (error) { setOrgError(translateSupabaseError(error.message)); setOrgLoading(false); return }
         setCurrentOrgFraternidadId(newRec?.id ?? null)
       } else {
         setCurrentOrgFraternidadId(null)
@@ -349,7 +367,7 @@ export function EditPersonaForm({
         .eq("id", modoActual.id)
 
       if (closeError) {
-        setModoError(closeError.message)
+        setModoError(translateSupabaseError(closeError.message))
         setModoLoading(false)
         return
       }
@@ -363,7 +381,7 @@ export function EditPersonaForm({
     })
 
     if (insertError) {
-      setModoError(insertError.message)
+      setModoError(translateSupabaseError(insertError.message))
     } else {
       setNuevoModo("")
       setMotivoFin("")
@@ -384,7 +402,7 @@ export function EditPersonaForm({
       .eq("id", asigId)
 
     if (error) {
-      setAsigError(error.message)
+      setAsigError(translateSupabaseError(error.message))
     } else {
       router.refresh()
     }
@@ -426,7 +444,7 @@ export function EditPersonaForm({
     const { error } = await supabase.from("asignaciones_ministerio").insert(insertData)
 
     if (error) {
-      setAsigError(error.message)
+      setAsigError(translateSupabaseError(error.message))
     } else {
       setNewAsig({ ministerio_id: "", organizacion_id: "", fecha_inicio: today })
       setAsigAdjunto(null)
@@ -620,6 +638,58 @@ export function EditPersonaForm({
                 <option value="viudo">Viudo/a</option>
                 <option value="separado">Separado/a</option>
                 <option value="consagrado">Consagrado/a</option>
+              </select>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="nivel_estudios">Máx. Nivel de Estudios</Label>
+                <select
+                  id="nivel_estudios"
+                  name="nivel_estudios"
+                  value={basicData.nivel_estudios}
+                  onChange={handleBasicChange}
+                  disabled={basicLoading}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
+                >
+                  <option value="">Sin especificar</option>
+                  {NIVELES_ESTUDIOS.map((n) => (
+                    <option key={n.value} value={n.value}>{n.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="anio_ingreso">Año de Ingreso</Label>
+                <Input
+                  id="anio_ingreso"
+                  name="anio_ingreso"
+                  type="number"
+                  min="1950"
+                  max={new Date().getFullYear()}
+                  placeholder="Ej: 2010"
+                  value={basicData.anio_ingreso}
+                  onChange={handleBasicChange}
+                  disabled={basicLoading}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="acompanante_id">Acompañante</Label>
+              <select
+                id="acompanante_id"
+                name="acompanante_id"
+                value={basicData.acompanante_id}
+                onChange={handleBasicChange}
+                disabled={basicLoading}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
+              >
+                <option value="">Sin acompañante</option>
+                {todasPersonas.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.apellido}, {p.nombre}
+                  </option>
+                ))}
               </select>
             </div>
 

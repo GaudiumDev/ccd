@@ -37,6 +37,20 @@ interface Evento {
   tipo: string
 }
 
+interface PersonaOpcion {
+  id: string
+  nombre: string
+  apellido: string
+}
+
+const NIVELES_ESTUDIOS = [
+  { value: "primario", label: "Primario" },
+  { value: "secundario", label: "Secundario" },
+  { value: "terciario", label: "Terciario" },
+  { value: "universitario", label: "Universitario" },
+  { value: "posgrado_doctorado", label: "Posgrado / Doctorado" },
+]
+
 const NO_CECISTA_CATEGORIAS = [
   { value: "voluntario", label: "Voluntario" },
   { value: "convivente", label: "Convivente" },
@@ -53,6 +67,7 @@ export default function NewPersonaPage() {
   const [organizaciones, setOrganizaciones] = useState<Organizacion[]>([])
   const [ministerios, setMinisterios] = useState<Ministerio[]>([])
   const [eventos, setEventos] = useState<Evento[]>([])
+  const [personas, setPersonas] = useState<PersonaOpcion[]>([])
   const [crearAcceso, setCrearAcceso] = useState(false)
   const [incluirAsignacion, setIncluirAsignacion] = useState(false)
   const [asignacion, setAsignacion] = useState({
@@ -92,6 +107,9 @@ export default function NewPersonaPage() {
     referente_comunidad: false,
     cecista_dedicado: false,
     intercesor_dies_natalis: "",
+    nivel_estudios: "",
+    anio_ingreso: "",
+    acompanante_id: "",
   })
 
   const [categoriasNoCecista, setCategoriasNoCecista] = useState<string[]>([])
@@ -103,6 +121,7 @@ export default function NewPersonaPage() {
         { data: orgsData },
         { data: ministeriosData },
         { data: eventosData },
+        { data: personasData },
       ] = await Promise.all([
         supabase
           .from("organizaciones")
@@ -115,10 +134,16 @@ export default function NewPersonaPage() {
           .eq("activo", true)
           .order("nombre"),
         supabase.from("eventos").select("id, nombre, tipo").order("nombre"),
+        supabase
+          .from("personas")
+          .select("id, nombre, apellido")
+          .is("fecha_baja", null)
+          .order("apellido"),
       ])
       if (orgsData) setOrganizaciones(orgsData)
       if (ministeriosData) setMinisterios(ministeriosData)
       if (eventosData) setEventos(eventosData)
+      if (personasData) setPersonas(personasData)
     }
     load()
   }, [])
@@ -489,6 +514,55 @@ export default function NewPersonaPage() {
                 <option value="viudo">Viudo/a</option>
                 <option value="separado">Separado/a</option>
                 <option value="consagrado">Consagrado/a</option>
+              </select>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="nivel_estudios">Máx. Nivel de Estudios</Label>
+                <select
+                  id="nivel_estudios"
+                  name="nivel_estudios"
+                  value={formData.nivel_estudios}
+                  onChange={handleChange}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
+                >
+                  <option value="">Sin especificar</option>
+                  {NIVELES_ESTUDIOS.map((n) => (
+                    <option key={n.value} value={n.value}>{n.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="anio_ingreso">Año de Ingreso</Label>
+                <Input
+                  id="anio_ingreso"
+                  name="anio_ingreso"
+                  type="number"
+                  min="1950"
+                  max={new Date().getFullYear()}
+                  placeholder="Ej: 2010"
+                  value={formData.anio_ingreso}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="acompanante_id">Acompañante</Label>
+              <select
+                id="acompanante_id"
+                name="acompanante_id"
+                value={formData.acompanante_id}
+                onChange={handleChange}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
+              >
+                <option value="">Sin acompañante</option>
+                {personas.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.apellido}, {p.nombre}
+                  </option>
+                ))}
               </select>
             </div>
           </CardContent>

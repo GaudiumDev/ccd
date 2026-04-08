@@ -23,6 +23,7 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
     { data: organizaciones },
     { data: categoriasNoCecista },
     { data: personaOrgs },
+    { data: todasPersonas },
   ] = await Promise.all([
     supabase.from("personas").select("*").eq("id", id).single(),
     supabase
@@ -57,6 +58,12 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
       .select("id, tipo_relacion, organizacion_id, organizacion:organizaciones!organizacion_id(nombre)")
       .eq("persona_id", id)
       .is("fecha_fin", null),
+    supabase
+      .from("personas")
+      .select("id, nombre, apellido")
+      .is("fecha_baja", null)
+      .neq("id", id)
+      .order("apellido"),
   ])
 
   if (!persona) notFound()
@@ -78,6 +85,7 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
       fraternidadActualId={fraternidadOrg?.organizacion_id ?? null}
       personaOrgConfraternidadId={confraternidadOrg?.id ?? null}
       personaOrgFraternidadId={fraternidadOrg?.id ?? null}
+      todasPersonas={todasPersonas ?? []}
     />
   )
 }
