@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     pais_evento: body.pais_evento || 'Argentina',
     notas: body.notas || null,
     solicitado_por: ctx.persona_id ?? null,
-    fecha_solicitud: estado === 'solicitud' ? today : null,
+    fecha_solicitud: estado === 'solicitud' ? (body.fecha_solicitud || today) : null,
   }
 
   const { data, error } = await supabase

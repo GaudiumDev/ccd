@@ -9,7 +9,6 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft, CheckCircle2, XCircle } from 'lucide-react'
 import { LocationFields } from '@/components/location-fields'
-import { formatDateAR } from '@/lib/utils'
 import { Combobox } from '@/components/ui/combobox'
 
 type OrgOption = { id: string; nombre: string; parent_id?: string | null }
@@ -27,17 +26,19 @@ type Props = {
   tiposEventos: TipoEvento[]
   personaNombre: string
   isAdmin?: boolean
+  canEditConfra?: boolean
 }
 
 const today = new Date().toISOString().split('T')[0]
 
-export default function NuevoEventoForm({ fraternidades, confraternidades, tiposEventos, personaNombre, isAdmin = false }: Props) {
+export default function NuevoEventoForm({ fraternidades, confraternidades, tiposEventos, personaNombre, isAdmin = false, canEditConfra = false }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   const [fraternidadId, setFraternidadId] = useState(fraternidades[0]?.id ?? '')
   const [tipoEventoId, setTipoEventoId] = useState(tiposEventos[0]?.id ?? '')
+  const [confraternidadOverride, setConfraternidadOverride] = useState('')
 
   const tipoSeleccionado = tiposEventos.find(t => t.id === tipoEventoId) ?? null
 
@@ -47,6 +48,7 @@ export default function NuevoEventoForm({ fraternidades, confraternidades, tipos
     es_apv: false,
     fecha_inicio: '',
     fecha_fin: '',
+    fecha_solicitud: today,
     coordinadores_propuestos: '',
     asesor_propuesto: '',
     asesor_voluntario: false,
@@ -58,9 +60,10 @@ export default function NuevoEventoForm({ fraternidades, confraternidades, tipos
     notas: '',
   })
 
-  // Derive confraternidad from selected fraternidad
+  // Derive confraternidad from selected fraternidad (overridable for users with discernimiento permission)
   const fraternidadSeleccionada = fraternidades.find(f => f.id === fraternidadId)
-  const confraternidadId = fraternidadSeleccionada?.parent_id ?? confraternidades[0]?.id ?? ''
+  const derivedConfraternidadId = fraternidadSeleccionada?.parent_id ?? confraternidades[0]?.id ?? ''
+  const confraternidadId = (canEditConfra && confraternidadOverride) ? confraternidadOverride : derivedConfraternidadId
   const confraternidadNombre = confraternidades.find(c => c.id === confraternidadId)?.nombre ?? '—'
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -84,6 +87,7 @@ export default function NuevoEventoForm({ fraternidades, confraternidades, tipos
         requiere_discernimiento_confra: tipoSeleccionado?.requiere_discernimiento_confra ?? false,
         requiere_discernimiento_eqt: tipoSeleccionado?.requiere_discernimiento_eqt ?? false,
         estado: 'solicitud',
+        fecha_solicitud: formData.fecha_solicitud || today,
       }
 
       const res = await fetch('/api/eventos', {
@@ -135,8 +139,15 @@ export default function NuevoEventoForm({ fraternidades, confraternidades, tipos
             {/* Fecha solicitud + Solicitado por */}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1">
-                <Label>Fecha Solicitud</Label>
-                <div className={readonlyClass}>{formatDateAR(today)}</div>
+                <Label htmlFor="fecha_solicitud">Fecha Solicitud</Label>
+                <input
+                  id="fecha_solicitud"
+                  type="date"
+                  name="fecha_solicitud"
+                  value={formData.fecha_solicitud}
+                  onChange={handleChange}
+                  className={fieldClass}
+                />
               </div>
               <div className="space-y-1">
                 <Label>Solicitado por</Label>
@@ -165,10 +176,24 @@ export default function NuevoEventoForm({ fraternidades, confraternidades, tipos
               )}
             </div>
 
-            {/* Confraternidad (derived, readonly) */}
+            {/* Confraternidad (derived; editable for users with discernimiento permission) */}
             <div className="space-y-1">
-              <Label>Confraternidad</Label>
-              <div className={readonlyClass}>{confraternidadNombre}</div>
+              <Label htmlFor="confraternidad_id">Confraternidad</Label>
+              {canEditConfra ? (
+                <select
+                  id="confraternidad_id"
+                  value={confraternidadId}
+                  onChange={e => setConfraternidadOverride(e.target.value)}
+                  className={fieldClass}
+                >
+                  <option value="">— Seleccionar confraternidad —</option>
+                  {confraternidades.map(c => (
+                    <option key={c.id} value={c.id}>{c.nombre}</option>
+                  ))}
+                </select>
+              ) : (
+                <div className={readonlyClass}>{confraternidadNombre}</div>
+              )}
             </div>
 
             {/* Tipo de evento */}

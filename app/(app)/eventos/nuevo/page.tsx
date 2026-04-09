@@ -61,6 +61,7 @@ export default async function NuevoEventoPage() {
           tiposEventos={tiposEventos ?? []}
           personaNombre={personaNombre}
           isAdmin={false}
+          canEditConfra={false}
         />
       )
     }
@@ -91,6 +92,8 @@ export default async function NuevoEventoPage() {
     }
   }
 
+  const canEditConfra = canPerform(ctx, 'event.approve_confra') || canPerform(ctx, 'event.approve_eqt')
+
   return (
     <NuevoEventoForm
       fraternidades={fraternidades}
@@ -98,6 +101,7 @@ export default async function NuevoEventoPage() {
       tiposEventos={tiposEventos ?? []}
       personaNombre={personaNombre}
       isAdmin={ctx.is_admin}
+      canEditConfra={canEditConfra}
     />
   )
 }
