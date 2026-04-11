@@ -359,7 +359,7 @@ export default async function DashboardPage() {
         <Card className="border-border bg-card hover:border-primary/50 transition-colors">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-foreground">
-              {primaryOrgId ? "Cecistas en mi org" : "Personas"}
+              {primaryOrgId ? "Cecistas" : "Personas"}
             </CardTitle>
             <Users className="h-4 w-4 text-primary" />
           </CardHeader>
@@ -379,7 +379,7 @@ export default async function DashboardPage() {
           <Card className="border-border bg-card hover:border-primary/50 transition-colors">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-foreground">
-                Organizaciones
+                Confraternidades & Fraternidades
               </CardTitle>
               <Building2 className="h-4 w-4 text-primary" />
             </CardHeader>
@@ -464,6 +464,58 @@ export default async function DashboardPage() {
           </Card>
         )}
       </div>
+
+      {/* Acciones rápidas */}
+      {(canCreatePerson || canCreateOrg || canCreateEvent) && (
+        <Card className="border-border bg-card">
+          <CardHeader>
+            <CardTitle className="text-foreground">Acciones Rápidas</CardTitle>
+            <CardDescription>
+              Accede rápidamente a las funciones principales
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-3">
+              {canCreatePerson && (
+                <Link href="/personas/nueva">
+                  <Button variant="outline" className="gap-2 bg-transparent">
+                    <Users className="h-4 w-4 text-blue-500" />
+                    Nueva Persona
+                  </Button>
+                </Link>
+              )}
+              {canCreateOrg && (
+                <Link href="/organizaciones/nueva">
+                  <Button variant="outline" className="gap-2 bg-transparent">
+                    <Building2 className="h-4 w-4 text-green-500" />
+                    Nueva Organización
+                  </Button>
+                </Link>
+              )}
+              {canCreateEvent && (
+                <Link href="/eventos/nuevo">
+                  <Button variant="outline" className="gap-2 bg-transparent">
+                    <Calendar className="h-4 w-4 text-purple-500" />
+                    Solicitar Evento
+                  </Button>
+                </Link>
+              )}
+              <Link href="/pagos/nuevo">
+                <Button variant="outline" className="gap-2 bg-transparent">
+                  <DollarSign className="h-4 w-4 text-amber-500" />
+                  Registrar Pago
+                </Button>
+              </Link>
+              <Link href="/documentos/nuevo">
+                <Button variant="outline" className="gap-2 bg-transparent">
+                  <FileText className="h-4 w-4 text-red-500" />
+                  Agregar Documento
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Pendientes de aprobación */}
       {canApprove && pendientes && pendientes.length > 0 && (
@@ -571,58 +623,6 @@ export default async function DashboardPage() {
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </Link>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Acciones rápidas */}
-      {(canCreatePerson || canCreateOrg || canCreateEvent) && (
-        <Card className="border-border bg-card">
-          <CardHeader>
-            <CardTitle className="text-foreground">Acciones Rápidas</CardTitle>
-            <CardDescription>
-              Accede rápidamente a las funciones principales
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-3">
-              {canCreatePerson && (
-                <Link href="/personas/nueva">
-                  <Button variant="outline" className="gap-2 bg-transparent">
-                    <Users className="h-4 w-4 text-blue-500" />
-                    Nueva Persona
-                  </Button>
-                </Link>
-              )}
-              {canCreateOrg && (
-                <Link href="/organizaciones/nueva">
-                  <Button variant="outline" className="gap-2 bg-transparent">
-                    <Building2 className="h-4 w-4 text-green-500" />
-                    Nueva Organización
-                  </Button>
-                </Link>
-              )}
-              {canCreateEvent && (
-                <Link href="/eventos/nuevo">
-                  <Button variant="outline" className="gap-2 bg-transparent">
-                    <Calendar className="h-4 w-4 text-purple-500" />
-                    Solicitar Evento
-                  </Button>
-                </Link>
-              )}
-              <Link href="/pagos/nuevo">
-                <Button variant="outline" className="gap-2 bg-transparent">
-                  <DollarSign className="h-4 w-4 text-amber-500" />
-                  Registrar Pago
-                </Button>
-              </Link>
-              <Link href="/documentos/nuevo">
-                <Button variant="outline" className="gap-2 bg-transparent">
-                  <FileText className="h-4 w-4 text-red-500" />
-                  Agregar Documento
-                </Button>
-              </Link>
-            </div>
           </CardContent>
         </Card>
       )}
@@ -877,7 +877,9 @@ export default async function DashboardPage() {
                       {evento.nombre}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {evento.fecha_inicio ? formatDateLong(evento.fecha_inicio) : "Fecha por definir"}
+                      {evento.fecha_inicio
+                        ? formatDateLong(evento.fecha_inicio)
+                        : "Fecha por definir"}
                       {evento.organizacion?.nombre
                         ? ` · ${evento.organizacion.nombre}`
                         : ""}
