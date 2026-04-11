@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic"
 
 import Link from "next/link"
 import { redirect } from "next/navigation"
-import { UserCheck, Plus } from "lucide-react"
+import { UserCheck, Plus, Pencil } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -236,17 +236,23 @@ export default async function AsignacionesPage({
                           {a.fecha_inicio ?? "—"}
                         </td>
                         <td className="py-3 px-4 text-center">
-                          <Link
-                            href={`/ministerios/asignaciones/${a.id}/revocar`}
-                          >
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            >
-                              Revocar
-                            </Button>
-                          </Link>
+                          <div className="flex items-center justify-center gap-1">
+                            <Link href={`/ministerios/asignaciones/${a.id}/editar`}>
+                              <Button size="sm" variant="ghost" className="gap-1">
+                                <Pencil className="h-3 w-3" />
+                                Editar
+                              </Button>
+                            </Link>
+                            <Link href={`/ministerios/asignaciones/${a.id}/revocar`}>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              >
+                                Revocar
+                              </Button>
+                            </Link>
+                          </div>
                         </td>
                       </tr>
                     )
