@@ -17,6 +17,7 @@ export default async function AppLayout({
     canCreateEvent:        canPerform(ctx, 'event.create'),
     canViewRoles:          canPerform(ctx, 'roles.view') || canPerform(ctx, 'roles.assign'),
     canAssignRoles:        canPerform(ctx, 'roles.assign'),
+    canViewPublicados:     canPerform(ctx, 'view.eventos_publicados'),
     isAdmin:               ctx.is_admin,
   }
 

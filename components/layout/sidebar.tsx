@@ -23,6 +23,7 @@ import {
   Hotel,
   Tag,
   Settings,
+  Globe,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
@@ -33,6 +34,7 @@ export interface SidebarPermissions {
   canCreateEvent: boolean
   canViewRoles: boolean
   canAssignRoles: boolean
+  canViewPublicados: boolean
   isAdmin: boolean
 }
 
@@ -150,6 +152,15 @@ function buildNavItems(p: SidebarPermissions): NavItem[] {
                 icon: <PlusCircle className="h-4 w-4" />,
                 label: "Solicitar Evento",
                 href: "/eventos/nuevo",
+              },
+            ]
+          : []),
+        ...(p.canViewPublicados
+          ? [
+              {
+                icon: <Globe className="h-4 w-4" />,
+                label: "Eventos Publicados",
+                href: "/eventos/publicados",
               },
             ]
           : []),

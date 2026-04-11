@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft, Edit2, Calendar, MapPin, Users } from 'lucide-react'
 import DiscernimientoPanel from './_components/approval-panel'
+import { PublicarButton } from './_components/publicar-button'
 import { formatDateAR } from '@/lib/utils'
 
 const estadoClases: Record<string, string> = {
@@ -68,6 +69,7 @@ export default async function EventoDetailPage({
       ciudad, codigo_postal, diocesis, provincia_evento, pais_evento,
       notas_discernimiento,
       fecha_solicitud, fecha_aprobacion, fecha_rechazo, motivo_rechazo,
+      fecha_publicacion,
       organizacion_id,
       disc_confra_estado, disc_confra_fecha, disc_confra_notas,
       disc_eqt_estado, disc_eqt_fecha, disc_eqt_notas,
@@ -78,7 +80,8 @@ export default async function EventoDetailPage({
       casa_retiro:organizaciones!casa_retiro_id(id, nombre),
       solicitado_por_persona:personas!solicitado_por(nombre, apellido),
       aprobado_por_persona:personas!aprobado_por(nombre, apellido),
-      rechazado_por_persona:personas!rechazado_por(nombre, apellido)
+      rechazado_por_persona:personas!rechazado_por(nombre, apellido),
+      publicado_por_persona:personas!publicado_por(nombre, apellido)
     `)
     .eq('id', id)
     .single()
@@ -111,6 +114,7 @@ export default async function EventoDetailPage({
   const solicitadoPor = evento.solicitado_por_persona as { nombre: string; apellido: string } | null
   const aprobadoPor = evento.aprobado_por_persona as { nombre: string; apellido: string } | null
   const rechazadoPor = evento.rechazado_por_persona as { nombre: string; apellido: string } | null
+  const publicadoPor = evento.publicado_por_persona as { nombre: string; apellido: string } | null
   const discConfraPor = evento.disc_confra_por_persona as { nombre: string; apellido: string } | null
   const discEqtPor = evento.disc_eqt_por_persona as { nombre: string; apellido: string } | null
 
@@ -125,7 +129,7 @@ export default async function EventoDetailPage({
     label: string
     persona: string | null
     extra?: string
-    tipo: 'solicitud' | 'discernimiento' | 'aprobacion' | 'rechazo'
+    tipo: 'solicitud' | 'discernimiento' | 'aprobacion' | 'rechazo' | 'publicacion'
   }
 
   const timelineHistorial: EntradaHistorial[] = []
@@ -173,10 +177,21 @@ export default async function EventoDetailPage({
       tipo: 'rechazo',
     })
   }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if ((evento as any).fecha_publicacion) {
+    timelineHistorial.push({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      fecha: (evento as any).fecha_publicacion,
+      label: 'Publicado',
+      persona: publicadoPor ? `${publicadoPor.nombre} ${publicadoPor.apellido}` : null,
+      tipo: 'publicacion',
+    })
+  }
 
   timelineHistorial.sort((a, b) => a.fecha.localeCompare(b.fecha))
 
   const canEdit = ctx && canPerform(ctx, 'event.update', evento.organizacion_id ?? null)
+  const canPublish = ctx && evento.estado === 'aprobado' && canPerform(ctx, 'event.publish', evento.organizacion_id ?? null)
 
   // Build discernimiento niveles for the panel
   type NivelDiscernimiento = {
@@ -247,14 +262,17 @@ export default async function EventoDetailPage({
           <ArrowLeft className="h-4 w-4" />
           Volver a Eventos
         </Link>
-        {canEdit && (
-          <Link href={`/eventos/${id}/editar`}>
-            <Button variant="outline" size="sm" className="gap-2 bg-transparent">
-              <Edit2 className="h-4 w-4" />
-              Editar
-            </Button>
-          </Link>
-        )}
+        <div className="flex items-center gap-2">
+          {canPublish && <PublicarButton eventoId={id} />}
+          {canEdit && (
+            <Link href={`/eventos/${id}/editar`}>
+              <Button variant="outline" size="sm" className="gap-2 bg-transparent">
+                <Edit2 className="h-4 w-4" />
+                Editar
+              </Button>
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* Rejection notice — full width */}
@@ -406,7 +424,7 @@ export default async function EventoDetailPage({
               <div className="space-y-1.5">
                 {timelineHistorial.map((entrada, i) => (
                   <div key={i} className="text-xs text-muted-foreground border-l-2 border-border pl-2">
-                    <span className={`font-medium ${entrada.tipo === 'rechazo' ? 'text-destructive' : entrada.tipo === 'aprobacion' ? 'text-foreground' : 'text-foreground'}`}>
+                    <span className={`font-medium ${entrada.tipo === 'rechazo' ? 'text-destructive' : entrada.tipo === 'publicacion' ? 'text-green-700 dark:text-green-400' : 'text-foreground'}`}>
                       {entrada.label}
                     </span>
                     {entrada.persona && <span> · {entrada.persona}</span>}

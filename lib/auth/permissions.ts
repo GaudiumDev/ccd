@@ -17,9 +17,10 @@ export type Permission =
   | 'person.delete'       // soft delete — solo admin
   | 'person.merge'        // fusión de duplicados — solo admin
   | 'event.create'
-  | 'event.approve'       // cambiar estado a aprobado/publicado — solo admin
+  | 'event.approve'       // aprobar eventos directamente (sin discernimiento) — solo admin
   | 'event.approve_confra' // aprobar en discernimiento confra (tecnico_confraternidad, responsable_fraternidad)
   | 'event.approve_eqt'  // aprobar en discernimiento equipo timón (admin_general)
+  | 'event.publish'       // publicar eventos aprobados (aprobado → publicado)
   | 'event.update'
   | 'event.manage_participants'
   | 'organization.create' // solo admin
@@ -28,6 +29,10 @@ export type Permission =
   | 'roles.assign'        // asignar roles de sistema — solo admin
   | 'roles.view'          // ver sección ministerios y roles
   | 'view.all'
+  | 'view.personas'            // ver sección de personas
+  | 'view.organizaciones'      // ver sección de organizaciones
+  | 'view.eventos'             // ver sección de eventos
+  | 'view.eventos_publicados'  // ver página de eventos publicados (panel comunitario)
 
 // ─── Mapa de permisos por rol ─────────────────────────────────────────────────
 //
@@ -45,6 +50,7 @@ export const rolePermissions: Record<SystemRole, Permission[]> = {
     'event.approve',
     'event.approve_confra',
     'event.approve_eqt',
+    'event.publish',
     'event.update',
     'event.manage_participants',
     'organization.create',
@@ -52,6 +58,10 @@ export const rolePermissions: Record<SystemRole, Permission[]> = {
     'ministry.assign',
     'roles.assign',
     'view.all',
+    'view.personas',
+    'view.organizaciones',
+    'view.eventos',
+    'view.eventos_publicados',
   ],
 
   tecnico_confraternidad: [
@@ -65,6 +75,9 @@ export const rolePermissions: Record<SystemRole, Permission[]> = {
     'ministry.assign',
     'roles.view',
     'view.all',
+    'view.personas',
+    'view.organizaciones',
+    'view.eventos',
   ],
 
   responsable_fraternidad: [
@@ -76,6 +89,9 @@ export const rolePermissions: Record<SystemRole, Permission[]> = {
     'event.manage_participants',
     'roles.view',
     'view.all',
+    'view.personas',
+    'view.organizaciones',
+    'view.eventos',
   ],
 
   usuario_carga: [
@@ -85,10 +101,16 @@ export const rolePermissions: Record<SystemRole, Permission[]> = {
     'event.update',
     'event.manage_participants',
     'view.all',
+    'view.personas',
+    'view.organizaciones',
+    'view.eventos',
   ],
 
   solo_lectura: [
     'view.all',
+    'view.personas',
+    'view.organizaciones',
+    'view.eventos',
   ],
 }
 
