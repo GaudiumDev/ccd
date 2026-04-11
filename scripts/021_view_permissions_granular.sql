@@ -7,19 +7,19 @@ INSERT INTO public.permisos (clave, nombre, descripcion, categoria) VALUES
   ('view.personas',
    'Ver personas',
    'Permite ver el listado y detalle de personas en el sistema',
-   'sistema'),
+   'personas'),
   ('view.organizaciones',
    'Ver organizaciones',
    'Permite ver el listado y detalle de organizaciones',
-   'sistema'),
+   'organizaciones'),
   ('view.eventos',
    'Ver eventos',
    'Permite ver el listado y detalle de eventos',
-   'sistema'),
+   'eventos'),
   ('view.eventos_publicados',
    'Ver eventos publicados',
    'Permite ver la página de eventos publicados (panel comunitario)',
-   'sistema')
+   'eventos')
 ON CONFLICT (clave) DO NOTHING;
 
 -- view.personas, view.organizaciones, view.eventos → mismos roles que tienen view.all
