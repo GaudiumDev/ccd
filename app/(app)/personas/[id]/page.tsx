@@ -158,47 +158,33 @@ export default async function PersonaDetailPage({
             <Field label="Fecha de nacimiento" value={formatDate(persona.fecha_nacimiento)} />
             <Field label="Mail Personal" value={persona.email} />
             <Field label="Mail CcD" value={persona.email_ccd} />
-            {persona.nombre_usuario && (
-              <Field label="Nombre de usuario" value={persona.nombre_usuario} />
-            )}
-            {persona.tipo_documento && (
+            <Field label="Nombre de usuario" value={persona.nombre_usuario} />
+            <Field
+              label="Documento"
+              value={persona.tipo_documento ? `${persona.tipo_documento.toUpperCase()} ${persona.documento ?? ""}`.trim() : null}
+            />
+            <div className="col-span-2">
               <Field
-                label="Documento"
-                value={`${persona.tipo_documento.toUpperCase()} ${persona.documento ?? ""}`}
+                label="Dirección"
+                value={[persona.direccion, persona.direccion_nro].filter(Boolean).join(" ") || null}
               />
-            )}
-            {(persona.direccion || persona.direccion_nro) && (
-              <div className="col-span-2">
-                <Field
-                  label="Dirección"
-                  value={[persona.direccion, persona.direccion_nro].filter(Boolean).join(" ")}
-                />
-              </div>
-            )}
+            </div>
             <Field label="Ciudad" value={persona.localidad} />
             <Field label="CP" value={persona.codigo_postal} />
-            {persona.diocesis && <Field label="Diócesis" value={persona.diocesis} />}
+            <Field label="Diócesis" value={persona.diocesis} />
             <Field label="Provincia" value={persona.provincia} />
             <Field label="País" value={persona.pais} />
-            {persona.estado_eclesial && (
-              <Field label="Estado eclesiástico" value={persona.estado_eclesial} />
-            )}
-            {persona.parroquia && <Field label="Parroquia" value={persona.parroquia} />}
-            {persona.estado_vida && (
-              <Field
-                label="Estado de vida"
-                value={estadoVidaLabel[persona.estado_vida] ?? persona.estado_vida}
-              />
-            )}
-            {persona.nivel_estudios && (
-              <Field
-                label="Nivel de estudios"
-                value={nivelEstudiosLabel[persona.nivel_estudios] ?? persona.nivel_estudios}
-              />
-            )}
-            {persona.anio_ingreso && (
-              <Field label="Año de ingreso" value={String(persona.anio_ingreso)} />
-            )}
+            <Field label="Estado eclesiástico" value={persona.estado_eclesial} />
+            <Field label="Parroquia" value={persona.parroquia} />
+            <Field
+              label="Estado de vida"
+              value={persona.estado_vida ? estadoVidaLabel[persona.estado_vida] ?? persona.estado_vida : null}
+            />
+            <Field
+              label="Nivel de estudios"
+              value={persona.nivel_estudios ? nivelEstudiosLabel[persona.nivel_estudios] ?? persona.nivel_estudios : null}
+            />
+            <Field label="Año de ingreso" value={persona.anio_ingreso ? String(persona.anio_ingreso) : null} />
             {(persona as any).acompanante && (
               <div>
                 <dt className="text-muted-foreground text-sm">Acompañante</dt>
@@ -233,12 +219,10 @@ export default async function PersonaDetailPage({
               label="Comunicaciones"
               value={persona.acepta_comunicaciones ? "Acepta" : "No acepta"}
             />
-            {persona.notas && (
-              <div className="col-span-2">
-                <dt className="text-muted-foreground text-sm">Notas</dt>
-                <dd className="text-foreground text-sm whitespace-pre-wrap">{persona.notas}</dd>
-              </div>
-            )}
+            <div className="col-span-2">
+              <dt className="text-muted-foreground text-sm">Notas</dt>
+              <dd className="text-foreground text-sm whitespace-pre-wrap">{persona.notas || "—"}</dd>
+            </div>
           </dl>
         </CardContent>
       </Card>
@@ -252,12 +236,16 @@ export default async function PersonaDetailPage({
         </CardHeader>
         <CardContent>
           <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-            {persona.categoria_persona && (
-              <Field
-                label="Categoría"
-                value={persona.categoria_persona === "no_cecista" ? "No Cecista" : "Cecista"}
-              />
-            )}
+            <Field
+              label="Categoría"
+              value={
+                persona.categoria_persona === "no_cecista"
+                  ? "No Cecista"
+                  : persona.categoria_persona === "cecista"
+                  ? "Cecista"
+                  : null
+              }
+            />
             {(persona.socio_asociacion || persona.referente_comunidad || persona.cecista_dedicado) && (
               <div className="col-span-2">
                 <dt className="text-muted-foreground text-sm mb-1">Características</dt>
