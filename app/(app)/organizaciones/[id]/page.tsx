@@ -12,8 +12,8 @@ const tipoLabel: Record<string, string> = {
   comunidad: "Comunidad",
   confraternidad: "Confraternidad",
   fraternidad: "Fraternidad",
-  casa_retiro: "Casa de Retiro",
-  eqt: "EQT",
+  // casa_retiro: "Casa de Retiro",
+  // eqt: "EQT",
   otra: "Otra",
 }
 
@@ -66,7 +66,9 @@ export default async function OrganizacionDetailPage({
 
   if (error || !org) notFound()
 
-  const parent = Array.isArray(org.parent) ? null : (org.parent as { id: string; nombre: string; tipo: string } | null)
+  const parent = Array.isArray(org.parent)
+    ? null
+    : (org.parent as { id: string; nombre: string; tipo: string } | null)
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -90,17 +92,24 @@ export default async function OrganizacionDetailPage({
       {/* Main data card */}
       <Card className="border-border bg-card">
         <CardHeader>
-          <CardTitle className="text-foreground">Pantalla Organización</CardTitle>
+          <CardTitle className="text-foreground">
+            Pantalla Organización
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Nombre + Código */}
           <div className="grid grid-cols-[1fr_auto] gap-4">
-            <Field label="Nombre" value={`${org.nombre}${org.nombre ? " (50 caracteres)" : ""}`} />
+            <Field
+              label="Nombre"
+              value={`${org.nombre}${org.nombre ? " (50 caracteres)" : ""}`}
+            />
             <div className="grid grid-cols-[160px_1fr] gap-2 items-start">
               <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide pt-0.5">
                 Código Interno
               </span>
-              <span className="text-sm font-mono text-foreground">{org.codigo || "—"}</span>
+              <span className="text-sm font-mono text-foreground">
+                {org.codigo || "—"}
+              </span>
             </div>
           </div>
 
@@ -113,9 +122,14 @@ export default async function OrganizacionDetailPage({
               Org. Padre
             </span>
             {parent ? (
-              <Link href={`/organizaciones/${parent.id}`} className="text-sm text-primary hover:underline">
+              <Link
+                href={`/organizaciones/${parent.id}`}
+                className="text-sm text-primary hover:underline"
+              >
                 {parent.nombre}{" "}
-                <span className="text-muted-foreground">({tipoLabel[parent.tipo] ?? parent.tipo})</span>
+                <span className="text-muted-foreground">
+                  ({tipoLabel[parent.tipo] ?? parent.tipo})
+                </span>
               </Link>
             ) : (
               <span className="text-sm text-muted-foreground">—</span>
@@ -149,12 +163,24 @@ export default async function OrganizacionDetailPage({
               }`}
             >
               {org.sede_fisica && (
-                <svg className="h-3 w-3 text-primary-foreground" viewBox="0 0 12 12" fill="none">
-                  <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <svg
+                  className="h-3 w-3 text-primary-foreground"
+                  viewBox="0 0 12 12"
+                  fill="none"
+                >
+                  <path
+                    d="M2 6l3 3 5-5"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               )}
             </div>
-            <span className="text-sm font-medium text-foreground">Sede Física</span>
+            <span className="text-sm font-medium text-foreground">
+              Sede Física
+            </span>
           </div>
 
           {/* Dirección (si sede_fisica) */}
@@ -166,7 +192,9 @@ export default async function OrganizacionDetailPage({
                   <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide pt-0.5">
                     Nro.
                   </span>
-                  <span className="text-sm text-foreground">{org.direccion_nro || "—"}</span>
+                  <span className="text-sm text-foreground">
+                    {org.direccion_nro || "—"}
+                  </span>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -198,7 +226,9 @@ export default async function OrganizacionDetailPage({
 
           {/* Notas */}
           <div className="space-y-1">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Notas</span>
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Notas
+            </span>
             <p className="text-sm text-foreground min-h-12 rounded-md border border-border bg-muted/30 p-2">
               {org.notas || ""}
             </p>
@@ -215,19 +245,29 @@ export default async function OrganizacionDetailPage({
         </CardHeader>
         <CardContent>
           {(orgsDependientes ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground">Sin organizaciones dependientes</p>
+            <p className="text-sm text-muted-foreground">
+              Sin organizaciones dependientes
+            </p>
           ) : (
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-left py-2 font-medium text-muted-foreground">Organización</th>
+                  <th className="text-left py-2 font-medium text-muted-foreground">
+                    Organización
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {(orgsDependientes ?? []).map((dep) => (
-                  <tr key={dep.id} className="border-b border-border/50 last:border-0">
+                  <tr
+                    key={dep.id}
+                    className="border-b border-border/50 last:border-0"
+                  >
                     <td className="py-2">
-                      <Link href={`/organizaciones/${dep.id}`} className="text-primary hover:underline">
+                      <Link
+                        href={`/organizaciones/${dep.id}`}
+                        className="text-primary hover:underline"
+                      >
                         {dep.nombre}
                       </Link>
                     </td>
@@ -248,31 +288,57 @@ export default async function OrganizacionDetailPage({
         </CardHeader>
         <CardContent>
           {(asignaciones ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground">Sin asignaciones activas</p>
+            <p className="text-sm text-muted-foreground">
+              Sin asignaciones activas
+            </p>
           ) : (
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Persona</th>
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Rol</th>
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Evento</th>
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Estado</th>
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Inicio</th>
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Fin</th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">
+                    Persona
+                  </th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">
+                    Rol
+                  </th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">
+                    Evento
+                  </th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">
+                    Estado
+                  </th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">
+                    Inicio
+                  </th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">
+                    Fin
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {(asignaciones as any[]).map((asig) => (
-                  <tr key={asig.id} className="border-b border-border/50 last:border-0">
+                  <tr
+                    key={asig.id}
+                    className="border-b border-border/50 last:border-0"
+                  >
                     <td className="py-2 px-3 font-medium">
                       {asig.persona ? (
-                        <Link href={`/personas/${asig.persona_id}`} className="text-primary hover:underline">
+                        <Link
+                          href={`/personas/${asig.persona_id}`}
+                          className="text-primary hover:underline"
+                        >
                           {asig.persona.apellido}, {asig.persona.nombre}
                         </Link>
-                      ) : "—"}
+                      ) : (
+                        "—"
+                      )}
                     </td>
-                    <td className="py-2 px-3">{asig.ministerio?.nombre ?? "—"}</td>
-                    <td className="py-2 px-3 text-muted-foreground">{asig.evento?.nombre ?? "—"}</td>
+                    <td className="py-2 px-3">
+                      {asig.ministerio?.nombre ?? "—"}
+                    </td>
+                    <td className="py-2 px-3 text-muted-foreground">
+                      {asig.evento?.nombre ?? "—"}
+                    </td>
                     <td className="py-2 px-3 capitalize">{asig.estado}</td>
                     <td className="py-2 px-3 text-muted-foreground">
                       {asig.fecha_inicio
@@ -280,9 +346,7 @@ export default async function OrganizacionDetailPage({
                         : "—"}
                     </td>
                     <td className="py-2 px-3 text-muted-foreground">
-                      {asig.fecha_fin
-                        ? formatDateAR(asig.fecha_fin)
-                        : "—"}
+                      {asig.fecha_fin ? formatDateAR(asig.fecha_fin) : "—"}
                     </td>
                   </tr>
                 ))}

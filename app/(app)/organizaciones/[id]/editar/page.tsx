@@ -1,17 +1,17 @@
-'use client'
+"use client"
 
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic"
 
-import { useState, useEffect } from 'react'
-import { formatDateAR } from '@/lib/utils'
-import Link from 'next/link'
-import { useRouter, useParams } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
+import { useState, useEffect } from "react"
+import { formatDateAR } from "@/lib/utils"
+import Link from "next/link"
+import { useRouter, useParams } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ArrowLeft } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
 type OrgOption = { id: string; nombre: string; tipo: string }
 type OrgDependiente = { id: string; nombre: string; tipo: string }
@@ -26,12 +26,12 @@ type Asignacion = {
 }
 
 const tipoLabel: Record<string, string> = {
-  comunidad: 'Comunidad',
-  confraternidad: 'Confraternidad',
-  fraternidad: 'Fraternidad',
-  casa_retiro: 'Casa de Retiro',
-  eqt: 'EQT',
-  otra: 'Otra',
+  comunidad: "Comunidad",
+  confraternidad: "Confraternidad",
+  fraternidad: "Fraternidad",
+  // casa_retiro: 'Casa de Retiro',
+  // eqt: 'EQT',
+  otra: "Otra",
 }
 
 export default function EditarOrganizacionPage() {
@@ -40,29 +40,29 @@ export default function EditarOrganizacionPage() {
 
   const [loading, setLoading] = useState(false)
   const [loadingData, setLoadingData] = useState(true)
-  const [error, setError] = useState('')
+  const [error, setError] = useState("")
   const [orgsParent, setOrgsParent] = useState<OrgOption[]>([])
   const [orgsDependientes, setOrgsDependientes] = useState<OrgDependiente[]>([])
   const [asignaciones, setAsignaciones] = useState<Asignacion[]>([])
   const [formData, setFormData] = useState({
-    nombre: '',
-    tipo: 'fraternidad',
-    codigo: '',
-    parent_id: '',
-    estado: 'activa',
-    mail_org: '',
+    nombre: "",
+    tipo: "fraternidad",
+    codigo: "",
+    parent_id: "",
+    estado: "activa",
+    mail_org: "",
     sede_fisica: false,
-    direccion_calle: '',
-    direccion_nro: '',
-    ciudad: '',
-    cp: '',
-    diocesis: '',
-    localidad: '',
-    provincia: '',
-    pais: 'Argentina',
-    notas: '',
-    telefono_1: '',
-    telefono_2: '',
+    direccion_calle: "",
+    direccion_nro: "",
+    ciudad: "",
+    cp: "",
+    diocesis: "",
+    localidad: "",
+    provincia: "",
+    pais: "Argentina",
+    notas: "",
+    telefono_1: "",
+    telefono_2: "",
   })
 
   useEffect(() => {
@@ -70,91 +70,112 @@ export default function EditarOrganizacionPage() {
 
     Promise.all([
       supabase
-        .from('organizaciones')
-        .select('id, nombre, tipo, codigo, parent_id, estado, mail_org, sede_fisica, direccion_calle, direccion_nro, ciudad, cp, diocesis, localidad, provincia, pais, notas, telefono_1, telefono_2')
-        .eq('id', id)
+        .from("organizaciones")
+        .select(
+          "id, nombre, tipo, codigo, parent_id, estado, mail_org, sede_fisica, direccion_calle, direccion_nro, ciudad, cp, diocesis, localidad, provincia, pais, notas, telefono_1, telefono_2",
+        )
+        .eq("id", id)
         .single(),
       supabase
-        .from('organizaciones')
-        .select('id, nombre, tipo')
-        .is('fecha_baja', null)
-        .neq('id', id)
-        .order('nombre'),
+        .from("organizaciones")
+        .select("id, nombre, tipo")
+        .is("fecha_baja", null)
+        .neq("id", id)
+        .order("nombre"),
       supabase
-        .from('organizaciones')
-        .select('id, nombre, tipo')
-        .eq('parent_id', id)
-        .is('fecha_baja', null)
-        .order('nombre'),
+        .from("organizaciones")
+        .select("id, nombre, tipo")
+        .eq("parent_id", id)
+        .is("fecha_baja", null)
+        .order("nombre"),
       supabase
-        .from('asignaciones_ministerio')
-        .select('id, estado, fecha_inicio, fecha_fin, persona:personas!persona_id(nombre, apellido), ministerio:ministerios!ministerio_id(nombre), evento:eventos!evento_id(nombre)')
-        .eq('organizacion_id', id)
-        .eq('estado', 'activo')
-        .order('fecha_inicio'),
-    ]).then(([{ data: org, error: orgError }, { data: parents }, { data: dependientes }, { data: asig }]) => {
-      if (orgError || !org) {
-        setError('No se encontró la organización')
+        .from("asignaciones_ministerio")
+        .select(
+          "id, estado, fecha_inicio, fecha_fin, persona:personas!persona_id(nombre, apellido), ministerio:ministerios!ministerio_id(nombre), evento:eventos!evento_id(nombre)",
+        )
+        .eq("organizacion_id", id)
+        .eq("estado", "activo")
+        .order("fecha_inicio"),
+    ]).then(
+      ([
+        { data: org, error: orgError },
+        { data: parents },
+        { data: dependientes },
+        { data: asig },
+      ]) => {
+        if (orgError || !org) {
+          setError("No se encontró la organización")
+          setLoadingData(false)
+          return
+        }
+        setFormData({
+          nombre: org.nombre ?? "",
+          tipo: org.tipo ?? "fraternidad",
+          codigo: org.codigo ?? "",
+          parent_id: org.parent_id ?? "",
+          estado: org.estado ?? "activa",
+          mail_org: org.mail_org ?? "",
+          sede_fisica: org.sede_fisica ?? false,
+          direccion_calle: org.direccion_calle ?? "",
+          direccion_nro: org.direccion_nro ?? "",
+          ciudad: org.ciudad ?? "",
+          cp: org.cp ?? "",
+          diocesis: org.diocesis ?? "",
+          localidad: org.localidad ?? "",
+          provincia: org.provincia ?? "",
+          pais: org.pais ?? "Argentina",
+          notas: org.notas ?? "",
+          telefono_1: org.telefono_1 ?? "",
+          telefono_2: org.telefono_2 ?? "",
+        })
+        if (parents) setOrgsParent(parents as OrgOption[])
+        if (dependientes) setOrgsDependientes(dependientes as OrgDependiente[])
+        if (asig) setAsignaciones(asig as unknown as Asignacion[])
         setLoadingData(false)
-        return
-      }
-      setFormData({
-        nombre: org.nombre ?? '',
-        tipo: org.tipo ?? 'fraternidad',
-        codigo: org.codigo ?? '',
-        parent_id: org.parent_id ?? '',
-        estado: org.estado ?? 'activa',
-        mail_org: org.mail_org ?? '',
-        sede_fisica: org.sede_fisica ?? false,
-        direccion_calle: org.direccion_calle ?? '',
-        direccion_nro: org.direccion_nro ?? '',
-        ciudad: org.ciudad ?? '',
-        cp: org.cp ?? '',
-        diocesis: org.diocesis ?? '',
-        localidad: org.localidad ?? '',
-        provincia: org.provincia ?? '',
-        pais: org.pais ?? 'Argentina',
-        notas: org.notas ?? '',
-        telefono_1: org.telefono_1 ?? '',
-        telefono_2: org.telefono_2 ?? '',
-      })
-      if (parents) setOrgsParent(parents as OrgOption[])
-      if (dependientes) setOrgsDependientes(dependientes as OrgDependiente[])
-      if (asig) setAsignaciones(asig as unknown as Asignacion[])
-      setLoadingData(false)
-    })
+      },
+    )
   }, [id])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    setError('')
+    setError("")
 
     try {
       const res = await fetch(`/api/organizaciones/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       })
 
       if (!res.ok) {
         const { error: apiError } = await res.json()
-        throw new Error(apiError ?? 'Error al actualizar la organización')
+        throw new Error(apiError ?? "Error al actualizar la organización")
       }
 
       router.push(`/organizaciones/${id}`)
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Error al actualizar la organización'
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Error al actualizar la organización"
       setError(msg)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
+  ) => {
     const { name, value, type } = e.target
     const checked = (e.target as HTMLInputElement).checked
-    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }))
   }
 
   if (loadingData) {
@@ -167,7 +188,10 @@ export default function EditarOrganizacionPage() {
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <Link href={`/organizaciones/${id}`} className="inline-flex items-center gap-2 text-primary hover:underline">
+      <Link
+        href={`/organizaciones/${id}`}
+        className="inline-flex items-center gap-2 text-primary hover:underline"
+      >
         <ArrowLeft className="h-4 w-4" />
         Volver a Organización
       </Link>
@@ -187,7 +211,12 @@ export default function EditarOrganizacionPage() {
             {/* Nombre + Código */}
             <div className="grid grid-cols-[1fr_160px] gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="nombre">Nombre <span className="text-muted-foreground text-xs">(50 caracteres)</span></Label>
+                <Label htmlFor="nombre">
+                  Nombre{" "}
+                  <span className="text-muted-foreground text-xs">
+                    (50 caracteres)
+                  </span>
+                </Label>
                 <Input
                   id="nombre"
                   name="nombre"
@@ -199,7 +228,12 @@ export default function EditarOrganizacionPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="codigo">Código Interno <span className="text-muted-foreground text-xs">3 letras + 3 nros</span></Label>
+                <Label htmlFor="codigo">
+                  Código Interno{" "}
+                  <span className="text-muted-foreground text-xs">
+                    3 letras + 3 nros
+                  </span>
+                </Label>
                 <Input
                   id="codigo"
                   name="codigo"
@@ -222,7 +256,9 @@ export default function EditarOrganizacionPage() {
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
               >
                 {Object.entries(tipoLabel).map(([val, lbl]) => (
-                  <option key={val} value={val}>{lbl}</option>
+                  <option key={val} value={val}>
+                    {lbl}
+                  </option>
                 ))}
               </select>
             </div>
@@ -238,7 +274,7 @@ export default function EditarOrganizacionPage() {
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
               >
                 <option value="">Listado total de organizaciones</option>
-                {orgsParent.map(org => (
+                {orgsParent.map((org) => (
                   <option key={org.id} value={org.id}>
                     {org.nombre} ({tipoLabel[org.tipo] ?? org.tipo})
                   </option>
@@ -284,7 +320,9 @@ export default function EditarOrganizacionPage() {
                 onChange={handleChange}
                 className="h-4 w-4 rounded border-border accent-primary"
               />
-              <Label htmlFor="sede_fisica" className="cursor-pointer">Sede Física</Label>
+              <Label htmlFor="sede_fisica" className="cursor-pointer">
+                Sede Física
+              </Label>
             </div>
 
             {/* Dirección (condicional) */}
@@ -421,10 +459,14 @@ export default function EditarOrganizacionPage() {
             {/* Buttons */}
             <div className="flex gap-3 pt-2">
               <Button type="submit" disabled={loading}>
-                {loading ? 'Guardando...' : 'Guardar Cambios'}
+                {loading ? "Guardando..." : "Guardar Cambios"}
               </Button>
               <Link href={`/organizaciones/${id}`}>
-                <Button type="button" variant="outline" className="bg-transparent">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="bg-transparent"
+                >
                   Cancelar
                 </Button>
               </Link>
@@ -442,19 +484,29 @@ export default function EditarOrganizacionPage() {
         </CardHeader>
         <CardContent>
           {orgsDependientes.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Sin organizaciones dependientes</p>
+            <p className="text-sm text-muted-foreground">
+              Sin organizaciones dependientes
+            </p>
           ) : (
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-left py-2 font-medium text-muted-foreground">Organización</th>
+                  <th className="text-left py-2 font-medium text-muted-foreground">
+                    Organización
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {orgsDependientes.map(dep => (
-                  <tr key={dep.id} className="border-b border-border/50 last:border-0">
+                {orgsDependientes.map((dep) => (
+                  <tr
+                    key={dep.id}
+                    className="border-b border-border/50 last:border-0"
+                  >
                     <td className="py-2">
-                      <Link href={`/organizaciones/${dep.id}`} className="text-primary hover:underline">
+                      <Link
+                        href={`/organizaciones/${dep.id}`}
+                        className="text-primary hover:underline"
+                      >
                         {dep.nombre}
                       </Link>
                     </td>
@@ -475,33 +527,58 @@ export default function EditarOrganizacionPage() {
         </CardHeader>
         <CardContent>
           {asignaciones.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Sin asignaciones activas</p>
+            <p className="text-sm text-muted-foreground">
+              Sin asignaciones activas
+            </p>
           ) : (
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Persona</th>
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Rol</th>
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Evento</th>
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Estado</th>
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Inicio</th>
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Fin</th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">
+                    Persona
+                  </th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">
+                    Rol
+                  </th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">
+                    Evento
+                  </th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">
+                    Estado
+                  </th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">
+                    Inicio
+                  </th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">
+                    Fin
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {asignaciones.map(asig => (
-                  <tr key={asig.id} className="border-b border-border/50 last:border-0">
+                {asignaciones.map((asig) => (
+                  <tr
+                    key={asig.id}
+                    className="border-b border-border/50 last:border-0"
+                  >
                     <td className="py-2 px-3 font-medium">
-                      {asig.persona ? `${asig.persona.apellido}, ${asig.persona.nombre}` : '—'}
+                      {asig.persona
+                        ? `${asig.persona.apellido}, ${asig.persona.nombre}`
+                        : "—"}
                     </td>
-                    <td className="py-2 px-3">{asig.ministerio?.nombre ?? '—'}</td>
-                    <td className="py-2 px-3 text-muted-foreground">{asig.evento?.nombre ?? '—'}</td>
+                    <td className="py-2 px-3">
+                      {asig.ministerio?.nombre ?? "—"}
+                    </td>
+                    <td className="py-2 px-3 text-muted-foreground">
+                      {asig.evento?.nombre ?? "—"}
+                    </td>
                     <td className="py-2 px-3 capitalize">{asig.estado}</td>
                     <td className="py-2 px-3 text-muted-foreground">
-                      {asig.fecha_inicio ? formatDateAR(asig.fecha_inicio) : '—'}
+                      {asig.fecha_inicio
+                        ? formatDateAR(asig.fecha_inicio)
+                        : "—"}
                     </td>
                     <td className="py-2 px-3 text-muted-foreground">
-                      {asig.fecha_fin ? formatDateAR(asig.fecha_fin) : '—'}
+                      {asig.fecha_fin ? formatDateAR(asig.fecha_fin) : "—"}
                     </td>
                   </tr>
                 ))}

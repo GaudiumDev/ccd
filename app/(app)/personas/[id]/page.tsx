@@ -4,7 +4,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Edit2 } from "lucide-react"
+import { ArrowLeft, Edit2, Paperclip } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { getUserContext, canPerform } from "@/lib/auth/context"
 import { formatDateAR } from "@/lib/utils"
@@ -70,13 +70,13 @@ export default async function PersonaDetailPage({
       .single(),
     supabase
       .from("persona_modos")
-      .select("modo, fecha_inicio, fecha_fin, estado, motivo_fin")
+      .select("modo, fecha_inicio, fecha_fin, estado, motivo_fin, documento_url, notas")
       .eq("persona_id", id)
       .order("fecha_inicio", { ascending: false }),
     supabase
       .from("asignaciones_ministerio")
       .select(
-        "fecha_inicio, fecha_fin, estado, ministerio:ministerios!ministerio_id(nombre), organizacion:organizaciones!organizacion_id(nombre)",
+        "fecha_inicio, fecha_fin, estado, ministerio:ministerios!ministerio_id(nombre), organizacion:organizaciones!organizacion_id(nombre), documento_url, notas",
       )
       .eq("persona_id", id)
       .order("fecha_inicio", { ascending: false }),
@@ -303,11 +303,13 @@ export default async function PersonaDetailPage({
                   <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Modo</th>
                   <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Desde</th>
                   <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Hasta</th>
-                  <th className="text-left py-2 font-medium text-muted-foreground">Estado</th>
+                  <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Estado</th>
+                  <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Notas</th>
+                  <th className="text-left py-2 font-medium text-muted-foreground">Adjunto</th>
                 </tr>
               </thead>
               <tbody>
-                {(modos ?? []).map((m, i) => (
+                {(modos ?? []).map((m: any, i) => (
                   <tr
                     key={i}
                     className={`border-b border-border/50 last:border-0 ${
@@ -323,7 +325,25 @@ export default async function PersonaDetailPage({
                         <span className="text-green-700 dark:text-green-400 font-medium">actual</span>
                       )}
                     </td>
-                    <td className="py-2 text-muted-foreground capitalize">{m.estado ?? "—"}</td>
+                    <td className="py-2 pr-4 text-muted-foreground capitalize">{m.estado ?? "—"}</td>
+                    <td className="py-2 pr-4 text-muted-foreground max-w-50">
+                      {m.notas ? (
+                        <span className="whitespace-pre-wrap">{m.notas}</span>
+                      ) : "—"}
+                    </td>
+                    <td className="py-2">
+                      {m.documento_url ? (
+                        <a
+                          href={m.documento_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-primary hover:underline"
+                        >
+                          <Paperclip className="h-3 w-3" />
+                          Ver
+                        </a>
+                      ) : "—"}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -349,7 +369,9 @@ export default async function PersonaDetailPage({
                   <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Rol</th>
                   <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Organización</th>
                   <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Desde</th>
-                  <th className="text-left py-2 font-medium text-muted-foreground">Hasta</th>
+                  <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Hasta</th>
+                  <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Notas</th>
+                  <th className="text-left py-2 font-medium text-muted-foreground">Adjunto</th>
                 </tr>
               </thead>
               <tbody>
@@ -363,12 +385,30 @@ export default async function PersonaDetailPage({
                     <td className="py-2 pr-4 text-foreground">{a.ministerio?.nombre ?? "—"}</td>
                     <td className="py-2 pr-4 text-muted-foreground">{a.organizacion?.nombre ?? "—"}</td>
                     <td className="py-2 pr-4 text-muted-foreground">{formatDate(a.fecha_inicio)}</td>
-                    <td className="py-2 text-muted-foreground">
+                    <td className="py-2 pr-4 text-muted-foreground">
                       {a.fecha_fin ? (
                         formatDate(a.fecha_fin)
                       ) : (
                         <span className="text-green-700 dark:text-green-400 font-medium">actual</span>
                       )}
+                    </td>
+                    <td className="py-2 pr-4 text-muted-foreground max-w-50">
+                      {a.notas ? (
+                        <span className="whitespace-pre-wrap">{a.notas}</span>
+                      ) : "—"}
+                    </td>
+                    <td className="py-2">
+                      {a.documento_url ? (
+                        <a
+                          href={a.documento_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-primary hover:underline"
+                        >
+                          <Paperclip className="h-3 w-3" />
+                          Ver
+                        </a>
+                      ) : "—"}
                     </td>
                   </tr>
                 ))}

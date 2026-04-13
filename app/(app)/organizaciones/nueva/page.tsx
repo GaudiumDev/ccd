@@ -1,53 +1,58 @@
-'use client'
+"use client"
 
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic"
 
-
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
+import { useState, useEffect } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { ArrowLeft } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
 type OrgOption = { id: string; nombre: string; tipo: string }
 
 export default function NewOrganizacionPage() {
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError] = useState("")
   const [orgsParent, setOrgsParent] = useState<OrgOption[]>([])
   const router = useRouter()
   const [formData, setFormData] = useState({
-    nombre: '',
-    tipo: 'fraternidad',
-    codigo: '',
-    parent_id: '',
-    estado: 'activa',
-    mail_org: '',
+    nombre: "",
+    tipo: "fraternidad",
+    codigo: "",
+    parent_id: "",
+    estado: "activa",
+    mail_org: "",
     sede_fisica: false,
-    direccion_calle: '',
-    direccion_nro: '',
-    ciudad: '',
-    cp: '',
-    diocesis: '',
-    localidad: '',
-    provincia: '',
-    pais: 'Argentina',
-    notas: '',
-    telefono_1: '',
-    telefono_2: '',
+    direccion_calle: "",
+    direccion_nro: "",
+    ciudad: "",
+    cp: "",
+    diocesis: "",
+    localidad: "",
+    provincia: "",
+    pais: "Argentina",
+    notas: "",
+    telefono_1: "",
+    telefono_2: "",
   })
 
   useEffect(() => {
     const supabase = createClient()
     supabase
-      .from('organizaciones')
-      .select('id, nombre, tipo')
-      .is('fecha_baja', null)
-      .order('nombre')
+      .from("organizaciones")
+      .select("id, nombre, tipo")
+      .is("fecha_baja", null)
+      .order("nombre")
       .then(({ data }: { data: OrgOption[] | null }) => {
         if (data) setOrgsParent(data)
       })
@@ -56,46 +61,62 @@ export default function NewOrganizacionPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    setError('')
+    setError("")
 
     try {
-      const res = await fetch('/api/organizaciones', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/organizaciones", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       })
 
       if (!res.ok) {
         const { error: apiError } = await res.json()
-        throw new Error(apiError ?? 'Error al crear la organización')
+        throw new Error(apiError ?? "Error al crear la organización")
       }
 
-      router.push('/organizaciones')
+      router.push("/organizaciones")
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Error al crear la organización'
+      const msg =
+        err instanceof Error ? err.message : "Error al crear la organización"
       setError(msg)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
+  ) => {
     const { name, value, type } = e.target
     const checked = (e.target as HTMLInputElement).checked
-    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }))
   }
 
   return (
     <div className="space-y-6">
-      <Link href="/organizaciones" className="inline-flex items-center gap-2 text-primary hover:underline">
+      <Link
+        href="/organizaciones"
+        className="inline-flex items-center gap-2 text-primary hover:underline"
+      >
         <ArrowLeft className="h-4 w-4" />
         Volver a Organizaciones
       </Link>
 
       <Card className="border-border bg-card max-w-3xl">
         <CardHeader>
-          <CardTitle className="text-foreground">Crear Nueva Organización</CardTitle>
-          <CardDescription>Completa el formulario para registrar una nueva organización en el sistema</CardDescription>
+          <CardTitle className="text-foreground">
+            Crear Nueva Organización
+          </CardTitle>
+          <CardDescription>
+            Completa el formulario para registrar una nueva organización en el
+            sistema
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -147,8 +168,8 @@ export default function NewOrganizacionPage() {
                   <option value="comunidad">Comunidad</option>
                   <option value="confraternidad">Confraternidad</option>
                   <option value="fraternidad">Fraternidad</option>
-                  <option value="casa_retiro">Casa de Retiro</option>
-                  <option value="eqt">EQT</option>
+                  {/* <option value="casa_retiro">Casa de Retiro</option> */}
+                  {/* <option value="eqt">EQT</option> */}
                   <option value="otra">Otra</option>
                 </select>
               </div>
@@ -162,7 +183,7 @@ export default function NewOrganizacionPage() {
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
                 >
                   <option value="">Sin organización padre</option>
-                  {orgsParent.map(org => (
+                  {orgsParent.map((org) => (
                     <option key={org.id} value={org.id}>
                       {org.nombre} ({org.tipo})
                     </option>
@@ -194,7 +215,9 @@ export default function NewOrganizacionPage() {
                 onChange={handleChange}
                 className="h-4 w-4 rounded border-border accent-primary"
               />
-              <Label htmlFor="sede_fisica" className="cursor-pointer">Sede Física</Label>
+              <Label htmlFor="sede_fisica" className="cursor-pointer">
+                Sede Física
+              </Label>
             </div>
 
             {/* Dirección (condicional) */}
@@ -356,10 +379,14 @@ export default function NewOrganizacionPage() {
             {/* Buttons */}
             <div className="flex gap-3 pt-6">
               <Button type="submit" disabled={loading}>
-                {loading ? 'Guardando...' : 'Crear Organización'}
+                {loading ? "Guardando..." : "Crear Organización"}
               </Button>
               <Link href="/organizaciones">
-                <Button type="button" variant="outline" className="bg-transparent">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="bg-transparent"
+                >
                   Cancelar
                 </Button>
               </Link>

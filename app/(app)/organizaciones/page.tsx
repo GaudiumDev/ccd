@@ -1,13 +1,19 @@
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic"
 
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Building2, Plus, Edit2, Download } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
-import { getUserContext, canPerform } from '@/lib/auth/context'
-import OrgExportButton from './_components/org-export-button'
-import SortableHeader from '@/components/ui/sortable-header'
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Building2, Plus, Edit2, Download } from "lucide-react"
+import { createClient } from "@/lib/supabase/server"
+import { getUserContext, canPerform } from "@/lib/auth/context"
+import OrgExportButton from "./_components/org-export-button"
+import SortableHeader from "@/components/ui/sortable-header"
 
 export default async function OrganizacionesPage({
   searchParams,
@@ -22,52 +28,59 @@ export default async function OrganizacionesPage({
   }>
 }) {
   const [params, ctx] = await Promise.all([searchParams, getUserContext()])
-  const q = params.q ?? ''
-  const tipo = params.tipo ?? ''
-  const estado = params.estado ?? ''
-  const provincia = params.provincia ?? ''
-  const sortBy = params.sortBy ?? ''
-  const sortDir = (params.sortDir === 'asc' || params.sortDir === 'desc') ? params.sortDir : 'asc'
+  const q = params.q ?? ""
+  const tipo = params.tipo ?? ""
+  const estado = params.estado ?? ""
+  const provincia = params.provincia ?? ""
+  const sortBy = params.sortBy ?? ""
+  const sortDir =
+    params.sortDir === "asc" || params.sortDir === "desc"
+      ? params.sortDir
+      : "asc"
 
-  const canCreate = ctx ? canPerform(ctx, 'organization.create') : false
+  const canCreate = ctx ? canPerform(ctx, "organization.create") : false
   // canUpdate se evalúa por org en la tabla (ver uso abajo)
-  const canUpdateOrg = (orgId: string) => ctx ? canPerform(ctx, 'organization.update', orgId) : false
+  const canUpdateOrg = (orgId: string) =>
+    ctx ? canPerform(ctx, "organization.update", orgId) : false
   const supabase = await createClient()
 
-  const SORTABLE_ORGS = ['nombre', 'tipo', 'localidad', 'estado']
-  const sortCol = (sortBy && SORTABLE_ORGS.includes(sortBy)) ? sortBy : 'nombre'
-  const sortAsc = sortBy ? sortDir === 'asc' : true
+  const SORTABLE_ORGS = ["nombre", "tipo", "localidad", "estado"]
+  const sortCol = sortBy && SORTABLE_ORGS.includes(sortBy) ? sortBy : "nombre"
+  const sortAsc = sortBy ? sortDir === "asc" : true
 
   let query = supabase
-    .from('organizaciones')
-    .select('id, codigo, nombre, tipo, localidad, provincia, estado, parent:organizaciones!parent_id(nombre)')
-    .is('fecha_baja', null)
+    .from("organizaciones")
+    .select(
+      "id, codigo, nombre, tipo, localidad, provincia, estado, parent:organizaciones!parent_id(nombre)",
+    )
+    .is("fecha_baja", null)
     .order(sortCol, { ascending: sortAsc })
 
-  if (q) query = query.ilike('nombre', `%${q}%`)
-  if (tipo) query = query.eq('tipo', tipo)
-  if (estado) query = query.eq('estado', estado)
-  if (provincia) query = query.ilike('provincia', `%${provincia}%`)
+  if (q) query = query.ilike("nombre", `%${q}%`)
+  if (tipo) query = query.eq("tipo", tipo)
+  if (estado) query = query.eq("estado", estado)
+  if (provincia) query = query.ilike("provincia", `%${provincia}%`)
 
   const { data: organizaciones } = await query
 
   const tipoLabel: Record<string, string> = {
-    comunidad: 'Comunidad',
-    confraternidad: 'Confraternidad',
-    fraternidad: 'Fraternidad',
-    casa_retiro: 'Casa de Retiro',
-    eqt: 'EQT',
-    otra: 'Otra',
+    comunidad: "Comunidad",
+    confraternidad: "Confraternidad",
+    fraternidad: "Fraternidad",
+    // casa_retiro: 'Casa de Retiro',
+    // eqt: 'EQT',
+    otra: "Otra",
   }
 
   const hasFilters = !!(q || tipo || estado || provincia)
 
   const exportParams = new URLSearchParams()
-  if (q) exportParams.set('q', q)
-  if (tipo) exportParams.set('tipo', tipo)
-  if (estado) exportParams.set('estado', estado)
-  if (provincia) exportParams.set('provincia', provincia)
-  const exportSearch = exportParams.size > 0 ? `?${exportParams.toString()}` : ''
+  if (q) exportParams.set("q", q)
+  if (tipo) exportParams.set("tipo", tipo)
+  if (estado) exportParams.set("estado", estado)
+  if (provincia) exportParams.set("provincia", provincia)
+  const exportSearch =
+    exportParams.size > 0 ? `?${exportParams.toString()}` : ""
 
   return (
     <div className="space-y-8">
@@ -84,8 +97,12 @@ export default async function OrganizacionesPage({
       <Card className="border-border bg-card">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle className="text-foreground">Confraternidades y Fraternidades de Comunidad Convivencia con Dios</CardTitle>
-            <CardDescription>Lista completa de organizaciones en el sistema</CardDescription>
+            <CardTitle className="text-foreground">
+              Confraternidades y Fraternidades de Comunidad Convivencia con Dios
+            </CardTitle>
+            <CardDescription>
+              Lista completa de organizaciones en el sistema
+            </CardDescription>
           </div>
           {canCreate && (
             <Link href="/organizaciones/nueva">
@@ -106,8 +123,19 @@ export default async function OrganizacionesPage({
                 placeholder="Buscar por nombre..."
                 className="w-full rounded-md border border-border bg-background px-3 py-2 pl-8 text-sm text-foreground placeholder:text-muted-foreground"
               />
-              <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
               </svg>
             </div>
 
@@ -148,7 +176,10 @@ export default async function OrganizacionesPage({
             </button>
 
             {hasFilters && (
-              <Link href="/organizaciones" className="rounded-md border border-border px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+              <Link
+                href="/organizaciones"
+                className="rounded-md border border-border px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
+              >
                 Limpiar
               </Link>
             )}
@@ -158,39 +189,85 @@ export default async function OrganizacionesPage({
           {organizaciones && organizaciones.length > 0 ? (
             <>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">{organizaciones.length} organización{organizaciones.length !== 1 ? 'es' : ''}</span>
+                <span className="text-sm text-muted-foreground">
+                  {organizaciones.length} organización
+                  {organizaciones.length !== 1 ? "es" : ""}
+                </span>
                 <OrgExportButton searchString={exportSearch} />
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-border">
-                      <th className="text-left py-3 px-4 font-semibold text-foreground">Código</th>
-                      <SortableHeader column="nombre" label="Nombre" currentSort={sortBy} currentDir={sortDir} />
-                      <SortableHeader column="tipo" label="Tipo" currentSort={sortBy} currentDir={sortDir} />
-                      <th className="text-left py-3 px-4 font-semibold text-foreground">Relación</th>
-                      <SortableHeader column="localidad" label="Localidad" currentSort={sortBy} currentDir={sortDir} />
-                      <th className="text-left py-3 px-4 font-semibold text-foreground">Provincia</th>
-                      <th className="text-center py-3 px-4 font-semibold text-foreground">Acciones</th>
+                      <th className="text-left py-3 px-4 font-semibold text-foreground">
+                        Código
+                      </th>
+                      <SortableHeader
+                        column="nombre"
+                        label="Nombre"
+                        currentSort={sortBy}
+                        currentDir={sortDir}
+                      />
+                      <SortableHeader
+                        column="tipo"
+                        label="Tipo"
+                        currentSort={sortBy}
+                        currentDir={sortDir}
+                      />
+                      <th className="text-left py-3 px-4 font-semibold text-foreground">
+                        Relación
+                      </th>
+                      <SortableHeader
+                        column="localidad"
+                        label="Localidad"
+                        currentSort={sortBy}
+                        currentDir={sortDir}
+                      />
+                      <th className="text-left py-3 px-4 font-semibold text-foreground">
+                        Provincia
+                      </th>
+                      <th className="text-center py-3 px-4 font-semibold text-foreground">
+                        Acciones
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {organizaciones.map((org: any) => (
-                      <tr key={org.id} className="border-b border-border hover:bg-muted/50 transition-colors">
-                        <td className="py-3 px-4 text-muted-foreground font-mono text-xs">{org.codigo ?? '—'}</td>
+                      <tr
+                        key={org.id}
+                        className="border-b border-border hover:bg-muted/50 transition-colors"
+                      >
+                        <td className="py-3 px-4 text-muted-foreground font-mono text-xs">
+                          {org.codigo ?? "—"}
+                        </td>
                         <td className="py-3 px-4 font-medium">
-                          <Link href={`/organizaciones/${org.id}`} className="text-foreground hover:text-primary">
+                          <Link
+                            href={`/organizaciones/${org.id}`}
+                            className="text-foreground hover:text-primary"
+                          >
                             {org.nombre}
                           </Link>
                         </td>
-                        <td className="py-3 px-4 text-muted-foreground">{tipoLabel[org.tipo] ?? org.tipo}</td>
-                        <td className="py-3 px-4 text-muted-foreground">{org.parent?.nombre ?? '—'}</td>
-                        <td className="py-3 px-4 text-muted-foreground">{org.localidad ?? '—'}</td>
-                        <td className="py-3 px-4 text-muted-foreground">{org.provincia ?? '—'}</td>
+                        <td className="py-3 px-4 text-muted-foreground">
+                          {tipoLabel[org.tipo] ?? org.tipo}
+                        </td>
+                        <td className="py-3 px-4 text-muted-foreground">
+                          {org.parent?.nombre ?? "—"}
+                        </td>
+                        <td className="py-3 px-4 text-muted-foreground">
+                          {org.localidad ?? "—"}
+                        </td>
+                        <td className="py-3 px-4 text-muted-foreground">
+                          {org.provincia ?? "—"}
+                        </td>
                         <td className="py-3 px-4 text-center">
                           {canUpdateOrg(org.id) && (
                             <Link href={`/organizaciones/${org.id}/editar`}>
-                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0"
+                              >
                                 <Edit2 className="h-4 w-4" />
                               </Button>
                             </Link>
@@ -206,13 +283,20 @@ export default async function OrganizacionesPage({
             <div className="py-12 text-center">
               <Building2 className="mx-auto h-12 w-12 text-muted-foreground" />
               <h3 className="mt-4 text-lg font-semibold text-foreground">
-                {hasFilters ? 'No se encontraron organizaciones' : 'No hay organizaciones registradas'}
+                {hasFilters
+                  ? "No se encontraron organizaciones"
+                  : "No hay organizaciones registradas"}
               </h3>
               <p className="mt-2 text-muted-foreground">
-                {hasFilters ? 'Probá con otros filtros' : 'Comienza agregando la primera organización al sistema'}
+                {hasFilters
+                  ? "Probá con otros filtros"
+                  : "Comienza agregando la primera organización al sistema"}
               </p>
               {!hasFilters && canCreate && (
-                <Link href="/organizaciones/nueva" className="mt-4 inline-block">
+                <Link
+                  href="/organizaciones/nueva"
+                  className="mt-4 inline-block"
+                >
                   <Button className="gap-2">
                     <Plus className="h-4 w-4" />
                     Nueva Organización
