@@ -127,6 +127,14 @@ export default function LoginPage() {
                   )}
                 </button>
               </div>
+              <div className="flex justify-end">
+                <Link
+                  href="/auth/forgot-password"
+                  className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4"
+                >
+                  ¿Olvidaste tu contraseña?
+                </Link>
+              </div>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
