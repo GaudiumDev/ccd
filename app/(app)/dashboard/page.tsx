@@ -369,7 +369,7 @@ export default async function DashboardPage() {
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               {primaryOrgId
-                ? "En tu organización"
+                ? "En tu Confraternidad / Fraternidad"
                 : "Registradas en el sistema"}
             </p>
           </CardContent>
@@ -576,16 +576,17 @@ export default async function DashboardPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-foreground">
               <Users className="h-5 w-5 text-primary" />
-              Cecistas de mi organización
+              Cecistas en mi Confraternidad / Fraternidad.
             </CardTitle>
             <CardDescription>
-              Personas activas en tu organización · {totalPersonas} en total
+              Personas activas en tu Confraternidad / Fraternidad ·{" "}
+              {totalPersonas} en total
             </CardDescription>
           </CardHeader>
           <CardContent>
             {cecistas.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">
-                No hay personas registradas en tu organización
+                No hay personas registradas en tu Confraternidad / Fraternidad
               </p>
             ) : (
               <div className="space-y-2">

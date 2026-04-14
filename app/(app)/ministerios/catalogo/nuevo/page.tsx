@@ -184,16 +184,15 @@ export default function NuevoMinisterioPage() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="grid gap-6 lg:grid-cols-3">
-        {/* Columna izquierda: datos básicos */}
-        <div>
-          <Card className="border-border bg-card">
-            <CardHeader>
-              <CardTitle className="text-foreground">
-                Datos del Rol
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Fila superior: datos básicos en horizontal */}
+        <Card className="border-border bg-card">
+          <CardHeader>
+            <CardTitle className="text-foreground">Datos del Rol</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr_1fr_auto] gap-6 items-start">
+              {/* Nombre */}
               <div className="space-y-2">
                 <Label htmlFor="nombre">Nombre *</Label>
                 <Input
@@ -207,6 +206,7 @@ export default function NuevoMinisterioPage() {
                 />
               </div>
 
+              {/* Tipo */}
               <div className="space-y-2">
                 <Label htmlFor="tipo">Tipo de Rol *</Label>
                 <select
@@ -234,6 +234,7 @@ export default function NuevoMinisterioPage() {
                 )}
               </div>
 
+              {/* Nivel */}
               <div className="space-y-2">
                 <Label htmlFor="nivel">Nivel organizacional *</Label>
                 <select
@@ -252,153 +253,154 @@ export default function NuevoMinisterioPage() {
                 </select>
               </div>
 
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="requiere_acta"
-                  checked={form.requiere_acta}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, requiere_acta: e.target.checked }))
-                  }
-                  className="h-4 w-4 rounded border-border accent-primary"
-                />
-                <Label htmlFor="requiere_acta" className="cursor-pointer">
-                  Requiere acta de asignación
-                </Label>
-              </div>
+              {/* Acta + nivel de acceso + botones */}
+              <div className="space-y-4 lg:min-w-50">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="requiere_acta"
+                    checked={form.requiere_acta}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        requiere_acta: e.target.checked,
+                      }))
+                    }
+                    className="h-4 w-4 rounded border-border accent-primary"
+                  />
+                  <Label htmlFor="requiere_acta" className="cursor-pointer">
+                    Requiere acta de asignación
+                  </Label>
+                </div>
 
-              {/* Nivel de acceso calculado */}
-              <div className="space-y-2 pt-2 border-t border-border">
-                <Label>Nivel de acceso al sistema</Label>
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-primary transition-all duration-300"
-                      style={{ width: `${nivelAcceso}%` }}
-                    />
+                <div className="space-y-1 pt-1 border-t border-border">
+                  <Label className="text-xs">Nivel de acceso al sistema</Label>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all duration-300"
+                        style={{ width: `${nivelAcceso}%` }}
+                      />
+                    </div>
+                    <span className="text-sm font-semibold text-foreground tabular-nums w-8 text-right">
+                      {nivelAcceso}
+                    </span>
                   </div>
-                  <span className="text-sm font-semibold text-foreground tabular-nums w-8 text-right">
-                    {nivelAcceso}
-                  </span>
+                  <p className="text-xs text-muted-foreground">
+                    Se calcula automáticamente según los permisos seleccionados
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Se calcula automáticamente según los permisos seleccionados
-                </p>
-              </div>
 
-              {error && <p className="text-sm text-destructive">{error}</p>}
+                {error && <p className="text-sm text-destructive">{error}</p>}
 
-              <div className="flex gap-3 pt-2">
-                <Button type="submit" disabled={loading}>
-                  {loading ? "Creando..." : "Crear Rol"}
-                </Button>
-                <Link href="/ministerios/catalogo">
-                  <Button type="button" variant="outline">
-                    Cancelar
+                <div className="flex gap-3 pt-1">
+                  <Button type="submit" disabled={loading}>
+                    {loading ? "Creando..." : "Crear Rol"}
                   </Button>
-                </Link>
+                  <Link href="/ministerios/catalogo">
+                    <Button type="button" variant="outline">
+                      Cancelar
+                    </Button>
+                  </Link>
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* Columna derecha: permisos */}
-        <div className="lg:col-span-2">
-          <Card className="border-border bg-card">
-            <CardHeader>
-              <CardTitle className="text-foreground">
-                Permisos del Rol
-              </CardTitle>
-              <CardDescription>
-                Seleccioná los permisos que tendrá este rol. El nivel de acceso
-                se calcula automáticamente.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loadingPermisos ? (
-                <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm">Cargando permisos...</span>
-                </div>
-              ) : Object.keys(permisosPorCategoria).length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">
-                  No hay permisos definidos. Ejecuta la migración 005.
-                </p>
-              ) : (
-                <div className="space-y-6">
-                  {Object.keys(permisosPorCategoria).map((categoria) => {
-                    const ids = permisosPorCategoria[categoria].map((p) => p.id)
-                    const selectedCount = ids.filter((id) =>
-                      seleccionados.has(id),
-                    ).length
-                    const allSelected = selectedCount === ids.length
-                    const someSelected = selectedCount > 0 && !allSelected
-                    return (
-                      <div key={categoria}>
-                        <div className="flex items-center gap-2 mb-3">
-                          <input
-                            type="checkbox"
-                            id={`cat-${categoria}`}
-                            checked={allSelected}
-                            ref={(el) => {
-                              if (el) el.indeterminate = someSelected
-                            }}
-                            onChange={() => toggleCategoria(categoria)}
-                            className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
-                          />
-                          <label
-                            htmlFor={`cat-${categoria}`}
-                            className="text-sm font-semibold text-foreground uppercase tracking-wide cursor-pointer"
-                          >
-                            {categoriaLabel[categoria] ?? categoria}
-                          </label>
-                        </div>
-                        <div className="space-y-2 pl-6">
-                          {permisosPorCategoria[categoria].map((permiso) => {
-                            const isActive = seleccionados.has(permiso.id)
-                            return (
-                              <div
-                                key={permiso.id}
-                                className="flex items-start gap-3 rounded-lg border border-border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
-                                onClick={() => togglePermiso(permiso.id)}
-                              >
-                                <input
-                                  type="checkbox"
-                                  id={`perm-${permiso.id}`}
-                                  checked={isActive}
-                                  onChange={() => togglePermiso(permiso.id)}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="h-4 w-4 rounded border-border accent-primary cursor-pointer mt-0.5 shrink-0"
-                                />
-                                <div className="flex-1 min-w-0">
-                                  <label
-                                    htmlFor={`perm-${permiso.id}`}
-                                    className="text-sm font-medium text-foreground cursor-pointer"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    {permiso.nombre}
-                                  </label>
-                                  {permiso.descripcion && (
-                                    <p className="text-xs text-muted-foreground mt-0.5">
-                                      {permiso.descripcion}
-                                    </p>
-                                  )}
-                                  <p className="text-xs text-muted-foreground/60 mt-0.5 font-mono">
-                                    {permiso.clave}
-                                  </p>
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
+        {/* Sección inferior: permisos a ancho completo */}
+        <Card className="border-border bg-card">
+          <CardHeader>
+            <CardTitle className="text-foreground">Permisos del Rol</CardTitle>
+            <CardDescription>
+              Seleccioná los permisos que tendrá este rol. El nivel de acceso
+              se calcula automáticamente.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loadingPermisos ? (
+              <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm">Cargando permisos...</span>
+              </div>
+            ) : Object.keys(permisosPorCategoria).length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                No hay permisos definidos. Ejecuta la migración 005.
+              </p>
+            ) : (
+              <div className="space-y-6">
+                {Object.keys(permisosPorCategoria).map((categoria) => {
+                  const ids = permisosPorCategoria[categoria].map((p) => p.id)
+                  const selectedCount = ids.filter((id) =>
+                    seleccionados.has(id),
+                  ).length
+                  const allSelected = selectedCount === ids.length
+                  const someSelected = selectedCount > 0 && !allSelected
+                  return (
+                    <div key={categoria}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <input
+                          type="checkbox"
+                          id={`cat-${categoria}`}
+                          checked={allSelected}
+                          ref={(el) => {
+                            if (el) el.indeterminate = someSelected
+                          }}
+                          onChange={() => toggleCategoria(categoria)}
+                          className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
+                        />
+                        <label
+                          htmlFor={`cat-${categoria}`}
+                          className="text-sm font-semibold text-foreground uppercase tracking-wide cursor-pointer"
+                        >
+                          {categoriaLabel[categoria] ?? categoria}
+                        </label>
                       </div>
-                    )
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 pl-6">
+                        {permisosPorCategoria[categoria].map((permiso) => {
+                          const isActive = seleccionados.has(permiso.id)
+                          return (
+                            <div
+                              key={permiso.id}
+                              className="flex items-start gap-3 rounded-lg border border-border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
+                              onClick={() => togglePermiso(permiso.id)}
+                            >
+                              <input
+                                type="checkbox"
+                                id={`perm-${permiso.id}`}
+                                checked={isActive}
+                                onChange={() => togglePermiso(permiso.id)}
+                                onClick={(e) => e.stopPropagation()}
+                                className="h-4 w-4 rounded border-border accent-primary cursor-pointer mt-0.5 shrink-0"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <label
+                                  htmlFor={`perm-${permiso.id}`}
+                                  className="text-sm font-medium text-foreground cursor-pointer"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {permiso.nombre}
+                                </label>
+                                {permiso.descripcion && (
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    {permiso.descripcion}
+                                  </p>
+                                )}
+                                <p className="text-xs text-muted-foreground/60 mt-0.5 font-mono">
+                                  {permiso.clave}
+                                </p>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </form>
     </div>
   )
