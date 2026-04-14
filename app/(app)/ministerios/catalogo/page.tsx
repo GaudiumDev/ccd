@@ -50,7 +50,7 @@ export default async function CatalogoMinisteriosPage() {
       <div>
         <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
           <Briefcase className="h-8 w-8 text-primary" />
-          Roles de la Plataforma
+          Roles en la Plataforma Convivencia con Dios
         </h1>
         <p className="mt-2 text-muted-foreground">
           Administra los roles y sus permisos de acceso al sistema

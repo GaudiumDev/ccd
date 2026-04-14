@@ -70,7 +70,7 @@ export default function LoginPage() {
           <Card className="border-border bg-card">
             <CardHeader className="space-y-2 text-center">
               <CardTitle className="text-2xl text-foreground">
-                Bienvenido
+                Bienvenida/o!
               </CardTitle>
               <CardDescription>Inicia sesión en tu cuenta</CardDescription>
             </CardHeader>
@@ -115,6 +115,15 @@ export default function LoginPage() {
                       className="pl-10"
                     />
                   </div>
+                </div>
+
+                <div className="flex justify-end -mt-1">
+                  <Link
+                    href="/auth/forgot-password"
+                    className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4"
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </Link>
                 </div>
 
                 <Button type="submit" disabled={loading} className="w-full">

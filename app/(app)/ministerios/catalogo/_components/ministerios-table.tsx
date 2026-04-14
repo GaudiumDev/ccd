@@ -296,7 +296,7 @@ export function MinisteriosTable({
               </th>
               <ColHeader col="nombre" label="Nombre" />
               <ColHeader col="tipo" label="Tipo" />
-              <ColHeader col="nivel" label="Nivel" />
+              <ColHeader col="nivel" label="Alcance" />
               <ColHeader col="nivel_acceso" label="Acceso al Sistema" />
               <ColHeader col="asignaciones" label="Asignaciones Activas" />
               <ColHeader col="activo" label="Estado" />
