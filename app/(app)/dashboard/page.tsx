@@ -81,15 +81,27 @@ export default async function DashboardPage() {
   // en persona_organizacion (donde está inscripto como cecista). Si no tiene
   // persona_id, caer a la primera org de sus roles/ministerios.
   let primaryOrgId: string | null = ctx.org_ids[0] ?? null
+  let personaNombre: string | null = null
   if (ctx.persona_id) {
-    const { data: poRow } = await supabase
-      .from("persona_organizacion")
-      .select("organizacion_id")
-      .eq("persona_id", ctx.persona_id)
-      .is("fecha_fin", null)
-      .limit(1)
-      .single()
-    if (poRow?.organizacion_id) primaryOrgId = poRow.organizacion_id
+    const [poResult, personaResult] = await Promise.all([
+      supabase
+        .from("persona_organizacion")
+        .select("organizacion_id")
+        .eq("persona_id", ctx.persona_id)
+        .is("fecha_fin", null)
+        .limit(1)
+        .single(),
+      supabase
+        .from("personas")
+        .select("nombre, apellido")
+        .eq("id", ctx.persona_id)
+        .single(),
+    ])
+    if (poResult.data?.organizacion_id) primaryOrgId = poResult.data.organizacion_id
+    if (personaResult.data) {
+      const { nombre, apellido } = personaResult.data
+      personaNombre = [nombre, apellido].filter(Boolean).join(" ") || null
+    }
   }
 
   const canApprove =
@@ -341,7 +353,7 @@ export default async function DashboardPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-4xl font-bold text-foreground">
-            Panel de Inicio
+            {personaNombre ? `Hola, ${personaNombre}` : "Panel de Inicio"}
           </h1>
           <p className="mt-2 text-lg text-muted-foreground">
             Plataforma de gestión para Convivencia con Dios

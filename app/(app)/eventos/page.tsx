@@ -124,9 +124,9 @@ function EventoItem({
 export default async function EventosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; estado?: string }>
+  searchParams: Promise<{ q?: string; estado?: string; tipo?: string; fecha_desde?: string; fecha_hasta?: string }>
 }) {
-  const { q, estado: estadoFiltro } = await searchParams
+  const { q, estado: estadoFiltro, tipo: tipoFiltro, fecha_desde: fechaDesde, fecha_hasta: fechaHasta } = await searchParams
   const [supabase, ctx] = await Promise.all([createClient(), getUserContext()])
   const canCreate = ctx && (ctx.is_admin || ctx.nivel_max >= 50)
 
@@ -140,6 +140,9 @@ export default async function EventosPage({
 
   if (q) query = query.ilike("nombre", `%${q}%`)
   if (estadoFiltro) query = query.eq("estado", estadoFiltro)
+  if (tipoFiltro) query = query.eq("tipo", tipoFiltro)
+  if (fechaDesde) query = query.gte("fecha_inicio", fechaDesde)
+  if (fechaHasta) query = query.lte("fecha_fin", fechaHasta)
 
   const { data: eventos } = await query
 
@@ -256,7 +259,7 @@ export default async function EventosPage({
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Search and filter */}
-          <form method="GET" className="flex gap-3 flex-wrap">
+          <form method="GET" className="flex gap-3 flex-wrap items-end">
             <div className="relative flex-1 min-w-48">
               <input
                 name="q"
@@ -292,12 +295,48 @@ export default async function EventosPage({
                 </option>
               ))}
             </select>
+            <select
+              name="tipo"
+              defaultValue={tipoFiltro ?? ""}
+              className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+            >
+              <option value="">Todos los tipos</option>
+              <option value="convivencia">Convivencia</option>
+              <option value="retiro">Retiro</option>
+              <option value="taller">Taller</option>
+            </select>
+            <div className="flex items-center gap-1">
+              <label className="text-xs text-muted-foreground whitespace-nowrap">Desde</label>
+              <input
+                name="fecha_desde"
+                type="date"
+                defaultValue={fechaDesde ?? ""}
+                className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+              />
+            </div>
+            <div className="flex items-center gap-1">
+              <label className="text-xs text-muted-foreground whitespace-nowrap">Hasta</label>
+              <input
+                name="fecha_hasta"
+                type="date"
+                defaultValue={fechaHasta ?? ""}
+                className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+              />
+            </div>
             <button
               type="submit"
               className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
             >
               Filtrar
             </button>
+            {(q || estadoFiltro || tipoFiltro || fechaDesde || fechaHasta) && (
+              <Link
+                href="/eventos"
+                className="rounded-md border border-border px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
+              >
+                Limpiar
+              </Link>
+            )}
           </form>
 
           {eventos && eventos.length > 0 ? (
@@ -310,18 +349,16 @@ export default async function EventosPage({
             <div className="py-12 text-center">
               <Calendar className="mx-auto h-12 w-12 text-muted-foreground" />
               <h3 className="mt-4 text-lg font-semibold text-foreground">
-                {q || estadoFiltro
+                {q || estadoFiltro || tipoFiltro || fechaDesde || fechaHasta
                   ? "No se encontraron eventos"
                   : "No hay eventos registrados"}
               </h3>
               <p className="mt-2 text-muted-foreground">
-                {q
-                  ? `Sin resultados para "${q}"`
-                  : estadoFiltro
-                    ? `No hay eventos con estado "${estadoLabel[estadoFiltro] ?? estadoFiltro}"`
-                    : "Comienza agregando el primer evento al sistema"}
+                {q || estadoFiltro || tipoFiltro || fechaDesde || fechaHasta
+                  ? "Probá con otros filtros"
+                  : "Comienza agregando el primer evento al sistema"}
               </p>
-              {!q && !estadoFiltro && canCreate && (
+              {!q && !estadoFiltro && !tipoFiltro && !fechaDesde && !fechaHasta && canCreate && (
                 <Link href="/eventos/nuevo" className="mt-4 inline-block">
                   <Button className="gap-2">
                     <Plus className="h-4 w-4" />

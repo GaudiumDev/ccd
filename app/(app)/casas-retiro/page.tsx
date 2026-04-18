@@ -15,6 +15,8 @@ export default async function CasasRetiroPage({
     q?: string
     estado?: string
     provincia?: string
+    tipo_propiedad?: string
+    aforo_min?: string
     sortBy?: string
     sortDir?: string
   }>
@@ -23,6 +25,8 @@ export default async function CasasRetiroPage({
   const q = params.q ?? ''
   const estado = params.estado ?? ''
   const provincia = params.provincia ?? ''
+  const tipoPropiedad = params.tipo_propiedad ?? ''
+  const aforoMin = params.aforo_min ?? ''
   const sortBy = params.sortBy ?? ''
   const sortDir = (params.sortDir === 'asc' || params.sortDir === 'desc') ? params.sortDir : 'asc'
 
@@ -43,10 +47,12 @@ export default async function CasasRetiroPage({
   if (q) query = query.ilike('nombre', `%${q}%`)
   if (estado) query = query.eq('estado', estado)
   if (provincia) query = query.ilike('provincia', `%${provincia}%`)
+  if (tipoPropiedad) query = query.eq('tipo_propiedad', tipoPropiedad)
+  if (aforoMin) query = query.gte('aforo', parseInt(aforoMin))
 
   const { data: casas } = await query
 
-  const hasFilters = !!(q || estado || provincia)
+  const hasFilters = !!(q || estado || provincia || tipoPropiedad || aforoMin)
 
   const tipoPropiedadLabel: Record<string, string> = {
     propia: 'Propia',
@@ -111,6 +117,28 @@ export default async function CasasRetiroPage({
               placeholder="Provincia..."
               className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground w-32"
             />
+
+            <select
+              name="tipo_propiedad"
+              defaultValue={tipoPropiedad}
+              className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+            >
+              <option value="">Todas las propiedades</option>
+              <option value="propia">Propia</option>
+              <option value="terceros">De terceros</option>
+            </select>
+
+            <div className="flex items-center gap-1">
+              <label className="text-xs text-muted-foreground whitespace-nowrap">Aforo mín.</label>
+              <input
+                name="aforo_min"
+                type="number"
+                min="0"
+                defaultValue={aforoMin}
+                placeholder="0"
+                className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground w-20"
+              />
+            </div>
 
             <button
               type="submit"

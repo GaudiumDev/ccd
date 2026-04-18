@@ -64,7 +64,7 @@ export default async function PersonaDetailPage({
     supabase
       .from("personas")
       .select(
-        "id, nombre, apellido, email, email_ccd, telefono, tipo_documento, documento, fecha_nacimiento, direccion, direccion_nro, localidad, codigo_postal, provincia, pais, notas, estado, created_at, acepta_comunicaciones, estado_eclesial, estado_vida, diocesis, categoria_persona, parroquia, socio_asociacion, referente_comunidad, cecista_dedicado, intercesor_dies_natalis, nombre_usuario, nivel_estudios, anio_ingreso, acompanante_id, acompanante:personas!acompanante_id(id, nombre, apellido)",
+        "id, nombre, apellido, email, email_ccd, telefono, tipo_documento, documento, fecha_nacimiento, direccion, direccion_nro, localidad, codigo_postal, provincia, pais, notas, estado, created_at, acepta_comunicaciones, estado_eclesial, estado_vida, diocesis, categoria_persona, parroquia, socio_asociacion, referente_comunidad, cecista_dedicado, intercesor_dies_natalis, nombre_usuario, nivel_estudios, anio_ingreso, acompanante_id, acompanante:personas!acompanante_id(id, nombre, apellido), fecha_ingreso_comunidad",
       )
       .eq("id", id)
       .single(),
@@ -245,6 +245,10 @@ export default async function PersonaDetailPage({
                   ? "Cecista"
                   : null
               }
+            />
+            <Field
+              label="Fecha de ingreso a la comunidad"
+              value={formatDate((persona as any).fecha_ingreso_comunidad)}
             />
             {(persona.socio_asociacion || persona.referente_comunidad || persona.cecista_dedicado) && (
               <div className="col-span-2">

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -80,7 +80,6 @@ export function PermisosMatrix({
       setActivos(activos)
       setErrores(prev => ({ ...prev, [permisoId]: 'Error al guardar. Intenta de nuevo.' }))
     } else if (!isAdmin) {
-      // Actualizar nivel_acceso automáticamente (solo si no es admin_general, cuyo nivel es fijo en 100)
       await supabase
         .from('ministerios')
         .update({ nivel_acceso: nuevoNivel })
@@ -94,6 +93,48 @@ export function PermisosMatrix({
       return next
     })
   }
+
+  const toggleCategoria = useCallback(
+    async (categoria: string) => {
+      const permisos = permisosPorCategoria[categoria] ?? []
+      const ids = permisos.map((p) => p.id)
+      const allSelected = ids.every((id) => activos.has(id))
+
+      const newActivos = new Set(activos)
+      if (allSelected) {
+        ids.forEach((id) => newActivos.delete(id))
+      } else {
+        ids.forEach((id) => newActivos.add(id))
+      }
+      setActivos(newActivos)
+
+      const nuevoNivel = calcularNivel(newActivos)
+
+      if (allSelected) {
+        await supabase
+          .from('ministerio_permisos')
+          .delete()
+          .eq('ministerio_id', ministerioId)
+          .in('permiso_id', ids)
+      } else {
+        const toInsert = ids
+          .filter((id) => !activos.has(id))
+          .map((permiso_id) => ({ ministerio_id: ministerioId, permiso_id }))
+        if (toInsert.length > 0) {
+          await supabase.from('ministerio_permisos').insert(toInsert)
+        }
+      }
+
+      if (!isAdmin) {
+        await supabase
+          .from('ministerios')
+          .update({ nivel_acceso: nuevoNivel })
+          .eq('id', ministerioId)
+        onNivelChange(nuevoNivel)
+      }
+    },
+    [permisosPorCategoria, activos, ministerioId, isAdmin],
+  )
 
   const categorias = Object.keys(permisosPorCategoria)
 
@@ -122,7 +163,10 @@ export function PermisosMatrix({
 
     return (
       <div key={permiso.id}>
-        <div className={`flex items-start gap-3 rounded-lg border p-3 ${indented ? 'border-border/50 bg-muted/30' : 'border-border'}`}>
+        <div
+          className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors ${indented ? 'border-border/50 bg-muted/30' : 'border-border'}`}
+          onClick={() => !isLoading && togglePermiso(permiso.id, !isActive)}
+        >
           <div className="relative flex items-center justify-center w-5 h-5 mt-0.5 shrink-0">
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -131,7 +175,8 @@ export function PermisosMatrix({
                 type="checkbox"
                 id={`perm-${permiso.id}`}
                 checked={isActive}
-                onChange={e => togglePermiso(permiso.id, e.target.checked)}
+                onChange={(e) => togglePermiso(permiso.id, e.target.checked)}
+                onClick={(e) => e.stopPropagation()}
                 className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
               />
             )}
@@ -140,6 +185,7 @@ export function PermisosMatrix({
             <label
               htmlFor={`perm-${permiso.id}`}
               className="text-sm font-medium text-foreground cursor-pointer"
+              onClick={(e) => e.stopPropagation()}
             >
               {permiso.nombre}
             </label>
@@ -163,18 +209,40 @@ export function PermisosMatrix({
 
   return (
     <div className="space-y-6">
-      {categorias.map(categoria => (
-        <div key={categoria}>
-          <h3 className="text-sm font-semibold text-foreground mb-3 uppercase tracking-wide">
-            {categoriaLabel[categoria] ?? categoria}
-          </h3>
-          <div className="space-y-2">
-            {permisosPorCategoria[categoria]
-              .filter((p: Permiso) => !ALL_CHILD_CLAVES.has(p.clave))
-              .map((permiso: Permiso) => renderPermiso(permiso))}
+      {categorias.map(categoria => {
+        const ids = (permisosPorCategoria[categoria] ?? []).map((p) => p.id)
+        const selectedCount = ids.filter((id) => activos.has(id)).length
+        const allSelected = selectedCount === ids.length
+        const someSelected = selectedCount > 0 && !allSelected
+
+        return (
+          <div key={categoria}>
+            <div className="flex items-center gap-2 mb-3">
+              <input
+                type="checkbox"
+                id={`cat-${categoria}`}
+                checked={allSelected}
+                ref={(el) => {
+                  if (el) el.indeterminate = someSelected
+                }}
+                onChange={() => toggleCategoria(categoria)}
+                className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
+              />
+              <label
+                htmlFor={`cat-${categoria}`}
+                className="text-sm font-semibold text-foreground uppercase tracking-wide cursor-pointer"
+              >
+                {categoriaLabel[categoria] ?? categoria}
+              </label>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 pl-6">
+              {permisosPorCategoria[categoria]
+                .filter((p: Permiso) => !ALL_CHILD_CLAVES.has(p.clave))
+                .map((permiso: Permiso) => renderPermiso(permiso))}
+            </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

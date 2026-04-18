@@ -8,18 +8,32 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { createClient } from '@/lib/supabase/server'
 import { getUserContext, canPerform } from '@/lib/auth/context'
 
-export default async function RolesPage() {
-  const ctx = await getUserContext()
+export default async function RolesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; activo?: string }>
+}) {
+  const [params, ctx] = await Promise.all([searchParams, getUserContext()])
   if (!ctx) redirect('/auth/login')
   if (!canPerform(ctx, 'roles.assign')) redirect('/dashboard')
+
+  const q = params.q ?? ''
+  const activo = params.activo ?? ''
+  const hasFilters = !!(q || activo)
 
   const supabase = await createClient()
 
   // Cargar roles con conteo de asignaciones activas
-  const { data: roles } = await supabase
+  let rolesQuery = supabase
     .from('roles_sistema')
     .select('id, nombre, descripcion, nivel_acceso, activo')
     .order('nivel_acceso', { ascending: false })
+
+  if (q) rolesQuery = rolesQuery.ilike('nombre', `%${q}%`)
+  if (activo === 'true') rolesQuery = rolesQuery.eq('activo', true)
+  if (activo === 'false') rolesQuery = rolesQuery.eq('activo', false)
+
+  const { data: roles } = await rolesQuery
 
   // Cargar conteo de asignaciones por rol
   const { data: conteos } = await supabase
@@ -65,7 +79,42 @@ export default async function RolesPage() {
             </Button>
           </Link>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {/* Filtros */}
+          <form method="GET" className="flex flex-wrap items-end gap-2">
+            <div className="relative min-w-50 flex-1">
+              <input
+                name="q"
+                defaultValue={q}
+                placeholder="Buscar por nombre..."
+                className="w-full rounded-md border border-border bg-background px-3 py-2 pl-8 text-sm text-foreground placeholder:text-muted-foreground"
+              />
+              <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <select
+              name="activo"
+              defaultValue={activo}
+              className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+            >
+              <option value="">Todos los estados</option>
+              <option value="true">Solo activos</option>
+              <option value="false">Solo inactivos</option>
+            </select>
+            <button
+              type="submit"
+              className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              Filtrar
+            </button>
+            {hasFilters && (
+              <Link href="/ministerios/roles" className="rounded-md border border-border px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                Limpiar
+              </Link>
+            )}
+          </form>
+
           {roles && roles.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -128,9 +177,11 @@ export default async function RolesPage() {
           ) : (
             <div className="py-12 text-center">
               <Shield className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-semibold text-foreground">No hay roles configurados</h3>
+              <h3 className="mt-4 text-lg font-semibold text-foreground">
+                {hasFilters ? 'No se encontraron roles' : 'No hay roles configurados'}
+              </h3>
               <p className="mt-2 text-muted-foreground">
-                Ejecuta la migración 005 para cargar los roles del sistema
+                {hasFilters ? 'Probá con otros filtros' : 'Ejecuta la migración 005 para cargar los roles del sistema'}
               </p>
             </div>
           )}

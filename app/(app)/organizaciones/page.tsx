@@ -23,6 +23,7 @@ export default async function OrganizacionesPage({
     tipo?: string
     estado?: string
     provincia?: string
+    localidad?: string
     sortBy?: string
     sortDir?: string
   }>
@@ -32,6 +33,7 @@ export default async function OrganizacionesPage({
   const tipo = params.tipo ?? ""
   const estado = params.estado ?? ""
   const provincia = params.provincia ?? ""
+  const localidad = params.localidad ?? ""
   const sortBy = params.sortBy ?? ""
   const sortDir =
     params.sortDir === "asc" || params.sortDir === "desc"
@@ -60,6 +62,7 @@ export default async function OrganizacionesPage({
   if (tipo) query = query.eq("tipo", tipo)
   if (estado) query = query.eq("estado", estado)
   if (provincia) query = query.ilike("provincia", `%${provincia}%`)
+  if (localidad) query = query.ilike("localidad", `%${localidad}%`)
 
   const { data: organizaciones } = await query
 
@@ -72,13 +75,14 @@ export default async function OrganizacionesPage({
     otra: "Otra",
   }
 
-  const hasFilters = !!(q || tipo || estado || provincia)
+  const hasFilters = !!(q || tipo || estado || provincia || localidad)
 
   const exportParams = new URLSearchParams()
   if (q) exportParams.set("q", q)
   if (tipo) exportParams.set("tipo", tipo)
   if (estado) exportParams.set("estado", estado)
   if (provincia) exportParams.set("provincia", provincia)
+  if (localidad) exportParams.set("localidad", localidad)
   const exportSearch =
     exportParams.size > 0 ? `?${exportParams.toString()}` : ""
 
@@ -165,6 +169,13 @@ export default async function OrganizacionesPage({
               name="provincia"
               defaultValue={provincia}
               placeholder="Provincia..."
+              className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground w-32"
+            />
+
+            <input
+              name="localidad"
+              defaultValue={localidad}
+              placeholder="Localidad..."
               className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground w-32"
             />
 

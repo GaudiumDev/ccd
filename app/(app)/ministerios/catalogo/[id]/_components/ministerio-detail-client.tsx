@@ -21,6 +21,7 @@ interface Ministerio {
   nivel: string
   nivel_acceso: number
   activo: boolean
+  requiere_acta?: boolean
 }
 
 interface Asignacion {
@@ -55,37 +56,36 @@ export function MinisterioDetailClient({
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div>
-          <EditMinisterioForm ministerio={ministerio} nivelCalculado={nivelCalculado} />
-        </div>
-        <div className="lg:col-span-2">
-          <Card className="border-border bg-card">
-            <CardHeader>
-              <CardTitle className="text-foreground">Permisos del Rol</CardTitle>
-              <CardDescription>
-                Activa o desactiva permisos. El nivel de acceso se recalcula automáticamente.
-                {isAdmin && (
-                  <span className="block mt-1 text-amber-600 dark:text-amber-400">
-                    admin_general siempre tiene nivel 100 independientemente de los permisos.
-                  </span>
-                )}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <PermisosMatrix
-                ministerioId={ministerio.id}
-                permisosPorCategoria={permisosPorCategoria}
-                categoriaLabel={categoriaLabel}
-                permisosActivosIds={permisosActivosIds}
-                totalPermisos={totalPermisos}
-                isAdmin={isAdmin}
-                onNivelChange={setNivelCalculado}
-              />
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      <EditMinisterioForm
+        ministerio={ministerio}
+        nivelCalculado={nivelCalculado}
+        asignacionesActivas={(asignaciones ?? []).filter((a) => a.estado === 'activo').length}
+      />
+
+      <Card className="border-border bg-card">
+        <CardHeader>
+          <CardTitle className="text-foreground">Permisos del Rol</CardTitle>
+          <CardDescription>
+            Activa o desactiva permisos. El nivel de acceso se recalcula automáticamente.
+            {isAdmin && (
+              <span className="block mt-1 text-amber-600 dark:text-amber-400">
+                admin_general siempre tiene nivel 100 independientemente de los permisos.
+              </span>
+            )}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <PermisosMatrix
+            ministerioId={ministerio.id}
+            permisosPorCategoria={permisosPorCategoria}
+            categoriaLabel={categoriaLabel}
+            permisosActivosIds={permisosActivosIds}
+            totalPermisos={totalPermisos}
+            isAdmin={isAdmin}
+            onNivelChange={setNivelCalculado}
+          />
+        </CardContent>
+      </Card>
 
       <AsignacionesDelRol asignaciones={asignaciones} ministerioId={ministerio.id} />
     </div>

@@ -34,6 +34,7 @@ type PersonaDetalle = {
   cecista_dedicado: boolean | null
   intercesor_dies_natalis: string | null
   nombre_usuario: string | null
+  fecha_ingreso_comunidad: string | null
 }
 
 type PersonaModo = {
@@ -97,7 +98,7 @@ export default function PersonaDetailModal({ personaId }: { personaId: string })
     Promise.all([
       supabase
         .from('personas')
-        .select('id, nombre, apellido, email, email_ccd, telefono, tipo_documento, documento, fecha_nacimiento, direccion, direccion_nro, localidad, codigo_postal, provincia, pais, notas, estado, created_at, acepta_comunicaciones, estado_eclesial, estado_vida, diocesis, categoria_persona, parroquia, socio_asociacion, referente_comunidad, cecista_dedicado, intercesor_dies_natalis, nombre_usuario')
+        .select('id, nombre, apellido, email, email_ccd, telefono, tipo_documento, documento, fecha_nacimiento, direccion, direccion_nro, localidad, codigo_postal, provincia, pais, notas, estado, created_at, acepta_comunicaciones, estado_eclesial, estado_vida, diocesis, categoria_persona, parroquia, socio_asociacion, referente_comunidad, cecista_dedicado, intercesor_dies_natalis, nombre_usuario, fecha_ingreso_comunidad')
         .eq('id', personaId)
         .single(),
       supabase
@@ -257,6 +258,12 @@ export default function PersonaDetailModal({ personaId }: { personaId: string })
               <dd className="text-foreground capitalize">
                 {persona.categoria_persona === 'no_cecista' ? 'No Cecista' : 'Cecista'}
               </dd>
+            </div>
+          )}
+          {persona.fecha_ingreso_comunidad && (
+            <div>
+              <dt className="text-muted-foreground">Fecha de ingreso a la comunidad</dt>
+              <dd className="text-foreground">{formatDate(persona.fecha_ingreso_comunidad)}</dd>
             </div>
           )}
           {(persona.socio_asociacion || persona.referente_comunidad || persona.cecista_dedicado) && (

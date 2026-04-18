@@ -43,6 +43,7 @@ type Persona = {
   nivel_estudios: string | null
   anio_ingreso: number | null
   acompanante_id: string | null
+  fecha_ingreso_comunidad: string | null
 }
 
 type ModoActual = { id: string; modo: string; fecha_inicio: string } | null
@@ -173,6 +174,7 @@ export function EditPersonaForm({
     nivel_estudios: persona.nivel_estudios ?? "",
     anio_ingreso: persona.anio_ingreso?.toString() ?? "",
     acompanante_id: persona.acompanante_id ?? "",
+    fecha_ingreso_comunidad: persona.fecha_ingreso_comunidad ?? "",
   })
   const [basicLoading, setBasicLoading] = useState(false)
   const [basicError, setBasicError] = useState<string | null>(null)
@@ -770,6 +772,19 @@ export function EditPersonaForm({
                   <Label htmlFor="socio_asociacion">Socio Activo</Label>
                 </div>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="fecha_ingreso_comunidad">Fecha de ingreso a la comunidad</Label>
+              <Input
+                id="fecha_ingreso_comunidad"
+                name="fecha_ingreso_comunidad"
+                type="date"
+                value={basicData.fecha_ingreso_comunidad}
+                onChange={handleBasicChange}
+                disabled={basicLoading}
+                className="w-48"
+              />
             </div>
 
             {basicData.categoria_persona === "no_cecista" && (

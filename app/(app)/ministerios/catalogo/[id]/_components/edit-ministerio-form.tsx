@@ -2,11 +2,10 @@
 
 import { useState } from 'react'
 import { Loader2, Trash2 } from 'lucide-react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { createClient } from '@/lib/supabase/client'
 
 interface Ministerio {
@@ -16,41 +15,21 @@ interface Ministerio {
   nivel: string
   nivel_acceso: number
   activo: boolean
-}
-
-const tipoLabel: Record<string, string> = {
-  conduccion: 'Conducción',
-  pastoral: 'Pastoral',
-  servicio: 'De Servicio',
-  sistema: 'Sistema',
-}
-
-const nivelLabel: Record<string, string> = {
-  comunidad: 'Comunidad',
-  confraternidad: 'Confraternidad',
-  fraternidad: 'Fraternidad',
-  evento: 'Evento',
-}
-
-const nivelAccesoLabel = (nivel: number) => {
-  if (nivel === 0) return 'Sin acceso técnico'
-  if (nivel <= 20) return 'Acceso mínimo'
-  if (nivel <= 50) return 'Acceso básico'
-  if (nivel <= 70) return 'Acceso medio'
-  if (nivel <= 90) return 'Acceso alto'
-  return 'Acceso completo'
+  requiere_acta?: boolean
 }
 
 interface Props {
   ministerio: Ministerio
   nivelCalculado: number
+  asignacionesActivas: number
 }
 
-export function EditMinisterioForm({ ministerio, nivelCalculado }: Props) {
+export function EditMinisterioForm({ ministerio, nivelCalculado, asignacionesActivas }: Props) {
   const [nivel, setNivel] = useState(nivelCalculado)
   const [nombre, setNombre] = useState(ministerio.nombre)
   const [tipo, setTipo] = useState(ministerio.tipo)
   const [nivelOrg, setNivelOrg] = useState(ministerio.nivel)
+  const [requiereActa, setRequiereActa] = useState(ministerio.requiere_acta ?? false)
   const [activo, setActivo] = useState(ministerio.activo)
   const [saving, setSaving] = useState(false)
   const [deactivating, setDeactivating] = useState(false)
@@ -58,13 +37,17 @@ export function EditMinisterioForm({ ministerio, nivelCalculado }: Props) {
   const [deactivateError, setDeactivateError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
 
-  // Permite que PermisosMatrix actualice el nivel mostrado
+  // Keep nivel in sync with PermisosMatrix changes
   if (nivel !== nivelCalculado) {
     setNivel(nivelCalculado)
   }
 
   const isReadOnly = ministerio.tipo === 'sistema'
-  const isDirty = nombre !== ministerio.nombre || tipo !== ministerio.tipo || nivelOrg !== ministerio.nivel
+  const isDirty =
+    nombre !== ministerio.nombre ||
+    tipo !== ministerio.tipo ||
+    nivelOrg !== ministerio.nivel ||
+    requiereActa !== (ministerio.requiere_acta ?? false)
 
   async function handleSave() {
     if (!isDirty) return
@@ -74,7 +57,7 @@ export function EditMinisterioForm({ ministerio, nivelCalculado }: Props) {
     const supabase = createClient()
     const { error: err } = await supabase
       .from('ministerios')
-      .update({ nombre: nombre.trim(), tipo, nivel: nivelOrg })
+      .update({ nombre: nombre.trim(), tipo, nivel: nivelOrg, requiere_acta: requiereActa })
       .eq('id', ministerio.id)
     setSaving(false)
     if (err) {
@@ -88,17 +71,12 @@ export function EditMinisterioForm({ ministerio, nivelCalculado }: Props) {
   async function handleDeactivate() {
     setDeactivating(true)
     setDeactivateError(null)
-    const supabase = createClient()
-    const { count } = await supabase
-      .from('asignaciones_ministerio')
-      .select('id', { count: 'exact', head: true })
-      .eq('ministerio_id', ministerio.id)
-      .eq('estado', 'activo')
-    if ((count ?? 0) > 0) {
-      setDeactivateError(`No se puede desactivar: tiene ${count} asignación${count !== 1 ? 'es' : ''} activa${count !== 1 ? 's' : ''}.`)
+    if (asignacionesActivas > 0) {
+      setDeactivateError(`No se puede desactivar: tiene ${asignacionesActivas} asignación${asignacionesActivas !== 1 ? 'es' : ''} activa${asignacionesActivas !== 1 ? 's' : ''}.`)
       setDeactivating(false)
       return
     }
+    const supabase = createClient()
     const { error: err } = await supabase
       .from('ministerios')
       .update({ activo: false })
@@ -115,112 +93,121 @@ export function EditMinisterioForm({ ministerio, nivelCalculado }: Props) {
     <Card className="border-border bg-card">
       <CardHeader>
         <CardTitle className="text-foreground">Datos del Rol</CardTitle>
-        <CardDescription>
-          {isReadOnly
-            ? 'Rol del sistema — nombre y tipo no se pueden modificar'
-            : 'Editá el nombre y tipo del rol'}
-        </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label>Nombre</Label>
-          <Input
-            value={nombre}
-            onChange={e => setNombre(e.target.value)}
-            disabled={isReadOnly}
-            className="text-sm"
-          />
-        </div>
+      <CardContent>
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr_1fr_auto] gap-6 items-start">
+          {/* Nombre */}
+          <div className="space-y-2">
+            <Label htmlFor="nombre">Nombre *</Label>
+            <Input
+              id="nombre"
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              disabled={isReadOnly}
+              placeholder="ej: Coordinador de Zona"
+            />
+          </div>
 
-        <div className="space-y-2">
-          <Label>Tipo</Label>
-          {isReadOnly ? (
-            <Input value={tipoLabel[tipo] ?? tipo} disabled className="text-sm" />
-          ) : (
-            <Select value={tipo} onValueChange={setTipo}>
-              <SelectTrigger className="text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="conduccion">Conducción</SelectItem>
-                <SelectItem value="pastoral">Pastoral</SelectItem>
-                <SelectItem value="servicio">De Servicio</SelectItem>
-              </SelectContent>
-            </Select>
-          )}
-        </div>
+          {/* Tipo */}
+          <div className="space-y-2">
+            <Label htmlFor="tipo">Tipo de Rol *</Label>
+            {isReadOnly ? (
+              <Input value={tipo} disabled className="text-sm" />
+            ) : (
+              <select
+                id="tipo"
+                value={tipo}
+                onChange={(e) => setTipo(e.target.value)}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+              >
+                <option value="conduccion">Conducción</option>
+                <option value="pastoral">Pastoral</option>
+                <option value="servicio">De Servicio</option>
+                <option value="sistema">Sistema (acceso técnico)</option>
+                <option value="otro">Otro</option>
+              </select>
+            )}
+          </div>
 
-        <div className="space-y-2">
-          <Label>Nivel organizacional</Label>
-          {isReadOnly ? (
-            <Input value={nivelLabel[nivelOrg] ?? nivelOrg} disabled className="text-sm capitalize" />
-          ) : (
-            <Select value={nivelOrg} onValueChange={setNivelOrg}>
-              <SelectTrigger className="text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="comunidad">Comunidad</SelectItem>
-                <SelectItem value="confraternidad">Confraternidad</SelectItem>
-                <SelectItem value="fraternidad">Fraternidad</SelectItem>
-                <SelectItem value="evento">Evento</SelectItem>
-              </SelectContent>
-            </Select>
-          )}
-        </div>
+          {/* Nivel organizacional */}
+          <div className="space-y-2">
+            <Label htmlFor="nivel-org">Nivel organizacional *</Label>
+            {isReadOnly ? (
+              <Input value={nivelOrg} disabled className="text-sm capitalize" />
+            ) : (
+              <select
+                id="nivel-org"
+                value={nivelOrg}
+                onChange={(e) => setNivelOrg(e.target.value)}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+              >
+                <option value="comunidad">Comunidad</option>
+                <option value="confraternidad">Confraternidad</option>
+                <option value="fraternidad">Fraternidad</option>
+                <option value="evento">Evento</option>
+              </select>
+            )}
+          </div>
 
-        <div className="space-y-2">
-          <Label>Nivel de acceso al sistema</Label>
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-              <div
-                className="h-full rounded-full bg-primary transition-all duration-300"
-                style={{ width: `${nivel}%` }}
+          {/* Acta + nivel de acceso + botones */}
+          <div className="space-y-4 lg:min-w-50">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="requiere_acta"
+                checked={requiereActa}
+                onChange={(e) => setRequiereActa(e.target.checked)}
+                disabled={isReadOnly}
+                className="h-4 w-4 rounded border-border accent-primary"
               />
+              <Label htmlFor="requiere_acta" className="cursor-pointer">
+                Requiere acta de asignación
+              </Label>
             </div>
-            <span className="text-sm font-semibold text-foreground tabular-nums w-8 text-right">{nivel}</span>
+
+            <div className="space-y-1 pt-1 border-t border-border">
+              <Label className="text-xs">Nivel de acceso al sistema</Label>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all duration-300"
+                    style={{ width: `${nivel}%` }}
+                  />
+                </div>
+                <span className="text-sm font-semibold text-foreground tabular-nums w-8 text-right">
+                  {nivel}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Se calcula automáticamente según los permisos seleccionados
+              </p>
+            </div>
+
+            {saveError && <p className="text-sm text-destructive">{saveError}</p>}
+            {deactivateError && <p className="text-sm text-destructive">{deactivateError}</p>}
+
+            {!isReadOnly && (
+              <div className="flex gap-3 pt-1">
+                <Button onClick={handleSave} disabled={!isDirty || saving}>
+                  {saving && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+                  {saved ? 'Guardado' : 'Guardar cambios'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="gap-2"
+                  disabled={!activo || deactivating}
+                  onClick={handleDeactivate}
+                >
+                  {deactivating
+                    ? <Loader2 className="h-3 w-3 animate-spin" />
+                    : <Trash2 className="h-3 w-3" />}
+                  {activo ? 'Desactivar' : 'Inactivo'}
+                </Button>
+              </div>
+            )}
           </div>
-          <p className="text-xs text-muted-foreground">
-            {nivelAccesoLabel(nivel)} — se calcula automáticamente según los permisos activos
-          </p>
         </div>
-
-        {!isReadOnly && (
-          <div className="pt-2">
-            {saveError && <p className="text-xs text-destructive mb-2">{saveError}</p>}
-            <Button
-              size="sm"
-              onClick={handleSave}
-              disabled={!isDirty || saving}
-            >
-              {saving && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-              {saved ? 'Guardado' : 'Guardar cambios'}
-            </Button>
-          </div>
-        )}
-
-        {!isReadOnly && (
-          <div className="pt-4 border-t border-border mt-2">
-            <p className="text-xs text-muted-foreground mb-2">
-              {activo
-                ? 'Desactivar este rol lo marcará como inactivo. No se puede si tiene asignaciones activas.'
-                : 'Este rol está inactivo.'}
-            </p>
-            {deactivateError && <p className="text-xs text-destructive mb-2">{deactivateError}</p>}
-            <Button
-              size="sm"
-              variant="destructive"
-              className="gap-2"
-              disabled={!activo || deactivating}
-              onClick={handleDeactivate}
-            >
-              {deactivating
-                ? <Loader2 className="h-3 w-3 animate-spin" />
-                : <Trash2 className="h-3 w-3" />}
-              {activo ? 'Desactivar rol' : 'Rol inactivo'}
-            </Button>
-          </div>
-        )}
       </CardContent>
     </Card>
   )

@@ -74,6 +74,7 @@ export async function PATCH(
   if (body.nivel_estudios !== undefined) updateData.nivel_estudios = body.nivel_estudios || null
   if (body.anio_ingreso !== undefined) updateData.anio_ingreso = body.anio_ingreso || null
   if (body.acompanante_id !== undefined) updateData.acompanante_id = body.acompanante_id || null
+  if (body.fecha_ingreso_comunidad !== undefined) updateData.fecha_ingreso_comunidad = body.fecha_ingreso_comunidad || null
 
   const { error } = await supabase
     .from('personas')
