@@ -19,13 +19,40 @@ const alcanceLabel: Record<string, string> = {
   abierto: 'Abierto',
 }
 
-export default async function TiposEventosPage() {
-  const [ctx, supabase] = await Promise.all([getUserContext(), createClient()])
+export default async function TiposEventosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    q?: string
+    categoria?: string
+    alcance?: string
+    req_confra?: string
+    req_eqt?: string
+  }>
+}) {
+  const [params, ctx, supabase] = await Promise.all([searchParams, getUserContext(), createClient()])
 
-  const { data: tipos } = await supabase
+  const q = params.q ?? ''
+  const categoria = params.categoria ?? ''
+  const alcance = params.alcance ?? ''
+  const reqConfra = params.req_confra ?? ''
+  const reqEqt = params.req_eqt ?? ''
+  const hasFilters = !!(q || categoria || alcance || reqConfra || reqEqt)
+
+  let query = supabase
     .from('tipos_eventos')
     .select('id, nombre, categoria, alcance, requiere_discernimiento_confra, requiere_discernimiento_eqt, requisitos')
     .order('nombre')
+
+  if (q) query = query.ilike('nombre', `%${q}%`)
+  if (categoria) query = query.eq('categoria', categoria)
+  if (alcance) query = query.eq('alcance', alcance)
+  if (reqConfra === 'true') query = query.eq('requiere_discernimiento_confra', true)
+  if (reqConfra === 'false') query = query.eq('requiere_discernimiento_confra', false)
+  if (reqEqt === 'true') query = query.eq('requiere_discernimiento_eqt', true)
+  if (reqEqt === 'false') query = query.eq('requiere_discernimiento_eqt', false)
+
+  const { data: tipos } = await query
 
   return (
     <div className="space-y-6">
@@ -46,10 +73,55 @@ export default async function TiposEventosPage() {
             </Button>
           )}
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="space-y-4 pt-0">
+          {/* Filtros */}
+          <form method="GET" className="flex flex-wrap items-end gap-2 px-6 pt-4">
+            <div className="relative min-w-48 flex-1">
+              <input
+                name="q"
+                defaultValue={q}
+                placeholder="Buscar por nombre..."
+                className="w-full rounded-md border border-border bg-background px-3 py-2 pl-8 text-sm text-foreground placeholder:text-muted-foreground"
+              />
+              <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <select name="categoria" defaultValue={categoria} className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground">
+              <option value="">Todas las categorías</option>
+              <option value="convivencia">Convivencia</option>
+              <option value="retiro">Retiro</option>
+              <option value="taller">Taller</option>
+              <option value="otro">Otro</option>
+            </select>
+            <select name="alcance" defaultValue={alcance} className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground">
+              <option value="">Todos los alcances</option>
+              <option value="interno">Interno</option>
+              <option value="abierto">Abierto</option>
+            </select>
+            <select name="req_confra" defaultValue={reqConfra} className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground">
+              <option value="">Req. Confraternidad</option>
+              <option value="true">Sí</option>
+              <option value="false">No</option>
+            </select>
+            <select name="req_eqt" defaultValue={reqEqt} className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground">
+              <option value="">Req. Equipo Timón</option>
+              <option value="true">Sí</option>
+              <option value="false">No</option>
+            </select>
+            <button type="submit" className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+              Filtrar
+            </button>
+            {hasFilters && (
+              <Link href="/tipos-eventos" className="rounded-md border border-border px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                Limpiar
+              </Link>
+            )}
+          </form>
+
           {!tipos || tipos.length === 0 ? (
             <p className="px-6 py-8 text-center text-sm text-muted-foreground">
-              No hay tipos de eventos registrados.
+              {hasFilters ? 'No se encontraron tipos con esos filtros.' : 'No hay tipos de eventos registrados.'}
             </p>
           ) : (
             <div className="overflow-x-auto">

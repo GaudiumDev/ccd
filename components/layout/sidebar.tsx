@@ -136,6 +136,28 @@ function buildNavItems(p: SidebarPermissions): NavItem[] {
           },
         ]
       : []),
+
+    ...(p.canCreateOrganization
+      ? [
+          {
+            icon: <Tag className="h-5 w-5" />,
+            label: "Tipos de Eventos",
+            href: "/tipos-eventos",
+            children: [
+              {
+                icon: <List className="h-4 w-4" />,
+                label: "Lista de tipos",
+                href: "/tipos-eventos",
+              },
+              {
+                icon: <PlusCircle className="h-4 w-4" />,
+                label: "Nuevo tipo",
+                href: "/tipos-eventos/nuevo",
+              },
+            ],
+          },
+        ]
+      : []),
     {
       icon: <Calendar className="h-5 w-5" />,
       label: "Eventos",
@@ -166,27 +188,6 @@ function buildNavItems(p: SidebarPermissions): NavItem[] {
           : []),
       ],
     },
-    ...(p.canCreateOrganization
-      ? [
-          {
-            icon: <Tag className="h-5 w-5" />,
-            label: "Tipos de Eventos",
-            href: "/tipos-eventos",
-            children: [
-              {
-                icon: <List className="h-4 w-4" />,
-                label: "Lista de tipos",
-                href: "/tipos-eventos",
-              },
-              {
-                icon: <PlusCircle className="h-4 w-4" />,
-                label: "Nuevo tipo",
-                href: "/tipos-eventos/nuevo",
-              },
-            ],
-          },
-        ]
-      : []),
   ]
 }
 

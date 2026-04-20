@@ -9,6 +9,7 @@ import { UserCheck, ArrowLeft, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
+import { formatDateAR } from '@/lib/utils'
 
 interface Asignacion {
   id: string
@@ -151,7 +152,7 @@ export default function RevocarAsignacionPage() {
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Asignado desde</span>
-              <span className="text-foreground">{asignacion.fecha_inicio ?? '—'}</span>
+              <span className="text-foreground">{formatDateAR(asignacion.fecha_inicio)}</span>
             </div>
           </div>
 

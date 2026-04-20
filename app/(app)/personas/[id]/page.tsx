@@ -76,7 +76,7 @@ export default async function PersonaDetailPage({
     supabase
       .from("asignaciones_ministerio")
       .select(
-        "fecha_inicio, fecha_fin, estado, ministerio:ministerios!ministerio_id(nombre), organizacion:organizaciones!organizacion_id(nombre), documento_url, notas",
+        "id, fecha_inicio, fecha_fin, estado, ministerio:ministerios!ministerio_id(id, nombre), organizacion:organizaciones!organizacion_id(id, nombre), documento_url, notas",
       )
       .eq("persona_id", id)
       .order("fecha_inicio", { ascending: false }),
@@ -86,7 +86,7 @@ export default async function PersonaDetailPage({
       .eq("persona_id", id),
     supabase
       .from("persona_organizacion")
-      .select("tipo_relacion, organizacion:organizaciones!organizacion_id(nombre)")
+      .select("tipo_relacion, organizacion:organizaciones!organizacion_id(id, nombre)")
       .eq("persona_id", id)
       .is("fecha_fin", null),
     supabase
@@ -99,12 +99,8 @@ export default async function PersonaDetailPage({
   if (error || !persona) notFound()
 
   const canUpdate = ctx ? canPerform(ctx, "person.update") : false
-  const confraternidad = (personaOrgs as any[])?.find(
-    (o) => o.tipo_relacion === "confraternidad",
-  )?.organizacion?.nombre
-  const fraternidad = (personaOrgs as any[])?.find(
-    (o) => o.tipo_relacion === "fraternidad",
-  )?.organizacion?.nombre
+  const confraternidadOrg = (personaOrgs as any[])?.find((o) => o.tipo_relacion === "confraternidad")?.organizacion
+  const fraternidadOrg = (personaOrgs as any[])?.find((o) => o.tipo_relacion === "fraternidad")?.organizacion
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -278,8 +274,26 @@ export default async function PersonaDetailPage({
                 </dd>
               </div>
             )}
-            <Field label="Confraternidad" value={confraternidad} />
-            <Field label="Fraternidad" value={fraternidad} />
+            <div>
+              <dt className="text-muted-foreground text-sm">Confraternidad</dt>
+              <dd className="text-foreground text-sm">
+                {confraternidadOrg ? (
+                  <Link href={`/organizaciones/${confraternidadOrg.id}`} className="text-primary hover:underline">
+                    {confraternidadOrg.nombre}
+                  </Link>
+                ) : "—"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground text-sm">Fraternidad</dt>
+              <dd className="text-foreground text-sm">
+                {fraternidadOrg ? (
+                  <Link href={`/organizaciones/${fraternidadOrg.id}`} className="text-primary hover:underline">
+                    {fraternidadOrg.nombre}
+                  </Link>
+                ) : "—"}
+              </dd>
+            </div>
             {persona.intercesor_dies_natalis && (
               <Field
                 label="Intercesor Dies Natalis"
@@ -386,8 +400,20 @@ export default async function PersonaDetailPage({
                       !a.fecha_fin ? "bg-green-50 dark:bg-green-900/10" : ""
                     }`}
                   >
-                    <td className="py-2 pr-4 text-foreground">{a.ministerio?.nombre ?? "—"}</td>
-                    <td className="py-2 pr-4 text-muted-foreground">{a.organizacion?.nombre ?? "—"}</td>
+                    <td className="py-2 pr-4 text-foreground">
+                      {a.ministerio ? (
+                        <Link href={`/ministerios/catalogo/${a.ministerio.id}`} className="text-primary hover:underline">
+                          {a.ministerio.nombre}
+                        </Link>
+                      ) : "—"}
+                    </td>
+                    <td className="py-2 pr-4 text-muted-foreground">
+                      {a.organizacion ? (
+                        <Link href={`/organizaciones/${a.organizacion.id}`} className="text-primary hover:underline">
+                          {a.organizacion.nombre}
+                        </Link>
+                      ) : "—"}
+                    </td>
                     <td className="py-2 pr-4 text-muted-foreground">{formatDate(a.fecha_inicio)}</td>
                     <td className="py-2 pr-4 text-muted-foreground">
                       {a.fecha_fin ? (
