@@ -12,6 +12,7 @@ import { Settings, Lock, Loader2, Eye, EyeOff, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { translateSupabaseError } from '@/lib/errors/supabase'
+import { LocationFields } from '@/components/location-fields'
 
 type FontSize = 'small' | 'medium' | 'large'
 
@@ -27,35 +28,13 @@ const FONT_SIZE_OPTIONS: { value: FontSize; label: string; preview: string }[] =
   { value: 'large', label: 'Grande', preview: 'A' },
 ]
 
-type Persona = {
-  id: string
-  nombre: string
-  apellido: string
-  email: string | null
-  telefono: string | null
-  fecha_nacimiento: string | null
-  direccion: string | null
-  direccion_nro: string | null
-  codigo_postal: string | null
-  localidad: string | null
-  provincia: string | null
-  pais: string | null
-  categoria_persona: string | null
-}
-
-type EditForm = {
-  nombre: string
-  apellido: string
-  email: string
-  telefono: string
-  fecha_nacimiento: string
-  direccion: string
-  direccion_nro: string
-  codigo_postal: string
-  localidad: string
-  provincia: string
-  pais: string
-}
+const NIVELES_ESTUDIOS = [
+  { value: 'primario', label: 'Primario' },
+  { value: 'secundario', label: 'Secundario' },
+  { value: 'terciario', label: 'Terciario' },
+  { value: 'universitario', label: 'Universitario' },
+  { value: 'posgrado_doctorado', label: 'Posgrado / Doctorado' },
+]
 
 const MODOS_LABEL: Record<string, string> = {
   colaborador: 'Colaborador',
@@ -70,6 +49,60 @@ const CATEGORIAS_LABEL: Record<string, string> = {
   cecista: 'Cecista',
   no_cecista: 'No cecista',
 }
+
+type Persona = {
+  id: string
+  nombre: string
+  apellido: string
+  email: string | null
+  email_ccd: string | null
+  telefono: string | null
+  fecha_nacimiento: string | null
+  tipo_documento: string | null
+  documento: string | null
+  direccion: string | null
+  direccion_nro: string | null
+  codigo_postal: string | null
+  localidad: string | null
+  provincia: string | null
+  pais: string | null
+  diocesis: string | null
+  estado_eclesial: string | null
+  parroquia: string | null
+  estado_vida: string | null
+  nivel_estudios: string | null
+  anio_ingreso: number | null
+  acompanante_id: string | null
+  notas: string | null
+  categoria_persona: string | null
+}
+
+type EditForm = {
+  nombre: string
+  apellido: string
+  email: string
+  email_ccd: string
+  telefono: string
+  fecha_nacimiento: string
+  tipo_documento: string
+  documento: string
+  direccion: string
+  direccion_nro: string
+  codigo_postal: string
+  localidad: string
+  provincia: string
+  pais: string
+  diocesis: string
+  estado_eclesial: string
+  parroquia: string
+  estado_vida: string
+  nivel_estudios: string
+  anio_ingreso: string
+  acompanante_id: string
+  notas: string
+}
+
+type PersonaOpcion = { id: string; nombre: string; apellido: string }
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('general')
@@ -87,10 +120,14 @@ export default function SettingsPage() {
   const [persona, setPersona] = useState<Persona | null>(null)
   const [modoActual, setModoActual] = useState<string | null>(null)
   const [loadingPersona, setLoadingPersona] = useState(true)
+  const [todasPersonas, setTodasPersonas] = useState<PersonaOpcion[]>([])
   const [editForm, setEditForm] = useState<EditForm>({
-    nombre: '', apellido: '', email: '', telefono: '',
-    fecha_nacimiento: '', direccion: '', direccion_nro: '',
-    codigo_postal: '', localidad: '', provincia: '', pais: 'Argentina',
+    nombre: '', apellido: '', email: '', email_ccd: '', telefono: '',
+    fecha_nacimiento: '', tipo_documento: '', documento: '',
+    direccion: '', direccion_nro: '', codigo_postal: '',
+    localidad: '', provincia: '', pais: 'Argentina', diocesis: '',
+    estado_eclesial: 'laico', parroquia: '', estado_vida: '',
+    nivel_estudios: '', anio_ingreso: '', acompanante_id: '', notas: '',
   })
   const [editLoading, setEditLoading] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
@@ -159,9 +196,10 @@ export default function SettingsPage() {
         setLoadingPersona(false)
         return
       }
+
       const { data } = await supabase
         .from('personas')
-        .select('id, nombre, apellido, email, telefono, fecha_nacimiento, direccion, direccion_nro, codigo_postal, localidad, provincia, pais, categoria_persona')
+        .select('id, nombre, apellido, email, email_ccd, telefono, fecha_nacimiento, tipo_documento, documento, direccion, direccion_nro, codigo_postal, localidad, provincia, pais, diocesis, estado_eclesial, parroquia, estado_vida, nivel_estudios, anio_ingreso, acompanante_id, notas, categoria_persona')
         .eq('auth_user_id', user.id)
         .single()
 
@@ -171,14 +209,25 @@ export default function SettingsPage() {
           nombre: data.nombre ?? '',
           apellido: data.apellido ?? '',
           email: data.email ?? '',
+          email_ccd: data.email_ccd ?? '',
           telefono: data.telefono ?? '',
           fecha_nacimiento: data.fecha_nacimiento ?? '',
+          tipo_documento: data.tipo_documento ?? '',
+          documento: data.documento ?? '',
           direccion: data.direccion ?? '',
           direccion_nro: data.direccion_nro ?? '',
           codigo_postal: data.codigo_postal ?? '',
           localidad: data.localidad ?? '',
           provincia: data.provincia ?? '',
           pais: data.pais ?? 'Argentina',
+          diocesis: data.diocesis ?? '',
+          estado_eclesial: data.estado_eclesial ?? 'laico',
+          parroquia: data.parroquia ?? '',
+          estado_vida: data.estado_vida ?? '',
+          nivel_estudios: data.nivel_estudios ?? '',
+          anio_ingreso: data.anio_ingreso != null ? String(data.anio_ingreso) : '',
+          acompanante_id: data.acompanante_id ?? '',
+          notas: data.notas ?? '',
         })
 
         const { data: modo } = await supabase
@@ -190,6 +239,16 @@ export default function SettingsPage() {
 
         setModoActual(modo?.modo ?? null)
       }
+
+      // Cargar personas para el select de acompañante
+      const { data: personas } = await supabase
+        .from('personas')
+        .select('id, nombre, apellido')
+        .is('fecha_baja', null)
+        .eq('estado', 'activo')
+        .order('apellido')
+
+      setTodasPersonas(personas ?? [])
       setLoadingPersona(false)
     }
     loadPersona()
@@ -215,14 +274,25 @@ export default function SettingsPage() {
         nombre: editForm.nombre,
         apellido: editForm.apellido,
         email: editForm.email || null,
+        email_ccd: editForm.email_ccd || null,
         telefono: editForm.telefono || null,
         fecha_nacimiento: editForm.fecha_nacimiento || null,
+        tipo_documento: editForm.tipo_documento || null,
+        documento: editForm.documento || null,
         direccion: editForm.direccion || null,
         direccion_nro: editForm.direccion_nro || null,
         codigo_postal: editForm.codigo_postal || null,
         localidad: editForm.localidad || null,
         provincia: editForm.provincia || null,
         pais: editForm.pais || null,
+        diocesis: editForm.diocesis || null,
+        estado_eclesial: editForm.estado_eclesial || 'laico',
+        parroquia: editForm.parroquia || null,
+        estado_vida: editForm.estado_vida || null,
+        nivel_estudios: editForm.nivel_estudios || null,
+        anio_ingreso: editForm.anio_ingreso ? Number(editForm.anio_ingreso) : null,
+        acompanante_id: editForm.acompanante_id || null,
+        notas: editForm.notas || null,
       })
       .eq('id', persona.id)
 
@@ -231,7 +301,15 @@ export default function SettingsPage() {
     if (error) {
       setEditError(translateSupabaseError(error))
     } else {
-      setPersona({ ...persona, ...editForm, email: editForm.email || null, telefono: editForm.telefono || null })
+      setPersona({
+        ...persona,
+        nombre: editForm.nombre,
+        apellido: editForm.apellido,
+        email: editForm.email || null,
+        email_ccd: editForm.email_ccd || null,
+        telefono: editForm.telefono || null,
+        categoria_persona: persona.categoria_persona,
+      })
       setEditSuccess(true)
       setTimeout(() => setEditSuccess(false), 3000)
     }
@@ -240,6 +318,8 @@ export default function SettingsPage() {
   function field(key: keyof EditForm, value: string) {
     setEditForm(prev => ({ ...prev, [key]: value }))
   }
+
+  const selectClass = 'w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm'
 
   return (
     <div className="space-y-8">
@@ -375,137 +455,174 @@ export default function SettingsPage() {
                   <CardHeader>
                     <CardTitle className="text-foreground flex items-center gap-2">
                       <User className="h-5 w-5 text-primary" />
-                      Datos personales
+                      Datos Personales
                     </CardTitle>
-                    <CardDescription>Actualizá tu información de contacto y ubicación</CardDescription>
+                    <CardDescription>Actualizá tu información personal</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {/* Nombre y apellido */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <Label htmlFor="p-nombre">Nombre</Label>
-                        <Input
-                          id="p-nombre"
-                          value={editForm.nombre}
-                          onChange={e => field('nombre', e.target.value)}
-                          required
-                          disabled={editLoading}
-                        />
+
+                    {/* Nombre / Apellido */}
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="p-nombre">Nombre *</Label>
+                        <Input id="p-nombre" value={editForm.nombre} onChange={e => field('nombre', e.target.value)} required disabled={editLoading} />
                       </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="p-apellido">Apellido</Label>
-                        <Input
-                          id="p-apellido"
-                          value={editForm.apellido}
-                          onChange={e => field('apellido', e.target.value)}
-                          required
-                          disabled={editLoading}
-                        />
+                      <div className="space-y-2">
+                        <Label htmlFor="p-apellido">Apellido *</Label>
+                        <Input id="p-apellido" value={editForm.apellido} onChange={e => field('apellido', e.target.value)} required disabled={editLoading} />
                       </div>
                     </div>
 
-                    {/* Contacto */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <Label htmlFor="p-email">Email personal</Label>
-                        <Input
-                          id="p-email"
-                          type="email"
-                          value={editForm.email}
-                          onChange={e => field('email', e.target.value)}
-                          disabled={editLoading}
-                        />
+                    {/* Teléfono / Fecha nacimiento */}
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="p-telefono">Teléfono</Label>
+                        <Input id="p-telefono" type="tel" value={editForm.telefono} onChange={e => field('telefono', e.target.value)} disabled={editLoading} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="p-nacimiento">Fecha de Nacimiento</Label>
+                        <Input id="p-nacimiento" type="date" value={editForm.fecha_nacimiento} onChange={e => field('fecha_nacimiento', e.target.value)} disabled={editLoading} />
+                      </div>
+                    </div>
+
+                    {/* Mail Personal / Mail CcD */}
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="p-email">Mail Personal</Label>
+                        <Input id="p-email" type="email" value={editForm.email} onChange={e => field('email', e.target.value)} disabled={editLoading} />
                         <p className="text-xs text-muted-foreground">No afecta el acceso al sistema.</p>
                       </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="p-telefono">Teléfono</Label>
-                        <Input
-                          id="p-telefono"
-                          type="tel"
-                          value={editForm.telefono}
-                          onChange={e => field('telefono', e.target.value)}
-                          disabled={editLoading}
-                        />
+                      <div className="space-y-2">
+                        <Label htmlFor="p-email-ccd">Mail CcD</Label>
+                        <Input id="p-email-ccd" type="email" value={editForm.email_ccd} onChange={e => field('email_ccd', e.target.value)} disabled={editLoading} />
                       </div>
                     </div>
 
-                    {/* Fecha de nacimiento */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <Label htmlFor="p-nacimiento">Fecha de nacimiento</Label>
-                        <Input
-                          id="p-nacimiento"
-                          type="date"
-                          value={editForm.fecha_nacimiento}
-                          onChange={e => field('fecha_nacimiento', e.target.value)}
-                          disabled={editLoading}
-                        />
+                    {/* Tipo Documento / Nro Documento */}
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="p-tipo-doc">Tipo de Documento</Label>
+                        <select id="p-tipo-doc" value={editForm.tipo_documento} onChange={e => field('tipo_documento', e.target.value)} disabled={editLoading} className={selectClass}>
+                          <option value="">Seleccionar...</option>
+                          <option value="dni">DNI</option>
+                          <option value="pasaporte">Pasaporte</option>
+                          <option value="cedula">Cédula</option>
+                          <option value="otro">Otro</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="p-documento">Nro Documento</Label>
+                        <Input id="p-documento" value={editForm.documento} onChange={e => field('documento', e.target.value)} disabled={editLoading} />
                       </div>
                     </div>
 
                     {/* Dirección */}
-                    <div>
-                      <p className="text-sm font-medium text-foreground mb-3">Dirección</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div className="sm:col-span-2 space-y-1">
-                          <Label htmlFor="p-direccion">Calle</Label>
-                          <Input
-                            id="p-direccion"
-                            value={editForm.direccion}
-                            onChange={e => field('direccion', e.target.value)}
-                            disabled={editLoading}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label htmlFor="p-nro">Número</Label>
-                          <Input
-                            id="p-nro"
-                            value={editForm.direccion_nro}
-                            onChange={e => field('direccion_nro', e.target.value)}
-                            disabled={editLoading}
-                          />
-                        </div>
+                    <div className="grid gap-4 md:grid-cols-[1fr_auto]">
+                      <div className="space-y-2">
+                        <Label htmlFor="p-direccion">Dirección Calle</Label>
+                        <Input id="p-direccion" value={editForm.direccion} onChange={e => field('direccion', e.target.value)} disabled={editLoading} />
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-                        <div className="space-y-1">
-                          <Label htmlFor="p-cp">Código postal</Label>
-                          <Input
-                            id="p-cp"
-                            value={editForm.codigo_postal}
-                            onChange={e => field('codigo_postal', e.target.value)}
-                            disabled={editLoading}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label htmlFor="p-localidad">Localidad</Label>
-                          <Input
-                            id="p-localidad"
-                            value={editForm.localidad}
-                            onChange={e => field('localidad', e.target.value)}
-                            disabled={editLoading}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label htmlFor="p-provincia">Provincia</Label>
-                          <Input
-                            id="p-provincia"
-                            value={editForm.provincia}
-                            onChange={e => field('provincia', e.target.value)}
-                            disabled={editLoading}
-                          />
-                        </div>
+                      <div className="space-y-2 w-28">
+                        <Label htmlFor="p-nro">Número</Label>
+                        <Input id="p-nro" value={editForm.direccion_nro} onChange={e => field('direccion_nro', e.target.value)} disabled={editLoading} />
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                        <div className="space-y-1">
-                          <Label htmlFor="p-pais">País</Label>
-                          <Input
-                            id="p-pais"
-                            value={editForm.pais}
-                            onChange={e => field('pais', e.target.value)}
-                            disabled={editLoading}
-                          />
-                        </div>
+                    </div>
+
+                    {/* LocationFields: País, Provincia, Ciudad, CP, Diócesis */}
+                    <LocationFields
+                      pais={editForm.pais}
+                      provincia={editForm.provincia}
+                      localidad={editForm.localidad}
+                      codigoPostal={editForm.codigo_postal}
+                      diocesis={editForm.diocesis}
+                      onPaisChange={val => setEditForm(prev => ({ ...prev, pais: val, provincia: '', localidad: '' }))}
+                      onProvinciaChange={val => setEditForm(prev => ({ ...prev, provincia: val, localidad: '' }))}
+                      onLocalidadChange={val => setEditForm(prev => ({ ...prev, localidad: val }))}
+                      onCodigoPostalChange={val => field('codigo_postal', val)}
+                      onDiocesisChange={val => field('diocesis', val)}
+                      disabled={editLoading}
+                    />
+
+                    {/* Estado Eclesiástico / Parroquia */}
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="p-eclesial">Estado Eclesiástico</Label>
+                        <select id="p-eclesial" value={editForm.estado_eclesial} onChange={e => field('estado_eclesial', e.target.value)} disabled={editLoading} className={selectClass}>
+                          <option value="laico">Laico</option>
+                          <option value="religioso">Religioso/a</option>
+                          <option value="diacono">Diácono</option>
+                          <option value="sacerdote">Sacerdote</option>
+                          <option value="obispo">Obispo</option>
+                          <option value="cardenal">Cardenal</option>
+                        </select>
                       </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="p-parroquia">Parroquia</Label>
+                        <Input id="p-parroquia" placeholder="Ej: Parroquia San José" value={editForm.parroquia} onChange={e => field('parroquia', e.target.value)} disabled={editLoading} />
+                      </div>
+                    </div>
+
+                    {/* Estado de Vida */}
+                    <div className="space-y-2">
+                      <Label htmlFor="p-vida">Estado de Vida</Label>
+                      <select id="p-vida" value={editForm.estado_vida} onChange={e => field('estado_vida', e.target.value)} disabled={editLoading} className={selectClass}>
+                        <option value="">Sin especificar</option>
+                        <option value="soltero">Soltero/a</option>
+                        <option value="casado">Casado/a</option>
+                        <option value="viudo">Viudo/a</option>
+                        <option value="separado">Separado/a</option>
+                        <option value="consagrado">Consagrado/a</option>
+                      </select>
+                    </div>
+
+                    {/* Nivel Estudios / Año Ingreso */}
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="p-estudios">Máx. Nivel de Estudios</Label>
+                        <select id="p-estudios" value={editForm.nivel_estudios} onChange={e => field('nivel_estudios', e.target.value)} disabled={editLoading} className={selectClass}>
+                          <option value="">Sin especificar</option>
+                          {NIVELES_ESTUDIOS.map(n => (
+                            <option key={n.value} value={n.value}>{n.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="p-anio">Año de Ingreso</Label>
+                        <Input
+                          id="p-anio"
+                          type="number"
+                          min="1950"
+                          max={new Date().getFullYear()}
+                          placeholder="Ej: 2010"
+                          value={editForm.anio_ingreso}
+                          onChange={e => field('anio_ingreso', e.target.value)}
+                          disabled={editLoading}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Acompañante */}
+                    <div className="space-y-2">
+                      <Label htmlFor="p-acompanante">Acompañante</Label>
+                      <select id="p-acompanante" value={editForm.acompanante_id} onChange={e => field('acompanante_id', e.target.value)} disabled={editLoading} className={selectClass}>
+                        <option value="">Sin acompañante</option>
+                        {todasPersonas.map(p => (
+                          <option key={p.id} value={p.id}>{p.apellido}, {p.nombre}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Notas */}
+                    <div className="space-y-2">
+                      <Label htmlFor="p-notas">Notas</Label>
+                      <textarea
+                        id="p-notas"
+                        rows={3}
+                        value={editForm.notas}
+                        onChange={e => field('notas', e.target.value)}
+                        disabled={editLoading}
+                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
+                      />
                     </div>
 
                     {editError && (
@@ -522,7 +639,7 @@ export default function SettingsPage() {
                     <div className="flex justify-end pt-2">
                       <Button type="submit" disabled={editLoading}>
                         {editLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                        Guardar cambios
+                        Guardar Datos
                       </Button>
                     </div>
                   </CardContent>

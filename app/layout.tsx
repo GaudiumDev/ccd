@@ -8,7 +8,7 @@ const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Convivencia con Dios - Plataforma de digital",
+  title: "Convivencia con Dios - Plataforma digital",
   description:
     "Plataforma para la gestión de la comunidad de Convivencia con Dios",
   icons: {

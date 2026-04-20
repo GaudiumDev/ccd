@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, CheckCircle2, XCircle } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, XCircle, Plus, Trash2 } from 'lucide-react'
 import { LocationFields } from '@/components/location-fields'
 import { Combobox } from '@/components/ui/combobox'
 
@@ -39,6 +39,9 @@ export default function NuevoEventoForm({ fraternidades, confraternidades, tipos
   const [fraternidadId, setFraternidadId] = useState(fraternidades[0]?.id ?? '')
   const [tipoEventoId, setTipoEventoId] = useState(tiposEventos[0]?.id ?? '')
   const [confraternidadOverride, setConfraternidadOverride] = useState('')
+
+  type FechaEjecucion = { fecha_inicio: string; fecha_fin: string }
+  const [fechasEjecucion, setFechasEjecucion] = useState<FechaEjecucion[]>([{ fecha_inicio: '', fecha_fin: '' }])
 
   const tipoSeleccionado = tiposEventos.find(t => t.id === tipoEventoId) ?? null
 
@@ -78,6 +81,21 @@ export default function NuevoEventoForm({ fraternidades, confraternidades, tipos
     setError('')
 
     try {
+      // Validate fechas de ejecución are within the proposed range
+      const fechasCompletas = fechasEjecucion.filter(f => f.fecha_inicio && f.fecha_fin)
+      for (const f of fechasCompletas) {
+        if (formData.fecha_inicio && f.fecha_inicio < formData.fecha_inicio) {
+          setError('Las fechas de ejecución no pueden comenzar antes de la fecha de inicio propuesta.')
+          setLoading(false)
+          return
+        }
+        if (formData.fecha_fin && f.fecha_fin > formData.fecha_fin) {
+          setError('Las fechas de ejecución no pueden terminar después de la fecha de fin propuesta.')
+          setLoading(false)
+          return
+        }
+      }
+
       const payload = {
         ...formData,
         tipo: tipoSeleccionado?.categoria ?? '',
@@ -88,6 +106,7 @@ export default function NuevoEventoForm({ fraternidades, confraternidades, tipos
         requiere_discernimiento_eqt: tipoSeleccionado?.requiere_discernimiento_eqt ?? false,
         estado: 'solicitud',
         fecha_solicitud: formData.fecha_solicitud || today,
+        fechas_ejecucion: fechasEjecucion.filter(f => f.fecha_inicio && f.fecha_fin),
       }
 
       const res = await fetch('/api/eventos', {
@@ -306,6 +325,67 @@ export default function NuevoEventoForm({ fraternidades, confraternidades, tipos
                   required
                 />
               </div>
+            </div>
+
+            {/* Fechas de ejecución */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label>Fechas reales de ejecución</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1 bg-transparent h-7 text-xs"
+                  disabled={fechasEjecucion.length >= 3 || !fechasEjecucion[fechasEjecucion.length - 1].fecha_inicio || !fechasEjecucion[fechasEjecucion.length - 1].fecha_fin}
+                  onClick={() => setFechasEjecucion(prev => [...prev, { fecha_inicio: '', fecha_fin: '' }])}
+                >
+                  <Plus className="h-3 w-3" />
+                  Agregar período
+                </Button>
+              </div>
+              {fechasEjecucion.map((fecha, idx) => (
+                <div key={idx} className="grid gap-3 sm:grid-cols-2 items-end relative">
+                  <div className="space-y-1">
+                    <Label htmlFor={`fe_inicio_${idx}`} className="text-xs text-muted-foreground">
+                      Fecha Desde {idx + 1}
+                    </Label>
+                    <Input
+                      id={`fe_inicio_${idx}`}
+                      type="date"
+                      value={fecha.fecha_inicio}
+                      min={formData.fecha_inicio || undefined}
+                      max={formData.fecha_fin || undefined}
+                      onChange={e => setFechasEjecucion(prev => prev.map((f, i) => i === idx ? { ...f, fecha_inicio: e.target.value } : f))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor={`fe_fin_${idx}`} className="text-xs text-muted-foreground">
+                      Fecha Hasta {idx + 1}
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id={`fe_fin_${idx}`}
+                        type="date"
+                        value={fecha.fecha_fin}
+                        min={fecha.fecha_inicio || formData.fecha_inicio || undefined}
+                        max={formData.fecha_fin || undefined}
+                        onChange={e => setFechasEjecucion(prev => prev.map((f, i) => i === idx ? { ...f, fecha_fin: e.target.value } : f))}
+                      />
+                      {fechasEjecucion.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0 text-muted-foreground hover:text-destructive"
+                          onClick={() => setFechasEjecucion(prev => prev.filter((_, i) => i !== idx))}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
 
             {/* Coordinadores */}

@@ -7,11 +7,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { LocationFields } from '@/components/location-fields'
 
 type OrgOption = { id: string; nombre: string; tipo: string }
+type FechaRow = { id?: string; fecha_inicio: string; fecha_fin: string }
 
 export default function EditarEventoForm({ isAdmin = false }: { isAdmin?: boolean }) {
   const { id } = useParams<{ id: string }>()
@@ -22,6 +23,7 @@ export default function EditarEventoForm({ isAdmin = false }: { isAdmin?: boolea
   const [error, setError] = useState('')
   const [organizaciones, setOrganizaciones] = useState<OrgOption[]>([])
   const [casasRetiro, setCasasRetiro] = useState<OrgOption[]>([])
+  const [fechasEjecucion, setFechasEjecucion] = useState<FechaRow[]>([])
   const [formData, setFormData] = useState({
     nombre: '',
     tipo: 'convivencia',
@@ -56,7 +58,12 @@ export default function EditarEventoForm({ isAdmin = false }: { isAdmin?: boolea
         .select('id, nombre, tipo')
         .is('fecha_baja', null)
         .order('nombre'),
-    ]).then(([{ data: evento, error: eventoError }, { data: orgs }]) => {
+      supabase
+        .from('evento_fechas')
+        .select('id, fecha_inicio, fecha_fin')
+        .eq('evento_id', id)
+        .order('fecha_inicio'),
+    ]).then(([{ data: evento, error: eventoError }, { data: orgs }, { data: fechas }]) => {
       if (eventoError || !evento) {
         setError('No se encontró el evento')
         setLoadingData(false)
@@ -85,6 +92,11 @@ export default function EditarEventoForm({ isAdmin = false }: { isAdmin?: boolea
         setOrganizaciones(orgs.filter(o => o.tipo !== 'casa_retiro'))
         setCasasRetiro(orgs.filter(o => o.tipo === 'casa_retiro'))
       }
+      setFechasEjecucion(
+        fechas && fechas.length > 0
+          ? fechas.map(f => ({ id: f.id, fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin }))
+          : [{ fecha_inicio: '', fecha_fin: '' }]
+      )
       setLoadingData(false)
     })
   }, [id])
@@ -95,6 +107,21 @@ export default function EditarEventoForm({ isAdmin = false }: { isAdmin?: boolea
     setError('')
 
     try {
+      // Validate fechas de ejecución are within the proposed range
+      const fechasCompletas = fechasEjecucion.filter(f => f.fecha_inicio && f.fecha_fin)
+      for (const f of fechasCompletas) {
+        if (formData.fecha_inicio && f.fecha_inicio < formData.fecha_inicio) {
+          setError('Las fechas de ejecución no pueden comenzar antes de la fecha de inicio propuesta.')
+          setLoading(false)
+          return
+        }
+        if (formData.fecha_fin && f.fecha_fin > formData.fecha_fin) {
+          setError('Las fechas de ejecución no pueden terminar después de la fecha de fin propuesta.')
+          setLoading(false)
+          return
+        }
+      }
+
       const supabase = createClient()
 
       const updateData: Record<string, unknown> = {
@@ -123,6 +150,34 @@ export default function EditarEventoForm({ isAdmin = false }: { isAdmin?: boolea
         .eq('id', id)
 
       if (updateError) throw updateError
+
+      // Sync evento_fechas
+      const validas = fechasEjecucion.filter(f => f.fecha_inicio && f.fecha_fin)
+      const nuevas = validas.filter(f => !f.id)
+      const existentes = validas.filter(f => !!f.id)
+
+      // Delete rows that were removed (existing ids not in current list)
+      const idsActuales = existentes.map(f => f.id!)
+      const { data: prevFechas } = await supabase
+        .from('evento_fechas')
+        .select('id')
+        .eq('evento_id', id)
+      const idsEliminar = (prevFechas ?? []).map(f => f.id).filter(fid => !idsActuales.includes(fid))
+      if (idsEliminar.length > 0) {
+        await supabase.from('evento_fechas').delete().in('id', idsEliminar)
+      }
+
+      // Upsert existing rows
+      for (const f of existentes) {
+        await supabase.from('evento_fechas').update({ fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin }).eq('id', f.id!)
+      }
+
+      // Insert new rows
+      if (nuevas.length > 0) {
+        await supabase.from('evento_fechas').insert(
+          nuevas.map(f => ({ evento_id: id, fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin }))
+        )
+      }
 
       router.push('/eventos')
     } catch (err: unknown) {
@@ -252,6 +307,67 @@ export default function EditarEventoForm({ isAdmin = false }: { isAdmin?: boolea
                   required
                 />
               </div>
+            </div>
+
+            {/* Fechas de ejecución */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label>Fechas reales de ejecución</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1 bg-transparent h-7 text-xs"
+                  disabled={fechasEjecucion.length >= 3 || !fechasEjecucion[fechasEjecucion.length - 1].fecha_inicio || !fechasEjecucion[fechasEjecucion.length - 1].fecha_fin}
+                  onClick={() => setFechasEjecucion(prev => [...prev, { fecha_inicio: '', fecha_fin: '' }])}
+                >
+                  <Plus className="h-3 w-3" />
+                  Agregar período
+                </Button>
+              </div>
+              {fechasEjecucion.map((fecha, idx) => (
+                <div key={idx} className="grid gap-3 md:grid-cols-2 items-end">
+                  <div className="space-y-2">
+                    <Label htmlFor={`fe_inicio_${idx}`} className="text-xs text-muted-foreground">
+                      Fecha Desde {idx + 1}
+                    </Label>
+                    <Input
+                      id={`fe_inicio_${idx}`}
+                      type="date"
+                      value={fecha.fecha_inicio}
+                      min={formData.fecha_inicio || undefined}
+                      max={formData.fecha_fin || undefined}
+                      onChange={e => setFechasEjecucion(prev => prev.map((f, i) => i === idx ? { ...f, fecha_inicio: e.target.value } : f))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`fe_fin_${idx}`} className="text-xs text-muted-foreground">
+                      Fecha Hasta {idx + 1}
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id={`fe_fin_${idx}`}
+                        type="date"
+                        value={fecha.fecha_fin}
+                        min={fecha.fecha_inicio || formData.fecha_inicio || undefined}
+                        max={formData.fecha_fin || undefined}
+                        onChange={e => setFechasEjecucion(prev => prev.map((f, i) => i === idx ? { ...f, fecha_fin: e.target.value } : f))}
+                      />
+                      {fechasEjecucion.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0 text-muted-foreground hover:text-destructive"
+                          onClick={() => setFechasEjecucion(prev => prev.filter((_, i) => i !== idx))}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
 
             {/* Organización */}

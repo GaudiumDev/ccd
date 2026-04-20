@@ -88,6 +88,12 @@ export default async function EventoDetailPage({
 
   if (!evento) notFound()
 
+  const { data: fechasEjecucion } = await supabase
+    .from('evento_fechas')
+    .select('id, fecha_inicio, fecha_fin')
+    .eq('evento_id', id)
+    .order('fecha_inicio')
+
   const { data: cambiosHistorial } = await supabase
     .from('evento_cambios')
     .select('id, nivel_disc, campo, valor_anterior, valor_nuevo, fecha, modificado_por_persona:personas!modificado_por(nombre, apellido)')
@@ -351,6 +357,22 @@ export default async function EventoDetailPage({
               </div>
             )}
           </div>
+
+          {/* Fechas de ejecución */}
+          {fechasEjecucion && fechasEjecucion.length > 0 && (
+            <div className="space-y-2 border-t border-border pt-4">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Fechas de ejecución</p>
+              <div className="space-y-1">
+                {(fechasEjecucion as Array<{ id: string; fecha_inicio: string; fecha_fin: string }>).map((f, i) => (
+                  <div key={f.id} className="flex items-center gap-2 text-sm">
+                    <Calendar className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground w-16">Período {i + 1}</span>
+                    <span className="text-foreground">{formatDateAR(f.fecha_inicio)} — {formatDateAR(f.fecha_fin)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Ubicación */}
           {(evento.ciudad || evento.provincia_evento) && (

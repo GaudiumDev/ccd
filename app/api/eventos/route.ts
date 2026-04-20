@@ -64,5 +64,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: translateSupabaseError(error.message) }, { status: 400 })
   }
 
+  const fechasValidas = ((body.fechas_ejecucion ?? []) as Array<{ fecha_inicio: string; fecha_fin: string }>)
+    .filter(f => f.fecha_inicio && f.fecha_fin)
+  if (fechasValidas.length > 0) {
+    await supabase.from('evento_fechas').insert(
+      fechasValidas.map(f => ({ evento_id: data.id, fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin }))
+    )
+  }
+
   return NextResponse.json({ id: data.id })
 }
