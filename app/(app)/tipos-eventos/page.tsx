@@ -28,6 +28,7 @@ export default async function TiposEventosPage({
     alcance?: string
     req_confra?: string
     req_eqt?: string
+    activo?: string
   }>
 }) {
   const [params, ctx, supabase] = await Promise.all([searchParams, getUserContext(), createClient()])
@@ -37,11 +38,12 @@ export default async function TiposEventosPage({
   const alcance = params.alcance ?? ''
   const reqConfra = params.req_confra ?? ''
   const reqEqt = params.req_eqt ?? ''
-  const hasFilters = !!(q || categoria || alcance || reqConfra || reqEqt)
+  const activo = params.activo ?? ''
+  const hasFilters = !!(q || categoria || alcance || reqConfra || reqEqt || activo)
 
   let query = supabase
     .from('tipos_eventos')
-    .select('id, nombre, categoria, alcance, requiere_discernimiento_confra, requiere_discernimiento_eqt, requisitos')
+    .select('id, nombre, categoria, alcance, requiere_discernimiento_confra, requiere_discernimiento_eqt, requisitos, activo')
     .order('nombre')
 
   if (q) query = query.ilike('nombre', `%${q}%`)
@@ -51,6 +53,8 @@ export default async function TiposEventosPage({
   if (reqConfra === 'false') query = query.eq('requiere_discernimiento_confra', false)
   if (reqEqt === 'true') query = query.eq('requiere_discernimiento_eqt', true)
   if (reqEqt === 'false') query = query.eq('requiere_discernimiento_eqt', false)
+  if (activo === 'true') query = query.eq('activo', true)
+  if (activo === 'false') query = query.eq('activo', false)
 
   const { data: tipos } = await query
 
@@ -109,6 +113,11 @@ export default async function TiposEventosPage({
               <option value="true">Sí</option>
               <option value="false">No</option>
             </select>
+            <select name="activo" defaultValue={activo} className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground">
+              <option value="">Todos</option>
+              <option value="true">Solo activos</option>
+              <option value="false">Solo inactivos</option>
+            </select>
             <button type="submit" className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
               Filtrar
             </button>
@@ -133,6 +142,7 @@ export default async function TiposEventosPage({
                     <th className="px-4 py-3 text-left font-medium text-muted-foreground">Alcance</th>
                     <th className="px-4 py-3 text-center font-medium text-muted-foreground">Req. Confraternidad</th>
                     <th className="px-4 py-3 text-center font-medium text-muted-foreground">Req. Equipo Timón</th>
+                    <th className="px-4 py-3 text-center font-medium text-muted-foreground">Estado</th>
                     <th className="px-4 py-3 text-right font-medium text-muted-foreground">Acciones</th>
                   </tr>
                 </thead>
@@ -169,6 +179,15 @@ export default async function TiposEventosPage({
                         ) : (
                           <span className="text-muted-foreground">No</span>
                         )}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                          tipo.activo
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                            : 'bg-muted text-muted-foreground'
+                        }`}>
+                          {tipo.activo ? 'Activo' : 'Inactivo'}
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-right">
                         <Button asChild variant="ghost" size="sm">

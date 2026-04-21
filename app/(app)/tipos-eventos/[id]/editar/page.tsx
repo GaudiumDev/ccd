@@ -22,6 +22,7 @@ export default function EditarTipoEventoPage() {
     requiere_discernimiento_confra: false,
     requiere_discernimiento_eqt: false,
     requisitos: '',
+    activo: true,
   })
 
   useEffect(() => {
@@ -36,6 +37,7 @@ export default function EditarTipoEventoPage() {
             requiere_discernimiento_confra: data.requiere_discernimiento_confra ?? false,
             requiere_discernimiento_eqt: data.requiere_discernimiento_eqt ?? false,
             requisitos: data.requisitos ?? '',
+            activo: data.activo ?? true,
           })
         }
         setLoadingData(false)
@@ -163,6 +165,20 @@ export default function EditarTipoEventoPage() {
                   <option value="abierto">Abierto</option>
                 </select>
               </div>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-sm font-medium">Estado</p>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="activo"
+                  checked={formData.activo}
+                  onChange={handleChange}
+                  className="h-4 w-4 rounded border-input"
+                />
+                <span className="text-sm">Activo (disponible para elegir al crear eventos)</span>
+              </label>
             </div>
 
             <div className="space-y-3">

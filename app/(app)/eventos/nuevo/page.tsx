@@ -24,10 +24,11 @@ export default async function NuevoEventoPage() {
     .eq('estado', 'activa')
     .order('nombre')
 
-  // Load tipos de eventos
+  // Load tipos de eventos activos solamente
   const { data: tiposEventos } = await supabase
     .from('tipos_eventos')
-    .select('id, nombre, categoria, requiere_discernimiento_confra, requiere_discernimiento_eqt, requisitos')
+    .select('id, nombre, categoria, requiere_discernimiento_confra, requiere_discernimiento_eqt, requisitos, activo')
+    .eq('activo', true)
     .order('nombre')
 
   // Load organizations the user has access to

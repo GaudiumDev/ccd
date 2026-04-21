@@ -43,6 +43,7 @@ export async function PATCH(
     requiere_discernimiento_confra: body.requiere_discernimiento_confra ?? false,
     requiere_discernimiento_eqt: body.requiere_discernimiento_eqt ?? false,
     requisitos: body.requisitos || null,
+    activo: body.activo ?? true,
   }
 
   const { error } = await supabase

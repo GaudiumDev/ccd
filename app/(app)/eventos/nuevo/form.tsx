@@ -20,6 +20,7 @@ type TipoEvento = {
   requiere_discernimiento_confra: boolean
   requiere_discernimiento_eqt: boolean
   requisitos?: string | null
+  activo: boolean
 }
 
 type Props = {
