@@ -128,6 +128,7 @@ export default function NuevoTipoEventoPage() {
                 >
                   <option value="interno">Interno</option>
                   <option value="abierto">Abierto</option>
+                  <option value="mixto">Mixto</option>
                 </select>
               </div>
             </div>

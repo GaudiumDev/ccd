@@ -17,6 +17,7 @@ const categoriaLabel: Record<string, string> = {
 const alcanceLabel: Record<string, string> = {
   interno: 'Interno',
   abierto: 'Abierto',
+  mixto: 'Mixto',
 }
 
 export default async function TiposEventosPage({
@@ -102,6 +103,7 @@ export default async function TiposEventosPage({
               <option value="">Todos los alcances</option>
               <option value="interno">Interno</option>
               <option value="abierto">Abierto</option>
+              <option value="mixto">Mixto</option>
             </select>
             <select name="req_confra" defaultValue={reqConfra} className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground">
               <option value="">Req. Confraternidad</option>
@@ -161,7 +163,9 @@ export default async function TiposEventosPage({
                         <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                           tipo.alcance === 'abierto'
                             ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
-                            : 'bg-muted text-muted-foreground'
+                            : tipo.alcance === 'mixto'
+                              ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400'
+                              : 'bg-muted text-muted-foreground'
                         }`}>
                           {alcanceLabel[tipo.alcance] ?? tipo.alcance}
                         </span>
