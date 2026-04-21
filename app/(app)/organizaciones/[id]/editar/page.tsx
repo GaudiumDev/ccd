@@ -193,12 +193,12 @@ export default function EditarOrganizacionPage() {
         className="inline-flex items-center gap-2 text-primary hover:underline"
       >
         <ArrowLeft className="h-4 w-4" />
-        Volver a Organización
+        Volver a la Confraternidad / Fraternidad
       </Link>
 
       <Card className="border-border bg-card">
         <CardHeader>
-          <CardTitle className="text-foreground">Editar Organización</CardTitle>
+          <CardTitle className="text-foreground">Editar Confraternidad / Fraternidad</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -265,7 +265,7 @@ export default function EditarOrganizacionPage() {
 
             {/* Org. Padre */}
             <div className="space-y-1.5">
-              <Label htmlFor="parent_id">Org. Padre</Label>
+              <Label htmlFor="parent_id">Confraternidad / Fraternidad Padre</Label>
               <select
                 id="parent_id"
                 name="parent_id"
@@ -273,7 +273,7 @@ export default function EditarOrganizacionPage() {
                 onChange={handleChange}
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
               >
-                <option value="">Listado total de organizaciones</option>
+                <option value="">Seleccionar...</option>
                 {orgsParent.map((org) => (
                   <option key={org.id} value={org.id}>
                     {org.nombre} ({tipoLabel[org.tipo] ?? org.tipo})
@@ -298,7 +298,7 @@ export default function EditarOrganizacionPage() {
                 </select>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="mail_org">Mail Organización</Label>
+                <Label htmlFor="mail_org">Mail</Label>
                 <Input
                   id="mail_org"
                   name="mail_org"
@@ -485,14 +485,14 @@ export default function EditarOrganizacionPage() {
         <CardContent>
           {orgsDependientes.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Sin organizaciones dependientes
+              Sin confraternidades / fraternidades dependientes
             </p>
           ) : (
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-left py-2 font-medium text-muted-foreground">
-                    Organización
+                    Nombre
                   </th>
                 </tr>
               </thead>
@@ -522,7 +522,7 @@ export default function EditarOrganizacionPage() {
       <Card className="border-border bg-card">
         <CardHeader>
           <CardTitle className="text-sm font-semibold text-foreground uppercase tracking-wide">
-            Roles y Ministerios de la Organización
+            Roles y Ministerios de la Confraternidad / Fraternidad
           </CardTitle>
         </CardHeader>
         <CardContent>

@@ -16,10 +16,18 @@ export default async function NuevoEventoPage() {
 
   const supabase = await createClient()
 
+  // Load casas de retiro activas
+  const { data: casasRetiro } = await supabase
+    .from('casas_retiro')
+    .select('id, nombre')
+    .is('fecha_baja', null)
+    .eq('estado', 'activa')
+    .order('nombre')
+
   // Load tipos de eventos
   const { data: tiposEventos } = await supabase
     .from('tipos_eventos')
-    .select('id, nombre, categoria, requiere_discernimiento_confra, requiere_discernimiento_eqt')
+    .select('id, nombre, categoria, requiere_discernimiento_confra, requiere_discernimiento_eqt, requisitos')
     .order('nombre')
 
   // Load organizations the user has access to
@@ -59,6 +67,7 @@ export default async function NuevoEventoPage() {
           fraternidades={[]}
           confraternidades={[]}
           tiposEventos={tiposEventos ?? []}
+          casasRetiro={casasRetiro ?? []}
           personaNombre={personaNombre}
           isAdmin={false}
           canEditConfra={false}
@@ -99,6 +108,7 @@ export default async function NuevoEventoPage() {
       fraternidades={fraternidades}
       confraternidades={confraternidades}
       tiposEventos={tiposEventos ?? []}
+      casasRetiro={casasRetiro ?? []}
       personaNombre={personaNombre}
       isAdmin={ctx.is_admin}
       canEditConfra={canEditConfra}

@@ -63,7 +63,7 @@ export default async function EventoDetailPage({
     .from('eventos')
     .select(`
       id, nombre, tipo, estado, fecha_inicio, fecha_fin,
-      modalidad, descripcion, notas, cupo_maximo,
+      modalidad, descripcion, notas, cupo_maximo, audiencia,
       requiere_discernimiento_confra, requiere_discernimiento_eqt,
       coordinadores_propuestos, asesor_propuesto, asesor_voluntario, es_apv,
       ciudad, codigo_postal, diocesis, provincia_evento, pais_evento,
@@ -77,7 +77,7 @@ export default async function EventoDetailPage({
       disc_eqt_por_persona:personas!disc_eqt_por(nombre, apellido),
       confraternidad:organizaciones!organizacion_id(id, nombre),
       fraternidad:organizaciones!fraternidad_id(id, nombre),
-      casa_retiro:organizaciones!casa_retiro_id(id, nombre),
+      casa_retiro:casas_retiro!casa_retiro_id(id, nombre, ciudad, provincia),
       solicitado_por_persona:personas!solicitado_por(nombre, apellido),
       aprobado_por_persona:personas!aprobado_por(nombre, apellido),
       rechazado_por_persona:personas!rechazado_por(nombre, apellido),
@@ -116,7 +116,7 @@ export default async function EventoDetailPage({
 
   const confraternidad = evento.confraternidad as { id: string; nombre: string } | null
   const fraternidad = evento.fraternidad as { id: string; nombre: string } | null
-  const casaRetiro = evento.casa_retiro as { id: string; nombre: string } | null
+  const casaRetiro = evento.casa_retiro as { id: string; nombre: string; ciudad?: string | null; provincia?: string | null } | null
   const solicitadoPor = evento.solicitado_por_persona as { nombre: string; apellido: string } | null
   const aprobadoPor = evento.aprobado_por_persona as { nombre: string; apellido: string } | null
   const rechazadoPor = evento.rechazado_por_persona as { nombre: string; apellido: string } | null
@@ -388,8 +388,34 @@ export default async function EventoDetailPage({
             </div>
           )}
 
-          {/* Casa de retiro */}
-          {casaRetiro && <Field label="Casa de Retiro" value={casaRetiro.nombre} />}
+          {/* Casa de retiro, cupo y audiencia */}
+          {(casaRetiro || evento.cupo_maximo || evento.audiencia) && (
+            <div className="grid gap-2 sm:grid-cols-3 text-sm border-t border-border pt-4">
+              {casaRetiro && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Casa de Retiro</p>
+                  <p className="text-foreground">{casaRetiro.nombre}</p>
+                  {(casaRetiro.ciudad || casaRetiro.provincia) && (
+                    <p className="text-xs text-muted-foreground">{[casaRetiro.ciudad, casaRetiro.provincia].filter(Boolean).join(', ')}</p>
+                  )}
+                </div>
+              )}
+              {evento.cupo_maximo && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Cupo máximo</p>
+                  <p className="text-foreground">{evento.cupo_maximo}</p>
+                </div>
+              )}
+              {evento.audiencia && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Audiencia</p>
+                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${evento.audiencia === 'abierto' ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}`}>
+                    {evento.audiencia === 'abierto' ? 'Abierto' : 'Cerrado'}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Personas propuestas */}
           {(evento.coordinadores_propuestos || evento.asesor_propuesto) && (
@@ -511,8 +537,7 @@ export default async function EventoDetailPage({
                 asesor_voluntario: evento.asesor_voluntario ?? null,
                 modalidad: evento.modalidad ?? null,
                 notas: evento.notas ?? null,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                cupo_maximo: (evento as any).cupo_maximo ?? null,
+                cupo_maximo: evento.cupo_maximo ?? null,
               }}
             />
           </div>

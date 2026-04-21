@@ -94,7 +94,7 @@ export default async function OrganizacionesPage({
           Comunidad Convivencia con Dios
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Administra las organizaciones y su jerarquía
+          Administra las confraternidades, fraternidades y su jerarquía
         </p>
       </div>
 
@@ -105,14 +105,14 @@ export default async function OrganizacionesPage({
               Confraternidades y Fraternidades de Comunidad Convivencia con Dios
             </CardTitle>
             <CardDescription>
-              Lista completa de organizaciones en el sistema
+              Lista completa de confraternidades y fraternidades en el sistema
             </CardDescription>
           </div>
           {canCreate && (
             <Link href="/organizaciones/nueva">
               <Button className="gap-2">
                 <Plus className="h-4 w-4" />
-                Nueva Organización
+                Nueva Confraternidad / Fraternidad
               </Button>
             </Link>
           )}
@@ -201,7 +201,7 @@ export default async function OrganizacionesPage({
             <>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">
-                  {organizaciones.length} organización
+                  {organizaciones.length} confraternidad / fraternidad
                   {organizaciones.length !== 1 ? "es" : ""}
                 </span>
                 <OrgExportButton searchString={exportSearch} />
@@ -295,13 +295,13 @@ export default async function OrganizacionesPage({
               <Building2 className="mx-auto h-12 w-12 text-muted-foreground" />
               <h3 className="mt-4 text-lg font-semibold text-foreground">
                 {hasFilters
-                  ? "No se encontraron organizaciones"
-                  : "No hay organizaciones registradas"}
+                  ? "No se encontraron confraternidades / fraternidades"
+                  : "No hay confraternidades / fraternidades registradas"}
               </h3>
               <p className="mt-2 text-muted-foreground">
                 {hasFilters
                   ? "Probá con otros filtros"
-                  : "Comienza agregando la primera organización al sistema"}
+                  : "Comienza agregando la primera confraternidad o fraternidad al sistema"}
               </p>
               {!hasFilters && canCreate && (
                 <Link
@@ -310,7 +310,7 @@ export default async function OrganizacionesPage({
                 >
                   <Button className="gap-2">
                     <Plus className="h-4 w-4" />
-                    Nueva Organización
+                    Nueva Confraternidad / Fraternidad
                   </Button>
                 </Link>
               )}

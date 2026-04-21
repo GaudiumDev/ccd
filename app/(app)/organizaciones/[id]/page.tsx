@@ -79,7 +79,7 @@ export default async function OrganizacionDetailPage({
           className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
         >
           <ArrowLeft className="h-4 w-4" />
-          Volver a Organizaciones
+          Volver a Confraternidades / Fraternidades
         </Link>
         <Link href={`/organizaciones/${id}/editar`}>
           <Button variant="outline" size="sm" className="gap-2">
@@ -93,7 +93,7 @@ export default async function OrganizacionDetailPage({
       <Card className="border-border bg-card">
         <CardHeader>
           <CardTitle className="text-foreground">
-            Pantalla Organización
+            Datos de la {tipoLabel[org.tipo] ?? "Organización"}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -152,7 +152,7 @@ export default async function OrganizacionDetailPage({
                 {org.estado === "activa" ? "Activa" : "Inactiva"}
               </span>
             </div>
-            <Field label="Mail Organización" value={org.mail_org} />
+            <Field label="Mail" value={org.mail_org} />
           </div>
 
           {/* Sede Física */}
@@ -246,14 +246,14 @@ export default async function OrganizacionDetailPage({
         <CardContent>
           {(orgsDependientes ?? []).length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Sin organizaciones dependientes
+              Sin confraternidades / fraternidades dependientes
             </p>
           ) : (
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-left py-2 font-medium text-muted-foreground">
-                    Organización
+                    Nombre
                   </th>
                 </tr>
               </thead>
@@ -283,7 +283,7 @@ export default async function OrganizacionDetailPage({
       <Card className="border-border bg-card">
         <CardHeader>
           <CardTitle className="text-sm font-semibold text-foreground uppercase tracking-wide">
-            Roles de la Organización
+            Roles de la {tipoLabel[org.tipo] ?? "Organización"}
           </CardTitle>
         </CardHeader>
         <CardContent>

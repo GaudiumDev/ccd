@@ -1,96 +1,133 @@
-'use client'
+"use client"
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, CheckCircle2, XCircle, Plus, Trash2 } from 'lucide-react'
-import { LocationFields } from '@/components/location-fields'
-import { Combobox } from '@/components/ui/combobox'
+import { useState } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ArrowLeft, CheckCircle2, XCircle, Plus, Trash2 } from "lucide-react"
+import { LocationFields } from "@/components/location-fields"
+import { Combobox } from "@/components/ui/combobox"
 
 type OrgOption = { id: string; nombre: string; parent_id?: string | null }
+type CasaRetiroOption = { id: string; nombre: string }
 type TipoEvento = {
   id: string
   nombre: string
   categoria: string
   requiere_discernimiento_confra: boolean
   requiere_discernimiento_eqt: boolean
+  requisitos?: string | null
 }
 
 type Props = {
   fraternidades: OrgOption[]
   confraternidades: OrgOption[]
   tiposEventos: TipoEvento[]
+  casasRetiro: CasaRetiroOption[]
   personaNombre: string
   isAdmin?: boolean
   canEditConfra?: boolean
 }
 
-const today = new Date().toISOString().split('T')[0]
+const today = new Date().toISOString().split("T")[0]
 
-export default function NuevoEventoForm({ fraternidades, confraternidades, tiposEventos, personaNombre, isAdmin = false, canEditConfra = false }: Props) {
+export default function NuevoEventoForm({
+  fraternidades,
+  confraternidades,
+  tiposEventos,
+  casasRetiro,
+  personaNombre,
+  isAdmin = false,
+  canEditConfra = false,
+}: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError] = useState("")
 
-  const [fraternidadId, setFraternidadId] = useState(fraternidades[0]?.id ?? '')
-  const [tipoEventoId, setTipoEventoId] = useState(tiposEventos[0]?.id ?? '')
-  const [confraternidadOverride, setConfraternidadOverride] = useState('')
+  const [fraternidadId, setFraternidadId] = useState(fraternidades[0]?.id ?? "")
+  const [tipoEventoId, setTipoEventoId] = useState(tiposEventos[0]?.id ?? "")
+  const [confraternidadOverride, setConfraternidadOverride] = useState("")
 
   type FechaEjecucion = { fecha_inicio: string; fecha_fin: string }
-  const [fechasEjecucion, setFechasEjecucion] = useState<FechaEjecucion[]>([{ fecha_inicio: '', fecha_fin: '' }])
+  const [fechasEjecucion, setFechasEjecucion] = useState<FechaEjecucion[]>([
+    { fecha_inicio: "", fecha_fin: "" },
+  ])
 
-  const tipoSeleccionado = tiposEventos.find(t => t.id === tipoEventoId) ?? null
+  const tipoSeleccionado =
+    tiposEventos.find((t) => t.id === tipoEventoId) ?? null
 
   const [formData, setFormData] = useState({
-    nombre: '',
-    modalidad: 'presencial',
+    nombre: "",
+    modalidad: "presencial",
     es_apv: false,
-    fecha_inicio: '',
-    fecha_fin: '',
+    fecha_inicio: "",
+    fecha_fin: "",
     fecha_solicitud: today,
-    coordinadores_propuestos: '',
-    asesor_propuesto: '',
+    casa_retiro_id: "",
+    cupo_maximo: "30",
+    audiencia: "cerrado",
+    coordinadores_propuestos: "",
+    asesor_propuesto: "",
     asesor_voluntario: false,
-    ciudad: '',
-    codigo_postal: '',
-    diocesis: '',
-    provincia_evento: '',
-    pais_evento: 'Argentina',
-    notas: '',
+    ciudad: "",
+    codigo_postal: "",
+    diocesis: "",
+    provincia_evento: "",
+    pais_evento: "Argentina",
+    notas: "",
   })
 
   // Derive confraternidad from selected fraternidad (overridable for users with discernimiento permission)
-  const fraternidadSeleccionada = fraternidades.find(f => f.id === fraternidadId)
-  const derivedConfraternidadId = fraternidadSeleccionada?.parent_id ?? confraternidades[0]?.id ?? ''
-  const confraternidadId = (canEditConfra && confraternidadOverride) ? confraternidadOverride : derivedConfraternidadId
-  const confraternidadNombre = confraternidades.find(c => c.id === confraternidadId)?.nombre ?? '—'
+  const fraternidadSeleccionada = fraternidades.find(
+    (f) => f.id === fraternidadId,
+  )
+  const derivedConfraternidadId =
+    fraternidadSeleccionada?.parent_id ?? confraternidades[0]?.id ?? ""
+  const confraternidadId =
+    canEditConfra && confraternidadOverride
+      ? confraternidadOverride
+      : derivedConfraternidadId
+  const confraternidadNombre =
+    confraternidades.find((c) => c.id === confraternidadId)?.nombre ?? "—"
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
+  ) => {
     const target = e.target
-    const value = target.type === 'checkbox' ? (target as HTMLInputElement).checked : target.value
-    setFormData(prev => ({ ...prev, [target.name]: value }))
+    const value =
+      target.type === "checkbox"
+        ? (target as HTMLInputElement).checked
+        : target.value
+    setFormData((prev) => ({ ...prev, [target.name]: value }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    setError('')
+    setError("")
 
     try {
       // Validate fechas de ejecución are within the proposed range
-      const fechasCompletas = fechasEjecucion.filter(f => f.fecha_inicio && f.fecha_fin)
+      const fechasCompletas = fechasEjecucion.filter(
+        (f) => f.fecha_inicio && f.fecha_fin,
+      )
       for (const f of fechasCompletas) {
         if (formData.fecha_inicio && f.fecha_inicio < formData.fecha_inicio) {
-          setError('Las fechas de ejecución no pueden comenzar antes de la fecha de inicio propuesta.')
+          setError(
+            "Las fechas de ejecución no pueden comenzar antes de la fecha de inicio propuesta.",
+          )
           setLoading(false)
           return
         }
         if (formData.fecha_fin && f.fecha_fin > formData.fecha_fin) {
-          setError('Las fechas de ejecución no pueden terminar después de la fecha de fin propuesta.')
+          setError(
+            "Las fechas de ejecución no pueden terminar después de la fecha de fin propuesta.",
+          )
           setLoading(false)
           return
         }
@@ -98,60 +135,79 @@ export default function NuevoEventoForm({ fraternidades, confraternidades, tipos
 
       const payload = {
         ...formData,
-        tipo: tipoSeleccionado?.categoria ?? '',
+        tipo: tipoSeleccionado?.categoria ?? "",
         tipo_evento_id: tipoEventoId || null,
         fraternidad_id: fraternidadId,
         organizacion_id: confraternidadId,
-        requiere_discernimiento_confra: tipoSeleccionado?.requiere_discernimiento_confra ?? false,
-        requiere_discernimiento_eqt: tipoSeleccionado?.requiere_discernimiento_eqt ?? false,
-        estado: 'solicitud',
+        requiere_discernimiento_confra:
+          tipoSeleccionado?.requiere_discernimiento_confra ?? false,
+        requiere_discernimiento_eqt:
+          tipoSeleccionado?.requiere_discernimiento_eqt ?? false,
+        estado: "solicitud",
         fecha_solicitud: formData.fecha_solicitud || today,
-        fechas_ejecucion: fechasEjecucion.filter(f => f.fecha_inicio && f.fecha_fin),
+        casa_retiro_id: formData.casa_retiro_id || null,
+        cupo_maximo: formData.cupo_maximo
+          ? parseInt(formData.cupo_maximo)
+          : null,
+        audiencia: formData.audiencia,
+        fechas_ejecucion: fechasEjecucion.filter(
+          (f) => f.fecha_inicio && f.fecha_fin,
+        ),
       }
 
-      const res = await fetch('/api/eventos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/eventos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       })
 
       if (!res.ok) {
         const { error: apiError } = await res.json()
-        throw new Error(apiError ?? 'Error al enviar la solicitud')
+        throw new Error(apiError ?? "Error al enviar la solicitud")
       }
 
       const { id } = await res.json()
       router.push(`/eventos/${id}`)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Error inesperado')
+      setError(err instanceof Error ? err.message : "Error inesperado")
     } finally {
       setLoading(false)
     }
   }
 
-  const fieldClass = 'w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm'
-  const readonlyClass = 'w-full rounded-md border border-border bg-muted/50 px-3 py-2 text-muted-foreground text-sm'
+  const fieldClass =
+    "w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
+  const readonlyClass =
+    "w-full rounded-md border border-border bg-muted/50 px-3 py-2 text-muted-foreground text-sm"
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <Link href="/eventos" className="inline-flex items-center gap-2 text-primary hover:underline">
+      <Link
+        href="/eventos"
+        className="inline-flex items-center gap-2 text-primary hover:underline"
+      >
         <ArrowLeft className="h-4 w-4" />
         Volver a Eventos
       </Link>
 
       <Card className="border-border bg-card">
         <CardHeader>
-          <CardTitle className="text-foreground uppercase tracking-wide text-sm">Solicitud de Eventos</CardTitle>
+          <CardTitle className="text-foreground uppercase tracking-wide text-sm">
+            Solicitud de Eventos
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
-              <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
+              <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+                {error}
+              </div>
             )}
 
             {fraternidades.length === 0 && (
               <div className="rounded-lg bg-yellow-50 dark:bg-yellow-900/20 p-3 text-sm text-yellow-800 dark:text-yellow-400">
-                No tenés fraternidades asignadas. Contactá al administrador para que te asigne permisos.
+                No tenés fraternidades asignadas. Contactá al administrador para
+                que te asigne permisos.
               </div>
             )}
 
@@ -170,7 +226,7 @@ export default function NuevoEventoForm({ fraternidades, confraternidades, tipos
               </div>
               <div className="space-y-1">
                 <Label>Solicitado por</Label>
-                <div className={readonlyClass}>{personaNombre || '—'}</div>
+                <div className={readonlyClass}>{personaNombre || "—"}</div>
               </div>
             </div>
 
@@ -183,13 +239,15 @@ export default function NuevoEventoForm({ fraternidades, confraternidades, tipos
                 <select
                   id="fraternidad_id"
                   value={fraternidadId}
-                  onChange={e => setFraternidadId(e.target.value)}
+                  onChange={(e) => setFraternidadId(e.target.value)}
                   required
                   className={fieldClass}
                 >
                   <option value="">— Seleccionar fraternidad —</option>
-                  {fraternidades.map(f => (
-                    <option key={f.id} value={f.id}>{f.nombre}</option>
+                  {fraternidades.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.nombre}
+                    </option>
                   ))}
                 </select>
               )}
@@ -202,12 +260,14 @@ export default function NuevoEventoForm({ fraternidades, confraternidades, tipos
                 <select
                   id="confraternidad_id"
                   value={confraternidadId}
-                  onChange={e => setConfraternidadOverride(e.target.value)}
+                  onChange={(e) => setConfraternidadOverride(e.target.value)}
                   className={fieldClass}
                 >
                   <option value="">— Seleccionar confraternidad —</option>
-                  {confraternidades.map(c => (
-                    <option key={c.id} value={c.id}>{c.nombre}</option>
+                  {confraternidades.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nombre}
+                    </option>
                   ))}
                 </select>
               ) : (
@@ -216,41 +276,62 @@ export default function NuevoEventoForm({ fraternidades, confraternidades, tipos
             </div>
 
             {/* Tipo de evento */}
-            <div className="space-y-1">
-              <Label>Tipo de evento solicitado *</Label>
-              {tiposEventos.length === 0 ? (
-                <div className={readonlyClass}>No hay tipos de eventos configurados</div>
-              ) : (
-                <Combobox
-                  value={tipoEventoId}
-                  onSelect={setTipoEventoId}
-                  options={tiposEventos.map(t => ({ label: t.nombre, value: t.id }))}
-                  placeholder="Seleccionar tipo de evento..."
-                  searchPlaceholder="Buscar tipo..."
-                  emptyText="No se encontraron tipos de eventos."
-                />
+            <div className="space-y-2">
+              <div className="space-y-1">
+                <Label>Tipo de evento solicitado *</Label>
+                {tiposEventos.length === 0 ? (
+                  <div className={readonlyClass}>
+                    No hay tipos de eventos configurados
+                  </div>
+                ) : (
+                  <Combobox
+                    value={tipoEventoId}
+                    onSelect={setTipoEventoId}
+                    options={tiposEventos.map((t) => ({
+                      label: t.nombre,
+                      value: t.id,
+                    }))}
+                    placeholder="Seleccionar tipo de evento..."
+                    searchPlaceholder="Buscar tipo..."
+                    emptyText="No se encontraron tipos de eventos."
+                  />
+                )}
+              </div>
+              {tipoSeleccionado?.requisitos && (
+                <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+                  <p className="font-medium text-foreground mb-1">Requisitos</p>
+                  <p className="text-muted-foreground whitespace-pre-wrap">{tipoSeleccionado.requisitos}</p>
+                </div>
               )}
             </div>
 
             {/* Niveles de discernimiento (readonly, derivados del tipo) */}
             {tipoSeleccionado && (
               <div className="rounded-md border border-border p-4 space-y-3">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Niveles de discernimiento</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Niveles de discernimiento
+                </p>
                 <div className="flex items-center gap-2">
-                  {tipoSeleccionado.requiere_discernimiento_confra
-                    ? <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
-                    : <XCircle className="h-4 w-4 text-muted-foreground shrink-0" />
-                  }
-                  <span className={`text-sm ${tipoSeleccionado.requiere_discernimiento_confra ? 'text-foreground' : 'text-muted-foreground'}`}>
+                  {tipoSeleccionado.requiere_discernimiento_confra ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-muted-foreground shrink-0" />
+                  )}
+                  <span
+                    className={`text-sm ${tipoSeleccionado.requiere_discernimiento_confra ? "text-foreground" : "text-muted-foreground"}`}
+                  >
                     Requiere discernimiento Confraternidad / Delegado
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  {tipoSeleccionado.requiere_discernimiento_eqt
-                    ? <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
-                    : <XCircle className="h-4 w-4 text-muted-foreground shrink-0" />
-                  }
-                  <span className={`text-sm ${tipoSeleccionado.requiere_discernimiento_eqt ? 'text-foreground' : 'text-muted-foreground'}`}>
+                  {tipoSeleccionado.requiere_discernimiento_eqt ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-muted-foreground shrink-0" />
+                  )}
+                  <span
+                    className={`text-sm ${tipoSeleccionado.requiere_discernimiento_eqt ? "text-foreground" : "text-muted-foreground"}`}
+                  >
                     Requiere discernimiento Equipo Timón
                   </span>
                 </div>
@@ -295,9 +376,59 @@ export default function NuevoEventoForm({ fraternidades, confraternidades, tipos
                   onChange={handleChange}
                   className="h-4 w-4 rounded border-border"
                 />
-                <label htmlFor="es_apv" className="text-sm text-foreground cursor-pointer">
-                  Es de aporte voluntario APV
+                <label
+                  htmlFor="es_apv"
+                  className="text-sm text-foreground cursor-pointer"
+                >
+                  Es de aporte voluntario DAV
                 </label>
+              </div>
+            </div>
+
+            {/* Casa de retiro */}
+            <div className="space-y-1">
+              <Label htmlFor="casa_retiro_id">Casa de retiro</Label>
+              <select
+                id="casa_retiro_id"
+                name="casa_retiro_id"
+                value={formData.casa_retiro_id}
+                onChange={handleChange}
+                className={fieldClass}
+              >
+                <option value="">— Sin definir —</option>
+                {casasRetiro.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Cupo + Audiencia */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="cupo_maximo">Cupo máximo</Label>
+                <Input
+                  id="cupo_maximo"
+                  name="cupo_maximo"
+                  type="number"
+                  min="1"
+                  value={formData.cupo_maximo}
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="audiencia">Audiencia</Label>
+                <select
+                  id="audiencia"
+                  name="audiencia"
+                  value={formData.audiencia}
+                  onChange={handleChange}
+                  className={fieldClass}
+                >
+                  <option value="cerrado">Cerrado</option>
+                  <option value="abierto">Abierto</option>
+                </select>
               </div>
             </div>
 
@@ -336,17 +467,32 @@ export default function NuevoEventoForm({ fraternidades, confraternidades, tipos
                   variant="outline"
                   size="sm"
                   className="gap-1 bg-transparent h-7 text-xs"
-                  disabled={fechasEjecucion.length >= 3 || !fechasEjecucion[fechasEjecucion.length - 1].fecha_inicio || !fechasEjecucion[fechasEjecucion.length - 1].fecha_fin}
-                  onClick={() => setFechasEjecucion(prev => [...prev, { fecha_inicio: '', fecha_fin: '' }])}
+                  disabled={
+                    fechasEjecucion.length >= 3 ||
+                    !fechasEjecucion[fechasEjecucion.length - 1].fecha_inicio ||
+                    !fechasEjecucion[fechasEjecucion.length - 1].fecha_fin
+                  }
+                  onClick={() =>
+                    setFechasEjecucion((prev) => [
+                      ...prev,
+                      { fecha_inicio: "", fecha_fin: "" },
+                    ])
+                  }
                 >
                   <Plus className="h-3 w-3" />
                   Agregar período
                 </Button>
               </div>
               {fechasEjecucion.map((fecha, idx) => (
-                <div key={idx} className="grid gap-3 sm:grid-cols-2 items-end relative">
+                <div
+                  key={idx}
+                  className="grid gap-3 sm:grid-cols-2 items-end relative"
+                >
                   <div className="space-y-1">
-                    <Label htmlFor={`fe_inicio_${idx}`} className="text-xs text-muted-foreground">
+                    <Label
+                      htmlFor={`fe_inicio_${idx}`}
+                      className="text-xs text-muted-foreground"
+                    >
                       Fecha Desde {idx + 1}
                     </Label>
                     <Input
@@ -355,11 +501,22 @@ export default function NuevoEventoForm({ fraternidades, confraternidades, tipos
                       value={fecha.fecha_inicio}
                       min={formData.fecha_inicio || undefined}
                       max={formData.fecha_fin || undefined}
-                      onChange={e => setFechasEjecucion(prev => prev.map((f, i) => i === idx ? { ...f, fecha_inicio: e.target.value } : f))}
+                      onChange={(e) =>
+                        setFechasEjecucion((prev) =>
+                          prev.map((f, i) =>
+                            i === idx
+                              ? { ...f, fecha_inicio: e.target.value }
+                              : f,
+                          ),
+                        )
+                      }
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor={`fe_fin_${idx}`} className="text-xs text-muted-foreground">
+                    <Label
+                      htmlFor={`fe_fin_${idx}`}
+                      className="text-xs text-muted-foreground"
+                    >
                       Fecha Hasta {idx + 1}
                     </Label>
                     <div className="flex gap-2">
@@ -367,9 +524,21 @@ export default function NuevoEventoForm({ fraternidades, confraternidades, tipos
                         id={`fe_fin_${idx}`}
                         type="date"
                         value={fecha.fecha_fin}
-                        min={fecha.fecha_inicio || formData.fecha_inicio || undefined}
+                        min={
+                          fecha.fecha_inicio ||
+                          formData.fecha_inicio ||
+                          undefined
+                        }
                         max={formData.fecha_fin || undefined}
-                        onChange={e => setFechasEjecucion(prev => prev.map((f, i) => i === idx ? { ...f, fecha_fin: e.target.value } : f))}
+                        onChange={(e) =>
+                          setFechasEjecucion((prev) =>
+                            prev.map((f, i) =>
+                              i === idx
+                                ? { ...f, fecha_fin: e.target.value }
+                                : f,
+                            ),
+                          )
+                        }
                       />
                       {fechasEjecucion.length > 1 && (
                         <Button
@@ -377,7 +546,11 @@ export default function NuevoEventoForm({ fraternidades, confraternidades, tipos
                           variant="ghost"
                           size="icon"
                           className="shrink-0 text-muted-foreground hover:text-destructive"
-                          onClick={() => setFechasEjecucion(prev => prev.filter((_, i) => i !== idx))}
+                          onClick={() =>
+                            setFechasEjecucion((prev) =>
+                              prev.filter((_, i) => i !== idx),
+                            )
+                          }
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -390,7 +563,9 @@ export default function NuevoEventoForm({ fraternidades, confraternidades, tipos
 
             {/* Coordinadores */}
             <div className="space-y-1">
-              <Label htmlFor="coordinadores_propuestos">Coordinador/es propuesto/s</Label>
+              <Label htmlFor="coordinadores_propuestos">
+                Coordinador/es propuesto/s
+              </Label>
               <Input
                 id="coordinadores_propuestos"
                 name="coordinadores_propuestos"
@@ -421,7 +596,10 @@ export default function NuevoEventoForm({ fraternidades, confraternidades, tipos
                   onChange={handleChange}
                   className="h-4 w-4 rounded border-border"
                 />
-                <label htmlFor="asesor_voluntario" className="text-sm text-foreground cursor-pointer">
+                <label
+                  htmlFor="asesor_voluntario"
+                  className="text-sm text-foreground cursor-pointer"
+                >
                   Es voluntario el asesor
                 </label>
               </div>
@@ -434,11 +612,21 @@ export default function NuevoEventoForm({ fraternidades, confraternidades, tipos
               localidad={formData.ciudad}
               codigoPostal={formData.codigo_postal}
               diocesis={formData.diocesis}
-              onPaisChange={(val) => setFormData(prev => ({ ...prev, pais_evento: val }))}
-              onProvinciaChange={(val) => setFormData(prev => ({ ...prev, provincia_evento: val }))}
-              onLocalidadChange={(val) => setFormData(prev => ({ ...prev, ciudad: val }))}
-              onCodigoPostalChange={(val) => setFormData(prev => ({ ...prev, codigo_postal: val }))}
-              onDiocesisChange={(val) => setFormData(prev => ({ ...prev, diocesis: val }))}
+              onPaisChange={(val) =>
+                setFormData((prev) => ({ ...prev, pais_evento: val }))
+              }
+              onProvinciaChange={(val) =>
+                setFormData((prev) => ({ ...prev, provincia_evento: val }))
+              }
+              onLocalidadChange={(val) =>
+                setFormData((prev) => ({ ...prev, ciudad: val }))
+              }
+              onCodigoPostalChange={(val) =>
+                setFormData((prev) => ({ ...prev, codigo_postal: val }))
+              }
+              onDiocesisChange={(val) =>
+                setFormData((prev) => ({ ...prev, diocesis: val }))
+              }
             />
 
             {/* Notas */}
@@ -458,12 +646,21 @@ export default function NuevoEventoForm({ fraternidades, confraternidades, tipos
             <div className="flex gap-3 pt-2">
               <Button
                 type="submit"
-                disabled={loading || fraternidades.length === 0 || !fraternidadId || !tipoEventoId}
+                disabled={
+                  loading ||
+                  fraternidades.length === 0 ||
+                  !fraternidadId ||
+                  !tipoEventoId
+                }
               >
-                {loading ? 'Enviando...' : 'Enviar Solicitud'}
+                {loading ? "Enviando..." : "Enviar Solicitud"}
               </Button>
               <Link href="/eventos">
-                <Button type="button" variant="outline" className="bg-transparent">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="bg-transparent"
+                >
                   Cancelar
                 </Button>
               </Link>

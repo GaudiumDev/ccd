@@ -57,13 +57,20 @@ export default function EditarEventoForm({ isAdmin = false }: { isAdmin?: boolea
         .from('organizaciones')
         .select('id, nombre, tipo')
         .is('fecha_baja', null)
+        .neq('tipo', 'casa_retiro')
         .order('nombre'),
       supabase
         .from('evento_fechas')
         .select('id, fecha_inicio, fecha_fin')
         .eq('evento_id', id)
         .order('fecha_inicio'),
-    ]).then(([{ data: evento, error: eventoError }, { data: orgs }, { data: fechas }]) => {
+      supabase
+        .from('casas_retiro')
+        .select('id, nombre')
+        .is('fecha_baja', null)
+        .eq('estado', 'activa')
+        .order('nombre'),
+    ]).then(([{ data: evento, error: eventoError }, { data: orgs }, { data: fechas }, { data: casas }]) => {
       if (eventoError || !evento) {
         setError('No se encontró el evento')
         setLoadingData(false)
@@ -89,8 +96,10 @@ export default function EditarEventoForm({ isAdmin = false }: { isAdmin?: boolea
         pais_evento: evento.pais_evento ?? 'Argentina',
       })
       if (orgs) {
-        setOrganizaciones(orgs.filter(o => o.tipo !== 'casa_retiro'))
-        setCasasRetiro(orgs.filter(o => o.tipo === 'casa_retiro'))
+        setOrganizaciones(orgs)
+      }
+      if (casas) {
+        setCasasRetiro(casas)
       }
       setFechasEjecucion(
         fechas && fechas.length > 0

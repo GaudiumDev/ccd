@@ -8,6 +8,9 @@ import Link from 'next/link'
 import { UserCheck, ArrowLeft, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { createClient } from '@/lib/supabase/client'
 import { formatDateAR } from '@/lib/utils'
 
@@ -36,6 +39,8 @@ export default function RevocarAsignacionPage() {
   const [loading, setLoading] = useState(true)
   const [revoking, setRevoking] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [fechaFin, setFechaFin] = useState<string>(new Date().toISOString().split('T')[0])
+  const [motivoFin, setMotivoFin] = useState<string>('')
 
   useEffect(() => {
     const load = async () => {
@@ -59,10 +64,9 @@ export default function RevocarAsignacionPage() {
     setRevoking(true)
     setError(null)
 
-    const hoy = new Date().toISOString().split('T')[0]
     const { error: err } = await supabase
       .from('asignaciones_ministerio')
-      .update({ estado: 'inactivo', fecha_fin: hoy })
+      .update({ estado: 'inactivo', fecha_fin: fechaFin, motivo_fin: motivoFin || null })
       .eq('id', id)
 
     if (err) {
@@ -156,13 +160,36 @@ export default function RevocarAsignacionPage() {
             </div>
           </div>
 
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="fechaFin">Fecha de fin</Label>
+              <Input
+                id="fechaFin"
+                type="date"
+                value={fechaFin}
+                onChange={(e) => setFechaFin(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="motivoFin">Motivo <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+              <Textarea
+                id="motivoFin"
+                placeholder="Describir el motivo de la revocación..."
+                value={motivoFin}
+                onChange={(e) => setMotivoFin(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+
           {error && <p className="text-sm text-destructive">{error}</p>}
 
           <div className="flex gap-3">
             <Button
               variant="destructive"
               onClick={handleRevocar}
-              disabled={revoking}
+              disabled={revoking || !fechaFin}
             >
               {revoking ? 'Revocando...' : 'Revocar Asignación'}
             </Button>

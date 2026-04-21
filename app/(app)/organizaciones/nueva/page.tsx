@@ -105,16 +105,16 @@ export default function NewOrganizacionPage() {
         className="inline-flex items-center gap-2 text-primary hover:underline"
       >
         <ArrowLeft className="h-4 w-4" />
-        Volver a Organizaciones
+        Volver a Confraternidades / Fraternidades
       </Link>
 
       <Card className="border-border bg-card max-w-3xl">
         <CardHeader>
           <CardTitle className="text-foreground">
-            Crear Nueva Organización
+            Crear Nueva Confraternidad / Fraternidad
           </CardTitle>
           <CardDescription>
-            Completa el formulario para registrar una nueva organización en el
+            Completa el formulario para registrar una nueva confraternidad o fraternidad en el
             sistema
           </CardDescription>
         </CardHeader>
@@ -174,7 +174,7 @@ export default function NewOrganizacionPage() {
                 </select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="parent_id">Organización Padre</Label>
+                <Label htmlFor="parent_id">Confraternidad / Fraternidad Padre</Label>
                 <select
                   id="parent_id"
                   name="parent_id"
@@ -182,7 +182,7 @@ export default function NewOrganizacionPage() {
                   onChange={handleChange}
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
                 >
-                  <option value="">Sin organización padre</option>
+                  <option value="">Sin padre</option>
                   {orgsParent.map((org) => (
                     <option key={org.id} value={org.id}>
                       {org.nombre} ({org.tipo})
@@ -194,7 +194,7 @@ export default function NewOrganizacionPage() {
 
             {/* Mail */}
             <div className="space-y-2">
-              <Label htmlFor="mail_org">Mail Organización</Label>
+              <Label htmlFor="mail_org">Mail</Label>
               <Input
                 id="mail_org"
                 name="mail_org"
@@ -379,7 +379,7 @@ export default function NewOrganizacionPage() {
             {/* Buttons */}
             <div className="flex gap-3 pt-6">
               <Button type="submit" disabled={loading}>
-                {loading ? "Guardando..." : "Crear Organización"}
+                {loading ? "Guardando..." : "Crear Confraternidad / Fraternidad"}
               </Button>
               <Link href="/organizaciones">
                 <Button
