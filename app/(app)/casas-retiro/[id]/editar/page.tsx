@@ -22,6 +22,8 @@ const AMENITY_LABELS: Record<string, string> = {
   comedor_amplio: 'Comedor amplio',
   salon: 'Salón',
   banos_en_habit: 'Baños en habitación',
+  tiene_escaleras: 'Escaleras',
+  tiene_ascensor: 'Ascensor',
 }
 
 type FormData = {
@@ -40,12 +42,16 @@ type FormData = {
   diocesis: string
   provincia: string
   pais: string
+  latitud: string
+  longitud: string
   estacionamiento: boolean
   rampa_discapacitados: boolean
   capilla: boolean
   comedor_amplio: boolean
   salon: boolean
   banos_en_habit: boolean
+  tiene_escaleras: boolean
+  tiene_ascensor: boolean
   cant_hab_x2: string
   cant_hab_x3: string
   cant_hab_x4: string
@@ -84,6 +90,10 @@ export default function EditarCasaRetiroPage() {
     comedor_amplio: false,
     salon: false,
     banos_en_habit: false,
+    tiene_escaleras: false,
+    tiene_ascensor: false,
+    latitud: '',
+    longitud: '',
     cant_hab_x2: '',
     cant_hab_x3: '',
     cant_hab_x4: '',
@@ -121,6 +131,10 @@ export default function EditarCasaRetiroPage() {
         comedor_amplio: casaData.comedor_amplio ?? false,
         salon: casaData.salon ?? false,
         banos_en_habit: casaData.banos_en_habit ?? false,
+        tiene_escaleras: casaData.tiene_escaleras ?? false,
+        tiene_ascensor: casaData.tiene_ascensor ?? false,
+        latitud: casaData.latitud != null ? String(casaData.latitud) : '',
+        longitud: casaData.longitud != null ? String(casaData.longitud) : '',
         cant_hab_x2: casaData.cant_hab_x2 != null ? String(casaData.cant_hab_x2) : '',
         cant_hab_x3: casaData.cant_hab_x3 != null ? String(casaData.cant_hab_x3) : '',
         cant_hab_x4: casaData.cant_hab_x4 != null ? String(casaData.cant_hab_x4) : '',
@@ -337,6 +351,16 @@ export default function EditarCasaRetiroPage() {
                 <div className="space-y-2">
                   <Label htmlFor="pais">País</Label>
                   <Input id="pais" name="pais" value={formData.pais} onChange={handleChange} />
+                </div>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="latitud">Latitud GPS</Label>
+                  <Input id="latitud" name="latitud" placeholder="-27.4806" value={formData.latitud} onChange={handleChange} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="longitud">Longitud GPS</Label>
+                  <Input id="longitud" name="longitud" placeholder="-58.8341" value={formData.longitud} onChange={handleChange} />
                 </div>
               </div>
             </div>

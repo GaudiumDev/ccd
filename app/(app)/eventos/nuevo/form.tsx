@@ -48,9 +48,11 @@ export default function NuevoEventoForm({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
+  const [confraternidadId, setConfraternidadId] = useState(
+    fraternidades[0]?.parent_id ?? confraternidades[0]?.id ?? ""
+  )
   const [fraternidadId, setFraternidadId] = useState(fraternidades[0]?.id ?? "")
   const [tipoEventoId, setTipoEventoId] = useState(tiposEventos[0]?.id ?? "")
-  const [confraternidadOverride, setConfraternidadOverride] = useState("")
 
   type FechaEjecucion = { fecha_inicio: string; fecha_fin: string }
   const [fechasEjecucion, setFechasEjecucion] = useState<FechaEjecucion[]>([
@@ -81,18 +83,25 @@ export default function NuevoEventoForm({
     notas: "",
   })
 
-  // Derive confraternidad from selected fraternidad (overridable for users with discernimiento permission)
-  const fraternidadSeleccionada = fraternidades.find(
-    (f) => f.id === fraternidadId,
-  )
-  const derivedConfraternidadId =
-    fraternidadSeleccionada?.parent_id ?? confraternidades[0]?.id ?? ""
-  const confraternidadId =
-    canEditConfra && confraternidadOverride
-      ? confraternidadOverride
-      : derivedConfraternidadId
-  const confraternidadNombre =
-    confraternidades.find((c) => c.id === confraternidadId)?.nombre ?? "—"
+  const fraternidadesFiltradas = confraternidadId
+    ? fraternidades.filter((f) => f.parent_id === confraternidadId)
+    : fraternidades
+
+  const handleConfraternidadChange = (id: string) => {
+    setConfraternidadId(id)
+    const frat = fraternidades.find((f) => f.id === fraternidadId)
+    if (frat?.parent_id !== id) {
+      setFraternidadId("")
+    }
+  }
+
+  const handleFraternidadChange = (id: string) => {
+    setFraternidadId(id)
+    const frat = fraternidades.find((f) => f.id === id)
+    if (frat?.parent_id) {
+      setConfraternidadId(frat.parent_id)
+    }
+  }
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -231,49 +240,41 @@ export default function NuevoEventoForm({
               </div>
             </div>
 
+            {/* Confraternidad */}
+            <div className="space-y-1">
+              <Label htmlFor="confraternidad_id">Confraternidad</Label>
+              <select
+                id="confraternidad_id"
+                value={confraternidadId}
+                onChange={(e) => handleConfraternidadChange(e.target.value)}
+                className={fieldClass}
+              >
+                <option value="">— Seleccionar confraternidad —</option>
+                {confraternidades.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Fraternidad */}
             <div className="space-y-1">
               <Label htmlFor="fraternidad_id">Fraternidad *</Label>
-              {fraternidades.length === 1 ? (
-                <div className={readonlyClass}>{fraternidades[0].nombre}</div>
-              ) : (
-                <select
-                  id="fraternidad_id"
-                  value={fraternidadId}
-                  onChange={(e) => setFraternidadId(e.target.value)}
-                  required
-                  className={fieldClass}
-                >
-                  <option value="">— Seleccionar fraternidad —</option>
-                  {fraternidades.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.nombre}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-
-            {/* Confraternidad (derived; editable for users with discernimiento permission) */}
-            <div className="space-y-1">
-              <Label htmlFor="confraternidad_id">Confraternidad</Label>
-              {canEditConfra ? (
-                <select
-                  id="confraternidad_id"
-                  value={confraternidadId}
-                  onChange={(e) => setConfraternidadOverride(e.target.value)}
-                  className={fieldClass}
-                >
-                  <option value="">— Seleccionar confraternidad —</option>
-                  {confraternidades.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.nombre}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <div className={readonlyClass}>{confraternidadNombre}</div>
-              )}
+              <select
+                id="fraternidad_id"
+                value={fraternidadId}
+                onChange={(e) => handleFraternidadChange(e.target.value)}
+                required
+                className={fieldClass}
+              >
+                <option value="">— Seleccionar fraternidad —</option>
+                {fraternidadesFiltradas.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.nombre}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Tipo de evento */}

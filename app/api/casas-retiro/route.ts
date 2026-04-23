@@ -30,6 +30,8 @@ export async function POST(request: Request) {
     comedor_amplio: body.comedor_amplio ?? false,
     salon: body.salon ?? false,
     banos_en_habit: body.banos_en_habit ?? false,
+    tiene_escaleras: body.tiene_escaleras ?? false,
+    tiene_ascensor: body.tiene_ascensor ?? false,
     cant_hab_x2: parseInt(body.cant_hab_x2) || 0,
     cant_hab_x3: parseInt(body.cant_hab_x3) || 0,
     cant_hab_x4: parseInt(body.cant_hab_x4) || 0,
@@ -48,6 +50,8 @@ export async function POST(request: Request) {
   if (body.diocesis) insertData.diocesis = body.diocesis
   if (body.provincia) insertData.provincia = body.provincia
   if (body.notas) insertData.notas = body.notas
+  if (body.latitud) insertData.latitud = parseFloat(body.latitud) || null
+  if (body.longitud) insertData.longitud = parseFloat(body.longitud) || null
 
   const { data, error } = await supabase
     .from('casas_retiro')

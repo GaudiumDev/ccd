@@ -22,6 +22,8 @@ const AMENITY_LABELS: Record<string, string> = {
   comedor_amplio: 'Comedor amplio',
   salon: 'Salón',
   banos_en_habit: 'Baños en habitación',
+  tiene_escaleras: 'Escaleras',
+  tiene_ascensor: 'Ascensor',
 }
 
 export default function NuevaCasaRetiroPage() {
@@ -52,6 +54,10 @@ export default function NuevaCasaRetiroPage() {
     comedor_amplio: false,
     salon: false,
     banos_en_habit: false,
+    tiene_escaleras: false,
+    tiene_ascensor: false,
+    latitud: '',
+    longitud: '',
     cant_hab_x2: '',
     cant_hab_x3: '',
     cant_hab_x4: '',
@@ -315,6 +321,28 @@ export default function NuevaCasaRetiroPage() {
                     name="pais"
                     placeholder="Argentina"
                     value={formData.pais}
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="latitud">Latitud GPS</Label>
+                  <Input
+                    id="latitud"
+                    name="latitud"
+                    placeholder="-27.4806"
+                    value={formData.latitud}
+                    onChange={handleChange}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="longitud">Longitud GPS</Label>
+                  <Input
+                    id="longitud"
+                    name="longitud"
+                    placeholder="-58.8341"
+                    value={formData.longitud}
                     onChange={handleChange}
                   />
                 </div>

@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Hotel, ArrowLeft, Edit2, MapPin, Phone, Mail, Users } from 'lucide-react'
+import { Hotel, ArrowLeft, Edit2, MapPin, Phone, Mail, Users, Navigation } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getUserContext, canPerform } from '@/lib/auth/context'
 
@@ -15,6 +15,8 @@ const AMENITY_LABELS: Record<string, string> = {
   comedor_amplio: 'Comedor amplio',
   salon: 'Salón',
   banos_en_habit: 'Baños en habitación',
+  tiene_escaleras: 'Escaleras',
+  tiene_ascensor: 'Ascensor',
 }
 
 export default async function CasaRetiroDetailPage({
@@ -137,6 +139,19 @@ export default async function CasaRetiroDetailPage({
                   </div>
                   {casa.diocesis && <div className="text-muted-foreground">Diócesis: {casa.diocesis}</div>}
                 </div>
+              </div>
+            )}
+            {casa.latitud != null && casa.longitud != null && (
+              <div className="flex items-center gap-2">
+                <Navigation className="h-4 w-4 text-muted-foreground shrink-0" />
+                <a
+                  href={`https://www.google.com/maps?q=${casa.latitud},${casa.longitud}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline text-sm"
+                >
+                  Ver en Google Maps ({casa.latitud}, {casa.longitud})
+                </a>
               </div>
             )}
             {casa.aforo && (
