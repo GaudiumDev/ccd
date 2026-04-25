@@ -42,6 +42,7 @@ export default function NuevoMinisterioPage() {
 
   const [form, setForm] = useState({
     nombre: "",
+    codigo_interno: "",
     tipo: "pastoral",
     nivel: "fraternidad",
     requiere_acta: false,
@@ -128,11 +129,19 @@ export default function NuevoMinisterioPage() {
       return
     }
 
+    const codigoInterno = form.codigo_interno.trim() || null
+    if (codigoInterno && !/^[A-Za-z0-9_-]+$/.test(codigoInterno)) {
+      setError("El código interno solo puede contener letras, números, guiones y guiones bajos")
+      setLoading(false)
+      return
+    }
+
     // 1. Crear el ministerio
     const { data, error: err } = await supabase
       .from("ministerios")
       .insert({
         nombre,
+        codigo_interno: codigoInterno,
         tipo: tipoFinal,
         nivel: form.nivel,
         nivel_acceso: nivelAcceso,
@@ -191,7 +200,7 @@ export default function NuevoMinisterioPage() {
             <CardTitle className="text-foreground">Datos del Rol</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr_1fr_auto] gap-6 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-6 items-start">
               {/* Nombre */}
               <div className="space-y-2">
                 <Label htmlFor="nombre">Nombre *</Label>
@@ -204,6 +213,22 @@ export default function NuevoMinisterioPage() {
                     setForm((f) => ({ ...f, nombre: e.target.value }))
                   }
                 />
+              </div>
+
+              {/* Código Interno */}
+              <div className="space-y-2">
+                <Label htmlFor="codigo_interno">Código Interno *</Label>
+                <Input
+                  id="codigo_interno"
+                  required
+                  placeholder="ej: COORD-ZONA"
+                  value={form.codigo_interno}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, codigo_interno: e.target.value }))
+                  }
+                  pattern="[A-Za-z0-9_\-]+"
+                />
+                <p className="text-xs text-muted-foreground">Alfanumérico. Inmutable al guardar.</p>
               </div>
 
               {/* Tipo */}

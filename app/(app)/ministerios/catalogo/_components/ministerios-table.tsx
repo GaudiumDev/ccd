@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils"
 interface Ministerio {
   id: string
   nombre: string
+  codigo_interno: string | null
   tipo: string
   nivel: string
   nivel_acceso: number
@@ -295,6 +296,7 @@ export function MinisteriosTable({
                 />
               </th>
               <ColHeader col="nombre" label="Nombre" />
+              <th className="text-left py-3 px-4 font-semibold text-foreground">Código Interno</th>
               <ColHeader col="tipo" label="Tipo" />
               <ColHeader col="nivel" label="Alcance" />
               <ColHeader col="nivel_acceso" label="Acceso al Sistema" />
@@ -336,6 +338,12 @@ export function MinisteriosTable({
                     >
                       {m.nombre}
                     </Link>
+                  </td>
+                  <td className="py-3 px-4">
+                    {m.codigo_interno
+                      ? <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{m.codigo_interno}</span>
+                      : <span className="text-muted-foreground text-sm">—</span>
+                    }
                   </td>
                   <td className="py-3 px-4">
                     <span

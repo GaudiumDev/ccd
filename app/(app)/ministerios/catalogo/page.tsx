@@ -25,7 +25,7 @@ export default async function CatalogoMinisteriosPage() {
   const [{ data: ministeriosRaw }, { data: conteoRaw }] = await Promise.all([
     supabase
       .from("ministerios")
-      .select("id, nombre, tipo, nivel, nivel_acceso, activo")
+      .select("id, nombre, codigo_interno, tipo, nivel, nivel_acceso, activo")
       .order("nivel_acceso", { ascending: false })
       .order("nombre"),
     supabase

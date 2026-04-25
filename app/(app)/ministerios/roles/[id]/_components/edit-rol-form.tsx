@@ -22,6 +22,7 @@ export function EditRolForm({ rol }: { rol: Rol }) {
   const [form, setForm] = useState({
     descripcion: rol.descripcion ?? '',
     nivel_acceso: String(rol.nivel_acceso),
+    codigo_interno: '',
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -43,16 +44,26 @@ export function EditRolForm({ rol }: { rol: Rol }) {
       }
     }
 
+    const codigo = form.codigo_interno.trim()
+    if (!rol.codigo_interno && codigo && !/^[A-Za-z0-9_-]+$/.test(codigo)) {
+      setError('El código interno solo puede contener letras, números, guiones y guiones bajos')
+      setLoading(false)
+      return
+    }
+
+    const updates: Record<string, unknown> = {
+      descripcion: form.descripcion.trim() || null,
+      nivel_acceso: rol.nivel_acceso === 100 ? 100 : nivel,
+    }
+    if (!rol.codigo_interno && codigo) updates.codigo_interno = codigo
+
     const { error: err } = await supabase
       .from('roles_sistema')
-      .update({
-        descripcion: form.descripcion.trim() || null,
-        nivel_acceso: rol.nivel_acceso === 100 ? 100 : nivel,
-      })
+      .update(updates)
       .eq('id', rol.id)
 
     if (err) {
-      setError('Error al guardar los cambios')
+      setError(err.code === '23505' ? 'Ya existe un rol con ese código interno' : 'Error al guardar los cambios')
     } else {
       setSaved(true)
     }
@@ -73,9 +84,25 @@ export function EditRolForm({ rol }: { rol: Rol }) {
           </div>
 
           <div className="space-y-2">
-            <Label>Código Interno</Label>
-            <Input value={rol.codigo_interno ?? '—'} disabled className="font-mono text-sm" />
-            <p className="text-xs text-muted-foreground">El código interno no puede modificarse una vez creado</p>
+            <Label htmlFor="edit-codigo">Código Interno</Label>
+            {rol.codigo_interno ? (
+              <>
+                <Input value={rol.codigo_interno} disabled className="font-mono text-sm" />
+                <p className="text-xs text-muted-foreground">Inmutable una vez asignado</p>
+              </>
+            ) : (
+              <>
+                <Input
+                  id="edit-codigo"
+                  value={form.codigo_interno}
+                  onChange={e => setForm(f => ({ ...f, codigo_interno: e.target.value }))}
+                  placeholder="ej: COORD-REG-01"
+                  pattern="[A-Za-z0-9_\-]+"
+                  className="font-mono text-sm"
+                />
+                <p className="text-xs text-muted-foreground">Alfanumérico. Inmutable al guardar.</p>
+              </>
+            )}
           </div>
 
           <div className="space-y-2">

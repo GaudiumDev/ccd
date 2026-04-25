@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/client'
 interface Ministerio {
   id: string
   nombre: string
+  codigo_interno: string | null
   tipo: string
   nivel: string
   nivel_acceso: number
@@ -27,6 +28,7 @@ interface Props {
 export function EditMinisterioForm({ ministerio, nivelCalculado, asignacionesActivas }: Props) {
   const [nivel, setNivel] = useState(nivelCalculado)
   const [nombre, setNombre] = useState(ministerio.nombre)
+  const [codigoInterno, setCodigoInterno] = useState('')
   const [tipo, setTipo] = useState(ministerio.tipo)
   const [nivelOrg, setNivelOrg] = useState(ministerio.nivel)
   const [requiereActa, setRequiereActa] = useState(ministerio.requiere_acta ?? false)
@@ -47,21 +49,29 @@ export function EditMinisterioForm({ ministerio, nivelCalculado, asignacionesAct
     nombre !== ministerio.nombre ||
     tipo !== ministerio.tipo ||
     nivelOrg !== ministerio.nivel ||
-    requiereActa !== (ministerio.requiere_acta ?? false)
+    requiereActa !== (ministerio.requiere_acta ?? false) ||
+    (!ministerio.codigo_interno && codigoInterno.trim() !== '')
 
   async function handleSave() {
     if (!isDirty) return
+    const codigo = codigoInterno.trim()
+    if (!ministerio.codigo_interno && codigo && !/^[A-Za-z0-9_-]+$/.test(codigo)) {
+      setSaveError('El código interno solo puede contener letras, números, guiones y guiones bajos')
+      return
+    }
     setSaving(true)
     setSaveError(null)
     setSaved(false)
     const supabase = createClient()
+    const updates: Record<string, unknown> = { nombre: nombre.trim(), tipo, nivel: nivelOrg, requiere_acta: requiereActa }
+    if (!ministerio.codigo_interno && codigo) updates.codigo_interno = codigo
     const { error: err } = await supabase
       .from('ministerios')
-      .update({ nombre: nombre.trim(), tipo, nivel: nivelOrg, requiere_acta: requiereActa })
+      .update(updates)
       .eq('id', ministerio.id)
     setSaving(false)
     if (err) {
-      setSaveError(err.message)
+      setSaveError(err.code === '23505' ? 'Ya existe un rol con ese código interno' : err.message)
     } else {
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
@@ -95,7 +105,7 @@ export function EditMinisterioForm({ ministerio, nivelCalculado, asignacionesAct
         <CardTitle className="text-foreground">Datos del Rol</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr_1fr_auto] gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-6 items-start">
           {/* Nombre */}
           <div className="space-y-2">
             <Label htmlFor="nombre">Nombre *</Label>
@@ -106,6 +116,29 @@ export function EditMinisterioForm({ ministerio, nivelCalculado, asignacionesAct
               disabled={isReadOnly}
               placeholder="ej: Coordinador de Zona"
             />
+          </div>
+
+          {/* Código Interno */}
+          <div className="space-y-2">
+            <Label htmlFor="codigo_interno">Código Interno</Label>
+            {ministerio.codigo_interno ? (
+              <>
+                <Input value={ministerio.codigo_interno} disabled className="font-mono text-sm" />
+                <p className="text-xs text-muted-foreground">Inmutable una vez asignado</p>
+              </>
+            ) : (
+              <>
+                <Input
+                  id="codigo_interno"
+                  value={codigoInterno}
+                  onChange={(e) => setCodigoInterno(e.target.value)}
+                  placeholder="ej: COORD-ZONA"
+                  pattern="[A-Za-z0-9_\-]+"
+                  className="font-mono text-sm"
+                />
+                <p className="text-xs text-muted-foreground">Alfanumérico. Inmutable al guardar.</p>
+              </>
+            )}
           </div>
 
           {/* Tipo */}
