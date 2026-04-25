@@ -26,7 +26,7 @@ export default async function RolesPage({
   // Cargar roles con conteo de asignaciones activas
   let rolesQuery = supabase
     .from('roles_sistema')
-    .select('id, nombre, descripcion, nivel_acceso, activo')
+    .select('id, nombre, descripcion, nivel_acceso, activo, codigo_interno')
     .order('nivel_acceso', { ascending: false })
 
   if (q) rolesQuery = rolesQuery.ilike('nombre', `%${q}%`)
@@ -121,6 +121,7 @@ export default async function RolesPage({
                 <thead>
                   <tr className="border-b border-border">
                     <th className="text-left py-3 px-4 font-semibold text-foreground">Nombre</th>
+                    <th className="text-left py-3 px-4 font-semibold text-foreground">Código Interno</th>
                     <th className="text-left py-3 px-4 font-semibold text-foreground">Descripción</th>
                     <th className="text-left py-3 px-4 font-semibold text-foreground">Alcance</th>
                     <th className="text-left py-3 px-4 font-semibold text-foreground">Usuarios Activos</th>
@@ -140,6 +141,12 @@ export default async function RolesPage({
                           <Link href={`/ministerios/roles/${rol.id}`} className="text-foreground hover:text-primary">
                             {rol.nombre}
                           </Link>
+                        </td>
+                        <td className="py-3 px-4">
+                          {rol.codigo_interno
+                            ? <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{rol.codigo_interno}</span>
+                            : <span className="text-muted-foreground text-sm">—</span>
+                          }
                         </td>
                         <td className="py-3 px-4 text-muted-foreground text-sm">
                           {rol.descripcion ?? '—'}

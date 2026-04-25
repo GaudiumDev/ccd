@@ -13,6 +13,7 @@ import { Combobox } from "@/components/ui/combobox"
 
 type OrgOption = { id: string; nombre: string; parent_id?: string | null }
 type CasaRetiroOption = { id: string; nombre: string }
+type PersonaOption = { id: string; nombre: string }
 type TipoEvento = {
   id: string
   nombre: string
@@ -23,11 +24,19 @@ type TipoEvento = {
   activo: boolean
 }
 
+const CATEGORIAS = [
+  { value: "convivencia", label: "Convivencia" },
+  { value: "retiro", label: "Retiro" },
+  { value: "taller", label: "Taller" },
+  { value: "otro", label: "Otro" },
+]
+
 type Props = {
   fraternidades: OrgOption[]
   confraternidades: OrgOption[]
   tiposEventos: TipoEvento[]
   casasRetiro: CasaRetiroOption[]
+  personasCoordinadores: PersonaOption[]
   personaNombre: string
   isAdmin?: boolean
   canEditConfra?: boolean
@@ -40,9 +49,8 @@ export default function NuevoEventoForm({
   confraternidades,
   tiposEventos,
   casasRetiro,
+  personasCoordinadores,
   personaNombre,
-  isAdmin = false,
-  canEditConfra = false,
 }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -52,19 +60,36 @@ export default function NuevoEventoForm({
     fraternidades[0]?.parent_id ?? confraternidades[0]?.id ?? ""
   )
   const [fraternidadId, setFraternidadId] = useState(fraternidades[0]?.id ?? "")
-  const [tipoEventoId, setTipoEventoId] = useState(tiposEventos[0]?.id ?? "")
 
+  // Tipo: primero elegir categoría, luego nombre filtrado
+  const [categoria, setCategoria] = useState("")
+  const [tipoEventoId, setTipoEventoId] = useState("")
+
+  // Períodos de ejecución: siempre el primero visible, adicionales al presionar el botón
   type FechaEjecucion = { fecha_inicio: string; fecha_fin: string }
   const [fechasEjecucion, setFechasEjecucion] = useState<FechaEjecucion[]>([
     { fecha_inicio: "", fecha_fin: "" },
   ])
+  const [mostrarPeriodosExtra, setMostrarPeriodosExtra] = useState(false)
 
-  const tipoSeleccionado =
-    tiposEventos.find((t) => t.id === tipoEventoId) ?? null
+  // Coordinadores: lista de IDs seleccionados (hasta 3)
+  const [coordinadores, setCoordinadores] = useState<string[]>([""])
+
+  // Asesores: lista de textos libres
+  const [asesores, setAsesores] = useState<string[]>([""])
+
+  const tiposFiltrados = categoria
+    ? tiposEventos.filter((t) => t.categoria === categoria)
+    : tiposEventos
+
+  const tipoSeleccionado = tiposEventos.find((t) => t.id === tipoEventoId) ?? null
+
+  const handleCategoriaChange = (val: string) => {
+    setCategoria(val)
+    setTipoEventoId("")
+  }
 
   const [formData, setFormData] = useState({
-    nombre: "",
-    modalidad: "presencial",
     es_apv: false,
     fecha_inicio: "",
     fecha_fin: "",
@@ -72,8 +97,7 @@ export default function NuevoEventoForm({
     casa_retiro_id: "",
     cupo_maximo: "30",
     audiencia: "cerrado",
-    coordinadores_propuestos: "",
-    asesor_propuesto: "",
+    modalidad: "presencial",
     asesor_voluntario: false,
     ciudad: "",
     codigo_postal: "",
@@ -90,23 +114,17 @@ export default function NuevoEventoForm({
   const handleConfraternidadChange = (id: string) => {
     setConfraternidadId(id)
     const frat = fraternidades.find((f) => f.id === fraternidadId)
-    if (frat?.parent_id !== id) {
-      setFraternidadId("")
-    }
+    if (frat?.parent_id !== id) setFraternidadId("")
   }
 
   const handleFraternidadChange = (id: string) => {
     setFraternidadId(id)
     const frat = fraternidades.find((f) => f.id === id)
-    if (frat?.parent_id) {
-      setConfraternidadId(frat.parent_id)
-    }
+    if (frat?.parent_id) setConfraternidadId(frat.parent_id)
   }
 
   const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >,
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const target = e.target
     const value =
@@ -116,36 +134,56 @@ export default function NuevoEventoForm({
     setFormData((prev) => ({ ...prev, [target.name]: value }))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Coordinadores helpers
+  const setCoordinador = (idx: number, value: string) => {
+    setCoordinadores((prev) => prev.map((v, i) => (i === idx ? value : v)))
+  }
+  const addCoordinador = () => {
+    if (coordinadores.length < 3) setCoordinadores((prev) => [...prev, ""])
+  }
+  const removeCoordinador = (idx: number) => {
+    setCoordinadores((prev) => prev.filter((_, i) => i !== idx))
+  }
+
+  // Asesores helpers
+  const setAsesor = (idx: number, value: string) => {
+    setAsesores((prev) => prev.map((v, i) => (i === idx ? value : v)))
+  }
+  const addAsesor = () => {
+    setAsesores((prev) => [...prev, ""])
+  }
+  const removeAsesor = (idx: number) => {
+    setAsesores((prev) => prev.filter((_, i) => i !== idx))
+  }
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setLoading(true)
     setError("")
 
     try {
-      // Validate fechas de ejecución are within the proposed range
       const fechasCompletas = fechasEjecucion.filter(
-        (f) => f.fecha_inicio && f.fecha_fin,
+        (f) => f.fecha_inicio && f.fecha_fin
       )
       for (const f of fechasCompletas) {
         if (formData.fecha_inicio && f.fecha_inicio < formData.fecha_inicio) {
-          setError(
-            "Las fechas de ejecución no pueden comenzar antes de la fecha de inicio propuesta.",
-          )
+          setError("Las fechas de ejecución no pueden comenzar antes de la fecha de inicio propuesta.")
           setLoading(false)
           return
         }
         if (formData.fecha_fin && f.fecha_fin > formData.fecha_fin) {
-          setError(
-            "Las fechas de ejecución no pueden terminar después de la fecha de fin propuesta.",
-          )
+          setError("Las fechas de ejecución no pueden terminar después de la fecha de fin propuesta.")
           setLoading(false)
           return
         }
       }
 
+      const coordinadoresFiltrados = coordinadores.filter(Boolean)
+      const asesoresFiltrados = asesores.map((a) => a.trim()).filter(Boolean)
+
       const payload = {
         ...formData,
-        tipo: tipoSeleccionado?.categoria ?? "",
+        tipo: tipoSeleccionado?.categoria ?? categoria ?? "",
         tipo_evento_id: tipoEventoId || null,
         fraternidad_id: fraternidadId,
         organizacion_id: confraternidadId,
@@ -156,13 +194,12 @@ export default function NuevoEventoForm({
         estado: "solicitud",
         fecha_solicitud: formData.fecha_solicitud || today,
         casa_retiro_id: formData.casa_retiro_id || null,
-        cupo_maximo: formData.cupo_maximo
-          ? parseInt(formData.cupo_maximo)
-          : null,
-        audiencia: formData.audiencia,
-        fechas_ejecucion: fechasEjecucion.filter(
-          (f) => f.fecha_inicio && f.fecha_fin,
-        ),
+        cupo_maximo: formData.cupo_maximo ? parseInt(formData.cupo_maximo) : null,
+        coordinadores_propuestos: coordinadoresFiltrados.join(", "),
+        asesor_propuesto: asesoresFiltrados.join(", "),
+        fechas_ejecucion: fechasCompletas,
+        // Derive nombre from the selected tipo_evento if not provided
+        nombre: tipoSeleccionado?.nombre ?? "",
       }
 
       const res = await fetch("/api/eventos", {
@@ -190,6 +227,15 @@ export default function NuevoEventoForm({
   const readonlyClass =
     "w-full rounded-md border border-border bg-muted/50 px-3 py-2 text-muted-foreground text-sm"
 
+  // Options for coordinator combobox — exclude already-selected ones
+  const coordinadorOptions = (idx: number) =>
+    personasCoordinadores
+      .filter(
+        (p) =>
+          !coordinadores.some((c, i) => i !== idx && c === p.id)
+      )
+      .map((p) => ({ label: p.nombre, value: p.id }))
+
   return (
     <div className="space-y-6 max-w-2xl">
       <Link
@@ -203,7 +249,7 @@ export default function NuevoEventoForm({
       <Card className="border-border bg-card">
         <CardHeader>
           <CardTitle className="text-foreground uppercase tracking-wide text-sm">
-            Solicitud de Eventos
+            Solicitud de Convivencia
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -240,7 +286,7 @@ export default function NuevoEventoForm({
               </div>
             </div>
 
-            {/* Confraternidad */}
+            {/* 1. Confraternidad */}
             <div className="space-y-1">
               <Label htmlFor="confraternidad_id">Confraternidad</Label>
               <select
@@ -258,7 +304,7 @@ export default function NuevoEventoForm({
               </select>
             </div>
 
-            {/* Fraternidad */}
+            {/* 2. Fraternidad filtrada por Confraternidad */}
             <div className="space-y-1">
               <Label htmlFor="fraternidad_id">Fraternidad *</Label>
               <select
@@ -277,37 +323,60 @@ export default function NuevoEventoForm({
               </select>
             </div>
 
-            {/* Tipo de evento */}
-            <div className="space-y-2">
-              <div className="space-y-1">
-                <Label>Tipo de evento solicitado *</Label>
-                {tiposEventos.length === 0 ? (
-                  <div className={readonlyClass}>
-                    No hay tipos de eventos configurados
-                  </div>
-                ) : (
-                  <Combobox
-                    value={tipoEventoId}
-                    onSelect={setTipoEventoId}
-                    options={tiposEventos.map((t) => ({
-                      label: t.nombre,
-                      value: t.id,
-                    }))}
-                    placeholder="Seleccionar tipo de evento..."
-                    searchPlaceholder="Buscar tipo..."
-                    emptyText="No se encontraron tipos de eventos."
-                  />
-                )}
-              </div>
-              {tipoSeleccionado?.requisitos && (
-                <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
-                  <p className="font-medium text-foreground mb-1">Requisitos</p>
-                  <p className="text-muted-foreground whitespace-pre-wrap">{tipoSeleccionado.requisitos}</p>
-                </div>
-              )}
+            {/* 3. Tipo de evento (categoría) */}
+            <div className="space-y-1">
+              <Label htmlFor="categoria">Tipo de evento a solicitar *</Label>
+              <select
+                id="categoria"
+                value={categoria}
+                onChange={(e) => handleCategoriaChange(e.target.value)}
+                required
+                className={fieldClass}
+              >
+                <option value="">— Seleccionar tipo —</option>
+                {CATEGORIAS.map((c) => (
+                  <option key={c.value} value={c.value}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            {/* Niveles de discernimiento (readonly, derivados del tipo) */}
+            {/* 4. Nombre del evento (tipos filtrados por categoría) */}
+            {categoria && (
+              <div className="space-y-2">
+                <div className="space-y-1">
+                  <Label>Nombre del evento *</Label>
+                  {tiposFiltrados.length === 0 ? (
+                    <div className={readonlyClass}>
+                      No hay tipos configurados para esta categoría
+                    </div>
+                  ) : (
+                    <Combobox
+                      value={tipoEventoId}
+                      onSelect={setTipoEventoId}
+                      options={tiposFiltrados.map((t) => ({
+                        label: t.nombre,
+                        value: t.id,
+                      }))}
+                      placeholder="Seleccionar nombre del evento..."
+                      searchPlaceholder="Buscar..."
+                      emptyText="No se encontraron eventos."
+                    />
+                  )}
+                </div>
+                {tipoSeleccionado?.requisitos && (
+                  <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+                    <p className="font-medium text-foreground mb-1">Requisitos</p>
+                    <p className="text-muted-foreground whitespace-pre-wrap">
+                      {tipoSeleccionado.requisitos}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Niveles de discernimiento (derivados del tipo) */}
             {tipoSeleccionado && (
               <div className="rounded-md border border-border p-4 space-y-3">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -340,23 +409,300 @@ export default function NuevoEventoForm({
               </div>
             )}
 
-            {/* Nombre */}
-            <div className="space-y-1">
-              <Label htmlFor="nombre">Nombre del evento *</Label>
-              <Input
-                id="nombre"
-                name="nombre"
-                placeholder="Convivencia San José 2026"
-                value={formData.nombre}
+            {/* 5. Aporte Voluntario */}
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="es_apv"
+                name="es_apv"
+                checked={formData.es_apv}
                 onChange={handleChange}
-                required
+                className="h-4 w-4 rounded border-border"
               />
+              <label htmlFor="es_apv" className="text-sm text-foreground cursor-pointer">
+                Es de aporte voluntario DAV
+              </label>
             </div>
 
-            {/* Modalidad + APV */}
-            <div className="grid gap-4 sm:grid-cols-2 items-end">
+            {/* 6–9. Ubicación */}
+            <LocationFields
+              pais={formData.pais_evento}
+              provincia={formData.provincia_evento}
+              localidad={formData.ciudad}
+              codigoPostal={formData.codigo_postal}
+              diocesis={formData.diocesis}
+              onPaisChange={(val) =>
+                setFormData((prev) => ({ ...prev, pais_evento: val }))
+              }
+              onProvinciaChange={(val) =>
+                setFormData((prev) => ({ ...prev, provincia_evento: val }))
+              }
+              onLocalidadChange={(val) =>
+                setFormData((prev) => ({ ...prev, ciudad: val }))
+              }
+              onCodigoPostalChange={(val) =>
+                setFormData((prev) => ({ ...prev, codigo_postal: val }))
+              }
+              onDiocesisChange={(val) =>
+                setFormData((prev) => ({ ...prev, diocesis: val }))
+              }
+            />
+
+            {/* 10–11. Fecha inicio y fin (primer período) */}
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1">
-                <Label htmlFor="modalidad">Modalidad solicitada</Label>
+                <Label htmlFor="fecha_inicio">Fecha de inicio *</Label>
+                <Input
+                  id="fecha_inicio"
+                  name="fecha_inicio"
+                  type="date"
+                  value={formData.fecha_inicio}
+                  onChange={(e) => {
+                    handleChange(e)
+                    setFechasEjecucion((prev) =>
+                      prev.map((f, i) =>
+                        i === 0 ? { ...f, fecha_inicio: e.target.value } : f
+                      )
+                    )
+                  }}
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="fecha_fin">Fecha de fin *</Label>
+                <Input
+                  id="fecha_fin"
+                  name="fecha_fin"
+                  type="date"
+                  value={formData.fecha_fin}
+                  onChange={(e) => {
+                    handleChange(e)
+                    setFechasEjecucion((prev) =>
+                      prev.map((f, i) =>
+                        i === 0 ? { ...f, fecha_fin: e.target.value } : f
+                      )
+                    )
+                  }}
+                  required
+                />
+              </div>
+            </div>
+
+            {/* 12. Botón Períodos + períodos adicionales */}
+            <div className="space-y-3">
+              {!mostrarPeriodosExtra ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="bg-transparent gap-1"
+                  onClick={() => {
+                    setMostrarPeriodosExtra(true)
+                    setFechasEjecucion((prev) =>
+                      prev.length < 2
+                        ? [...prev, { fecha_inicio: "", fecha_fin: "" }]
+                        : prev
+                    )
+                  }}
+                >
+                  <Plus className="h-3 w-3" />
+                  Períodos
+                </Button>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Períodos adicionales</Label>
+                    {fechasEjecucion.length < 3 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="gap-1 bg-transparent h-7 text-xs"
+                        disabled={
+                          !fechasEjecucion[fechasEjecucion.length - 1].fecha_inicio ||
+                          !fechasEjecucion[fechasEjecucion.length - 1].fecha_fin
+                        }
+                        onClick={() =>
+                          setFechasEjecucion((prev) => [
+                            ...prev,
+                            { fecha_inicio: "", fecha_fin: "" },
+                          ])
+                        }
+                      >
+                        <Plus className="h-3 w-3" />
+                        Agregar período
+                      </Button>
+                    )}
+                  </div>
+                  {fechasEjecucion.slice(1).map((fecha, relIdx) => {
+                    const idx = relIdx + 1
+                    return (
+                      <div
+                        key={idx}
+                        className="grid gap-3 sm:grid-cols-2 items-end relative"
+                      >
+                        <div className="space-y-1">
+                          <Label
+                            htmlFor={`fe_inicio_${idx}`}
+                            className="text-xs text-muted-foreground"
+                          >
+                            Fecha Desde {idx + 1}
+                          </Label>
+                          <Input
+                            id={`fe_inicio_${idx}`}
+                            type="date"
+                            value={fecha.fecha_inicio}
+                            min={formData.fecha_inicio || undefined}
+                            max={formData.fecha_fin || undefined}
+                            onChange={(e) =>
+                              setFechasEjecucion((prev) =>
+                                prev.map((f, i) =>
+                                  i === idx
+                                    ? { ...f, fecha_inicio: e.target.value }
+                                    : f
+                                )
+                              )
+                            }
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label
+                            htmlFor={`fe_fin_${idx}`}
+                            className="text-xs text-muted-foreground"
+                          >
+                            Fecha Hasta {idx + 1}
+                          </Label>
+                          <div className="flex gap-2">
+                            <Input
+                              id={`fe_fin_${idx}`}
+                              type="date"
+                              value={fecha.fecha_fin}
+                              min={
+                                fecha.fecha_inicio ||
+                                formData.fecha_inicio ||
+                                undefined
+                              }
+                              max={formData.fecha_fin || undefined}
+                              onChange={(e) =>
+                                setFechasEjecucion((prev) =>
+                                  prev.map((f, i) =>
+                                    i === idx
+                                      ? { ...f, fecha_fin: e.target.value }
+                                      : f
+                                  )
+                                )
+                              }
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="shrink-0 text-muted-foreground hover:text-destructive"
+                              onClick={() => {
+                                const updated = fechasEjecucion.filter(
+                                  (_, i) => i !== idx
+                                )
+                                setFechasEjecucion(updated)
+                                if (updated.length <= 1) setMostrarPeriodosExtra(false)
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* 13. Coordinadores propuestos */}
+            <div className="space-y-2">
+              <Label>Coordinador/es propuesto/s</Label>
+              <div className="space-y-2">
+                {coordinadores.map((coordId, idx) => (
+                  <div key={idx} className="flex gap-2 items-center">
+                    <div className="flex-1">
+                      <Combobox
+                        value={coordId}
+                        onSelect={(val) => setCoordinador(idx, val)}
+                        options={coordinadorOptions(idx)}
+                        placeholder="Buscar coordinador..."
+                        searchPlaceholder="Nombre..."
+                        emptyText="No se encontraron personas."
+                      />
+                    </div>
+                    {coordinadores.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => removeCoordinador(idx)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {coordinadores.length < 3 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1 bg-transparent h-7 text-xs"
+                  onClick={addCoordinador}
+                >
+                  <Plus className="h-3 w-3" />
+                  Agregar coordinador
+                </Button>
+              )}
+            </div>
+
+            {/* 14. Asesores (texto libre, múltiple) */}
+            <div className="space-y-2">
+              <Label>Asesor/es propuesto/s</Label>
+              <div className="space-y-2">
+                {asesores.map((asesor, idx) => (
+                  <div key={idx} className="flex gap-2 items-center">
+                    <Input
+                      placeholder="Nombre del asesor (puede ser externo)"
+                      value={asesor}
+                      onChange={(e) => setAsesor(idx, e.target.value)}
+                      className="flex-1"
+                    />
+                    {asesores.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => removeAsesor(idx)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-1 bg-transparent h-7 text-xs"
+                onClick={addAsesor}
+              >
+                <Plus className="h-3 w-3" />
+                Agregar asesor
+              </Button>
+            </div>
+
+            {/* Modalidad + Cupo + Audiencia */}
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-1">
+                <Label htmlFor="modalidad">Modalidad</Label>
                 <select
                   id="modalidad"
                   name="modalidad"
@@ -369,45 +715,6 @@ export default function NuevoEventoForm({
                   <option value="bimodal">Bimodal</option>
                 </select>
               </div>
-              <div className="flex items-center gap-3 pb-2">
-                <input
-                  type="checkbox"
-                  id="es_apv"
-                  name="es_apv"
-                  checked={formData.es_apv}
-                  onChange={handleChange}
-                  className="h-4 w-4 rounded border-border"
-                />
-                <label
-                  htmlFor="es_apv"
-                  className="text-sm text-foreground cursor-pointer"
-                >
-                  Es de aporte voluntario DAV
-                </label>
-              </div>
-            </div>
-
-            {/* Casa de retiro */}
-            <div className="space-y-1">
-              <Label htmlFor="casa_retiro_id">Casa de retiro</Label>
-              <select
-                id="casa_retiro_id"
-                name="casa_retiro_id"
-                value={formData.casa_retiro_id}
-                onChange={handleChange}
-                className={fieldClass}
-              >
-                <option value="">— Sin definir —</option>
-                {casasRetiro.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Cupo + Audiencia */}
-            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1">
                 <Label htmlFor="cupo_maximo">Cupo máximo</Label>
                 <Input
@@ -434,202 +741,24 @@ export default function NuevoEventoForm({
               </div>
             </div>
 
-            {/* Fechas */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1">
-                <Label htmlFor="fecha_inicio">Fecha inicio propuesta *</Label>
-                <Input
-                  id="fecha_inicio"
-                  name="fecha_inicio"
-                  type="date"
-                  value={formData.fecha_inicio}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="fecha_fin">Fecha fin propuesta *</Label>
-                <Input
-                  id="fecha_fin"
-                  name="fecha_fin"
-                  type="date"
-                  value={formData.fecha_fin}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Fechas de ejecución */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label>Fechas reales de ejecución</Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="gap-1 bg-transparent h-7 text-xs"
-                  disabled={
-                    fechasEjecucion.length >= 3 ||
-                    !fechasEjecucion[fechasEjecucion.length - 1].fecha_inicio ||
-                    !fechasEjecucion[fechasEjecucion.length - 1].fecha_fin
-                  }
-                  onClick={() =>
-                    setFechasEjecucion((prev) => [
-                      ...prev,
-                      { fecha_inicio: "", fecha_fin: "" },
-                    ])
-                  }
-                >
-                  <Plus className="h-3 w-3" />
-                  Agregar período
-                </Button>
-              </div>
-              {fechasEjecucion.map((fecha, idx) => (
-                <div
-                  key={idx}
-                  className="grid gap-3 sm:grid-cols-2 items-end relative"
-                >
-                  <div className="space-y-1">
-                    <Label
-                      htmlFor={`fe_inicio_${idx}`}
-                      className="text-xs text-muted-foreground"
-                    >
-                      Fecha Desde {idx + 1}
-                    </Label>
-                    <Input
-                      id={`fe_inicio_${idx}`}
-                      type="date"
-                      value={fecha.fecha_inicio}
-                      min={formData.fecha_inicio || undefined}
-                      max={formData.fecha_fin || undefined}
-                      onChange={(e) =>
-                        setFechasEjecucion((prev) =>
-                          prev.map((f, i) =>
-                            i === idx
-                              ? { ...f, fecha_inicio: e.target.value }
-                              : f,
-                          ),
-                        )
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label
-                      htmlFor={`fe_fin_${idx}`}
-                      className="text-xs text-muted-foreground"
-                    >
-                      Fecha Hasta {idx + 1}
-                    </Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id={`fe_fin_${idx}`}
-                        type="date"
-                        value={fecha.fecha_fin}
-                        min={
-                          fecha.fecha_inicio ||
-                          formData.fecha_inicio ||
-                          undefined
-                        }
-                        max={formData.fecha_fin || undefined}
-                        onChange={(e) =>
-                          setFechasEjecucion((prev) =>
-                            prev.map((f, i) =>
-                              i === idx
-                                ? { ...f, fecha_fin: e.target.value }
-                                : f,
-                            ),
-                          )
-                        }
-                      />
-                      {fechasEjecucion.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="shrink-0 text-muted-foreground hover:text-destructive"
-                          onClick={() =>
-                            setFechasEjecucion((prev) =>
-                              prev.filter((_, i) => i !== idx),
-                            )
-                          }
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Coordinadores */}
+            {/* Casa de retiro */}
             <div className="space-y-1">
-              <Label htmlFor="coordinadores_propuestos">
-                Coordinador/es propuesto/s
-              </Label>
-              <Input
-                id="coordinadores_propuestos"
-                name="coordinadores_propuestos"
-                placeholder="Nombre y apellido (hasta 3, separados por coma)"
-                value={formData.coordinadores_propuestos}
+              <Label htmlFor="casa_retiro_id">Casa de retiro</Label>
+              <select
+                id="casa_retiro_id"
+                name="casa_retiro_id"
+                value={formData.casa_retiro_id}
                 onChange={handleChange}
-              />
+                className={fieldClass}
+              >
+                <option value="">— Sin definir —</option>
+                {casasRetiro.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nombre}
+                  </option>
+                ))}
+              </select>
             </div>
-
-            {/* Asesor + voluntario */}
-            <div className="grid gap-4 sm:grid-cols-2 items-end">
-              <div className="space-y-1">
-                <Label htmlFor="asesor_propuesto">Asesor propuesto</Label>
-                <Input
-                  id="asesor_propuesto"
-                  name="asesor_propuesto"
-                  placeholder="Texto — puede ser persona externa"
-                  value={formData.asesor_propuesto}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="flex items-center gap-3 pb-2">
-                <input
-                  type="checkbox"
-                  id="asesor_voluntario"
-                  name="asesor_voluntario"
-                  checked={formData.asesor_voluntario}
-                  onChange={handleChange}
-                  className="h-4 w-4 rounded border-border"
-                />
-                <label
-                  htmlFor="asesor_voluntario"
-                  className="text-sm text-foreground cursor-pointer"
-                >
-                  Es voluntario el asesor
-                </label>
-              </div>
-            </div>
-
-            {/* Ubicación */}
-            <LocationFields
-              pais={formData.pais_evento}
-              provincia={formData.provincia_evento}
-              localidad={formData.ciudad}
-              codigoPostal={formData.codigo_postal}
-              diocesis={formData.diocesis}
-              onPaisChange={(val) =>
-                setFormData((prev) => ({ ...prev, pais_evento: val }))
-              }
-              onProvinciaChange={(val) =>
-                setFormData((prev) => ({ ...prev, provincia_evento: val }))
-              }
-              onLocalidadChange={(val) =>
-                setFormData((prev) => ({ ...prev, ciudad: val }))
-              }
-              onCodigoPostalChange={(val) =>
-                setFormData((prev) => ({ ...prev, codigo_postal: val }))
-              }
-              onDiocesisChange={(val) =>
-                setFormData((prev) => ({ ...prev, diocesis: val }))
-              }
-            />
 
             {/* Notas */}
             <div className="space-y-1">
@@ -652,17 +781,13 @@ export default function NuevoEventoForm({
                   loading ||
                   fraternidades.length === 0 ||
                   !fraternidadId ||
-                  !tipoEventoId
+                  !categoria
                 }
               >
                 {loading ? "Enviando..." : "Enviar Solicitud"}
               </Button>
               <Link href="/eventos">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="bg-transparent"
-                >
+                <Button type="button" variant="outline" className="bg-transparent">
                   Cancelar
                 </Button>
               </Link>

@@ -21,6 +21,7 @@ export default function NuevoRolPage() {
     nombre: '',
     descripcion: '',
     nivel_acceso: '10',
+    codigo_interno: '',
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -42,6 +43,7 @@ export default function NuevoRolPage() {
         nombre: form.nombre.trim(),
         descripcion: form.descripcion.trim() || null,
         nivel_acceso: nivel,
+        codigo_interno: form.codigo_interno.trim() || null,
       }),
     })
 
@@ -91,6 +93,19 @@ export default function NuevoRolPage() {
                 onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))}
               />
               <p className="text-xs text-muted-foreground">Sin espacios, en minúsculas. Ej: responsable_zona</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="codigo_interno">Código interno *</Label>
+              <Input
+                id="codigo_interno"
+                required
+                placeholder="ej: COORD-REG-01"
+                value={form.codigo_interno}
+                onChange={e => setForm(f => ({ ...f, codigo_interno: e.target.value }))}
+                pattern="[A-Za-z0-9_\-]+"
+              />
+              <p className="text-xs text-muted-foreground">Alfanumérico, guiones y guiones bajos. Inmutable una vez creado. Usado en importaciones.</p>
             </div>
 
             <div className="space-y-2">

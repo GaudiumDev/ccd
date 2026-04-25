@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
   Users,
+  User,
   Building2,
   Calendar,
   DollarSign,
@@ -359,11 +360,21 @@ export default async function DashboardPage() {
             Plataforma de gestión para Convivencia con Dios
           </p>
         </div>
-        {roleName && (
-          <Badge variant="secondary" className="text-sm mt-1">
-            {roleName}
-          </Badge>
-        )}
+        <div className="flex flex-col items-end gap-2 mt-1">
+          {roleName && (
+            <Badge variant="secondary" className="text-sm">
+              {roleName}
+            </Badge>
+          )}
+          {hasPersonaId && (
+            <Link href="/settings?tab=perfil">
+              <Button variant="outline" size="sm" className="gap-2 bg-transparent text-xs">
+                <User className="h-3.5 w-3.5" />
+                Editar mi Perfil
+              </Button>
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* Stats Grid */}

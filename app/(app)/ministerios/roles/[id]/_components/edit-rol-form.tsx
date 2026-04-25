@@ -14,6 +14,7 @@ interface Rol {
   descripcion: string | null
   nivel_acceso: number
   activo: boolean
+  codigo_interno: string | null
 }
 
 export function EditRolForm({ rol }: { rol: Rol }) {
@@ -69,6 +70,12 @@ export function EditRolForm({ rol }: { rol: Rol }) {
           <div className="space-y-2">
             <Label>Nombre</Label>
             <Input value={rol.nombre} disabled className="font-mono text-sm" />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Código Interno</Label>
+            <Input value={rol.codigo_interno ?? '—'} disabled className="font-mono text-sm" />
+            <p className="text-xs text-muted-foreground">El código interno no puede modificarse una vez creado</p>
           </div>
 
           <div className="space-y-2">

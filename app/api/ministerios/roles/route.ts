@@ -11,14 +11,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Sin permisos para gestionar roles' }, { status: 403 })
   }
 
-  let body: { nombre?: string; descripcion?: string | null; nivel_acceso?: number }
+  let body: { nombre?: string; descripcion?: string | null; nivel_acceso?: number; codigo_interno?: string | null }
   try {
     body = await request.json()
   } catch {
     return NextResponse.json({ error: 'JSON inválido' }, { status: 400 })
   }
 
-  const { nombre, descripcion, nivel_acceso } = body
+  const { nombre, descripcion, nivel_acceso, codigo_interno } = body
 
   if (!nombre || typeof nombre !== 'string' || nombre.trim() === '') {
     return NextResponse.json({ error: 'El campo nombre es requerido' }, { status: 400 })
@@ -31,6 +31,15 @@ export async function POST(request: Request) {
     )
   }
 
+  if (codigo_interno !== undefined && codigo_interno !== null && codigo_interno !== '') {
+    if (!/^[A-Za-z0-9_-]+$/.test(codigo_interno)) {
+      return NextResponse.json(
+        { error: 'El código interno solo puede contener letras, números, guiones y guiones bajos' },
+        { status: 400 }
+      )
+    }
+  }
+
   const supabase = await createClient()
 
   const { data, error } = await supabase
@@ -40,13 +49,18 @@ export async function POST(request: Request) {
       descripcion: descripcion ?? null,
       nivel_acceso,
       activo: true,
+      codigo_interno: codigo_interno?.trim() || null,
     })
     .select('id')
     .single()
 
   if (error) {
     if (error.code === '23505') {
-      return NextResponse.json({ error: 'Ya existe un rol con ese nombre' }, { status: 409 })
+      const isDuplicateCodigo = error.message.includes('codigo_interno')
+      return NextResponse.json(
+        { error: isDuplicateCodigo ? 'Ya existe un rol con ese código interno' : 'Ya existe un rol con ese nombre' },
+        { status: 409 }
+      )
     }
     return NextResponse.json({ error: error.message }, { status: 500 })
   }

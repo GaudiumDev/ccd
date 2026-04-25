@@ -31,6 +31,26 @@ export default async function NuevoEventoPage() {
     .eq('activo', true)
     .order('nombre')
 
+  // Load personas cecistas con modo servidor o familiar (para coordinadores)
+  const { data: personasModos } = await supabase
+    .from('persona_modos')
+    .select('persona_id, modo, personas(id, nombre, apellido)')
+    .in('modo', ['servidor', 'familiar'])
+    .is('fecha_fin', null)
+    .is('personas.fecha_baja', null)
+
+  const personasCoordinadores = (personasModos ?? [])
+    .filter((pm): pm is typeof pm & { personas: { id: string; nombre: string; apellido: string } } =>
+      pm.personas !== null && typeof pm.personas === 'object' && !Array.isArray(pm.personas)
+    )
+    .map(pm => ({
+      id: (pm.personas as { id: string; nombre: string; apellido: string }).id,
+      nombre: `${(pm.personas as { id: string; nombre: string; apellido: string }).nombre} ${(pm.personas as { id: string; nombre: string; apellido: string }).apellido}`.trim(),
+    }))
+    // Deduplicate by id (a person can have multiple active modos)
+    .filter((p, idx, arr) => arr.findIndex(x => x.id === p.id) === idx)
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+
   // Load organizations the user has access to
   let fraternidades: { id: string; nombre: string; parent_id: string | null }[] = []
   let confraternidades: { id: string; nombre: string }[] = []
@@ -69,6 +89,7 @@ export default async function NuevoEventoPage() {
           confraternidades={[]}
           tiposEventos={tiposEventos ?? []}
           casasRetiro={casasRetiro ?? []}
+          personasCoordinadores={personasCoordinadores}
           personaNombre={personaNombre}
           isAdmin={false}
           canEditConfra={false}
@@ -110,6 +131,7 @@ export default async function NuevoEventoPage() {
       confraternidades={confraternidades}
       tiposEventos={tiposEventos ?? []}
       casasRetiro={casasRetiro ?? []}
+      personasCoordinadores={personasCoordinadores}
       personaNombre={personaNombre}
       isAdmin={ctx.is_admin}
       canEditConfra={canEditConfra}

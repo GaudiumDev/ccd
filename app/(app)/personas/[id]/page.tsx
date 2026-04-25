@@ -8,6 +8,7 @@ import { ArrowLeft, Edit2, Paperclip } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { getUserContext, canPerform } from "@/lib/auth/context"
 import { formatDateAR } from "@/lib/utils"
+import { PersonaAvatar } from "./_components/persona-avatar"
 
 function formatDate(date: string | null) {
   return formatDateAR(date)
@@ -64,7 +65,7 @@ export default async function PersonaDetailPage({
     supabase
       .from("personas")
       .select(
-        "id, nombre, apellido, email, email_ccd, telefono, tipo_documento, documento, fecha_nacimiento, direccion, direccion_nro, localidad, codigo_postal, provincia, pais, notas, estado, created_at, acepta_comunicaciones, estado_eclesial, estado_vida, diocesis, categoria_persona, parroquia, socio_asociacion, referente_comunidad, cecista_dedicado, intercesor_dies_natalis, nombre_usuario, nivel_estudios, anio_ingreso, acompanante_id, acompanante:personas!acompanante_id(id, nombre, apellido), fecha_ingreso_comunidad",
+        "id, nombre, apellido, email, email_ccd, telefono, tipo_documento, documento, fecha_nacimiento, direccion, direccion_nro, localidad, codigo_postal, provincia, pais, notas, estado, created_at, acepta_comunicaciones, estado_eclesial, estado_vida, diocesis, categoria_persona, parroquia, socio_asociacion, referente_comunidad, cecista_dedicado, intercesor_dies_natalis, nombre_usuario, nivel_estudios, anio_ingreso, acompanante_id, acompanante:personas!acompanante_id(id, nombre, apellido), fecha_ingreso_comunidad, foto_url",
       )
       .eq("id", id)
       .single(),
@@ -124,21 +125,29 @@ export default async function PersonaDetailPage({
       </div>
 
       {/* Nombre y estado */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">
-          {persona.apellido}, {persona.nombre}
-        </h1>
-        <div className="mt-1 flex items-center gap-2">
-          <span
-            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-              persona.estado === "activo"
-                ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-                : "bg-muted text-muted-foreground"
-            }`}
-          >
-            {persona.estado}
-          </span>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">
+            {persona.apellido}, {persona.nombre}
+          </h1>
+          <div className="mt-1 flex items-center gap-2">
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                persona.estado === "activo"
+                  ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                  : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {persona.estado}
+            </span>
+          </div>
         </div>
+        <PersonaAvatar
+          personaId={persona.id}
+          fotoUrl={(persona as any).foto_url ?? null}
+          initials={`${persona.nombre.charAt(0)}${persona.apellido.charAt(0)}`}
+          canUpdate={canUpdate}
+        />
       </div>
 
       {/* Datos Personales */}

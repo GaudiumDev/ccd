@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -13,6 +14,7 @@ import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { translateSupabaseError } from '@/lib/errors/supabase'
 import { LocationFields } from '@/components/location-fields'
+import { AvatarUpload } from '@/components/avatar-upload'
 
 type FontSize = 'small' | 'medium' | 'large'
 
@@ -75,6 +77,7 @@ type Persona = {
   acompanante_id: string | null
   notas: string | null
   categoria_persona: string | null
+  foto_url: string | null
 }
 
 type EditForm = {
@@ -105,7 +108,9 @@ type EditForm = {
 type PersonaOpcion = { id: string; nombre: string; apellido: string }
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState('general')
+  const searchParams = useSearchParams()
+  const initialTab = searchParams.get('tab') ?? 'general'
+  const [activeTab, setActiveTab] = useState(initialTab)
   const [fontSize, setFontSize] = useState<FontSize>('small')
 
   // Password change dialog
@@ -199,7 +204,7 @@ export default function SettingsPage() {
 
       const { data } = await supabase
         .from('personas')
-        .select('id, nombre, apellido, email, email_ccd, telefono, fecha_nacimiento, tipo_documento, documento, direccion, direccion_nro, codigo_postal, localidad, provincia, pais, diocesis, estado_eclesial, parroquia, estado_vida, nivel_estudios, anio_ingreso, acompanante_id, notas, categoria_persona')
+        .select('id, nombre, apellido, email, email_ccd, telefono, fecha_nacimiento, tipo_documento, documento, direccion, direccion_nro, codigo_postal, localidad, provincia, pais, diocesis, estado_eclesial, parroquia, estado_vida, nivel_estudios, anio_ingreso, acompanante_id, notas, categoria_persona, foto_url')
         .eq('auth_user_id', user.id)
         .single()
 
@@ -428,9 +433,13 @@ export default function SettingsPage() {
               {/* Summary card */}
               <Card className="border-border bg-card">
                 <CardContent className="py-5 flex items-center gap-4">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xl shrink-0">
-                    {persona.nombre.charAt(0)}{persona.apellido.charAt(0)}
-                  </div>
+                  <AvatarUpload
+                    personaId={persona.id}
+                    currentUrl={persona.foto_url}
+                    initials={`${persona.nombre.charAt(0)}${persona.apellido.charAt(0)}`}
+                    size="lg"
+                    onUploaded={(url) => setPersona(prev => prev ? { ...prev, foto_url: url } : prev)}
+                  />
                   <div>
                     <p className="font-semibold text-foreground text-lg leading-tight">{persona.nombre} {persona.apellido}</p>
                     <div className="flex flex-wrap gap-2 mt-1">
