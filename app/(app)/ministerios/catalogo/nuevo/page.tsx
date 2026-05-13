@@ -30,6 +30,7 @@ const categoriaLabel: Record<string, string> = {
   personas: "Personas",
   organizaciones: "Organizaciones",
   eventos: "Eventos",
+  tipos_eventos: "Tipos de Eventos",
   roles: "Roles",
   sistema: "Sistema",
 }

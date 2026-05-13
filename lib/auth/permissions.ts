@@ -28,6 +28,9 @@ export type Permission =
   | 'ministry.assign'
   | 'roles.assign'        // asignar roles de sistema — solo admin
   | 'roles.view'          // ver sección ministerios y roles
+  | 'tipos_eventos.create'
+  | 'tipos_eventos.update'
+  | 'tipos_eventos.delete'
   | 'view.all'
   | 'view.personas'            // ver sección de personas
   | 'view.organizaciones'      // ver sección de organizaciones

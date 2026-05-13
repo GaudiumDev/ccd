@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft, CheckCircle2, XCircle, Plus, Trash2 } from "lucide-react"
 import { LocationFields } from "@/components/location-fields"
 import { Combobox } from "@/components/ui/combobox"
+import { formatDateAR } from "@/lib/utils"
 
 type OrgOption = { id: string; nombre: string; parent_id?: string | null }
 type CasaRetiroOption = { id: string; nombre: string }
@@ -28,6 +29,7 @@ const CATEGORIAS = [
   { value: "convivencia", label: "Convivencia" },
   { value: "retiro", label: "Retiro" },
   { value: "taller", label: "Taller" },
+  { value: "encuentro", label: "Encuentro" },
   { value: "otro", label: "Otro" },
 ]
 
@@ -57,7 +59,7 @@ export default function NuevoEventoForm({
   const [error, setError] = useState("")
 
   const [confraternidadId, setConfraternidadId] = useState(
-    fraternidades[0]?.parent_id ?? confraternidades[0]?.id ?? ""
+    fraternidades[0]?.parent_id ?? confraternidades[0]?.id ?? "",
   )
   const [fraternidadId, setFraternidadId] = useState(fraternidades[0]?.id ?? "")
 
@@ -82,7 +84,11 @@ export default function NuevoEventoForm({
     ? tiposEventos.filter((t) => t.categoria === categoria)
     : tiposEventos
 
-  const tipoSeleccionado = tiposEventos.find((t) => t.id === tipoEventoId) ?? null
+  const tipoSeleccionado =
+    tiposEventos.find((t) => t.id === tipoEventoId) ?? null
+
+  const confraternidadSeleccionada =
+    confraternidades.find((c) => c.id === confraternidadId) ?? null
 
   const handleCategoriaChange = (val: string) => {
     setCategoria(val)
@@ -107,6 +113,11 @@ export default function NuevoEventoForm({
     notas: "",
   })
 
+  const nombreEvento =
+    tipoSeleccionado && confraternidadSeleccionada && formData.fecha_inicio
+      ? `${tipoSeleccionado.nombre} - ${confraternidadSeleccionada.nombre} - ${formatDateAR(formData.fecha_inicio)}`
+      : ""
+
   const fraternidadesFiltradas = confraternidadId
     ? fraternidades.filter((f) => f.parent_id === confraternidadId)
     : fraternidades
@@ -124,7 +135,9 @@ export default function NuevoEventoForm({
   }
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
   ) => {
     const target = e.target
     const value =
@@ -163,16 +176,20 @@ export default function NuevoEventoForm({
 
     try {
       const fechasCompletas = fechasEjecucion.filter(
-        (f) => f.fecha_inicio && f.fecha_fin
+        (f) => f.fecha_inicio && f.fecha_fin,
       )
       for (const f of fechasCompletas) {
         if (formData.fecha_inicio && f.fecha_inicio < formData.fecha_inicio) {
-          setError("Las fechas de ejecución no pueden comenzar antes de la fecha de inicio propuesta.")
+          setError(
+            "Las fechas de ejecución no pueden comenzar antes de la fecha de inicio propuesta.",
+          )
           setLoading(false)
           return
         }
         if (formData.fecha_fin && f.fecha_fin > formData.fecha_fin) {
-          setError("Las fechas de ejecución no pueden terminar después de la fecha de fin propuesta.")
+          setError(
+            "Las fechas de ejecución no pueden terminar después de la fecha de fin propuesta.",
+          )
           setLoading(false)
           return
         }
@@ -194,12 +211,13 @@ export default function NuevoEventoForm({
         estado: "solicitud",
         fecha_solicitud: formData.fecha_solicitud || today,
         casa_retiro_id: formData.casa_retiro_id || null,
-        cupo_maximo: formData.cupo_maximo ? parseInt(formData.cupo_maximo) : null,
+        cupo_maximo: formData.cupo_maximo
+          ? parseInt(formData.cupo_maximo)
+          : null,
         coordinadores_propuestos: coordinadoresFiltrados.join(", "),
         asesor_propuesto: asesoresFiltrados.join(", "),
         fechas_ejecucion: fechasCompletas,
-        // Derive nombre from the selected tipo_evento if not provided
-        nombre: tipoSeleccionado?.nombre ?? "",
+        nombre: nombreEvento,
       }
 
       const res = await fetch("/api/eventos", {
@@ -230,10 +248,7 @@ export default function NuevoEventoForm({
   // Options for coordinator combobox — exclude already-selected ones
   const coordinadorOptions = (idx: number) =>
     personasCoordinadores
-      .filter(
-        (p) =>
-          !coordinadores.some((c, i) => i !== idx && c === p.id)
-      )
+      .filter((p) => !coordinadores.some((c, i) => i !== idx && c === p.id))
       .map((p) => ({ label: p.nombre, value: p.id }))
 
   return (
@@ -325,7 +340,9 @@ export default function NuevoEventoForm({
 
             {/* 3. Tipo de evento (categoría) */}
             <div className="space-y-1">
-              <Label htmlFor="categoria">Tipo de evento a solicitar *</Label>
+              <Label htmlFor="categoria">
+                Categoría de evento a solicitar *
+              </Label>
               <select
                 id="categoria"
                 value={categoria}
@@ -333,7 +350,7 @@ export default function NuevoEventoForm({
                 required
                 className={fieldClass}
               >
-                <option value="">— Seleccionar tipo —</option>
+                <option value="">— Seleccionar Categoría —</option>
                 {CATEGORIAS.map((c) => (
                   <option key={c.value} value={c.value}>
                     {c.label}
@@ -346,10 +363,10 @@ export default function NuevoEventoForm({
             {categoria && (
               <div className="space-y-2">
                 <div className="space-y-1">
-                  <Label>Nombre del evento *</Label>
+                  <Label>Tipo de evento *</Label>
                   {tiposFiltrados.length === 0 ? (
                     <div className={readonlyClass}>
-                      No hay tipos configurados para esta categoría
+                      No hay tipos de evento configurados para esta categoría
                     </div>
                   ) : (
                     <Combobox
@@ -359,7 +376,7 @@ export default function NuevoEventoForm({
                         label: t.nombre,
                         value: t.id,
                       }))}
-                      placeholder="Seleccionar nombre del evento..."
+                      placeholder="Seleccionar tipo de evento..."
                       searchPlaceholder="Buscar..."
                       emptyText="No se encontraron eventos."
                     />
@@ -367,7 +384,9 @@ export default function NuevoEventoForm({
                 </div>
                 {tipoSeleccionado?.requisitos && (
                   <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
-                    <p className="font-medium text-foreground mb-1">Requisitos</p>
+                    <p className="font-medium text-foreground mb-1">
+                      Requisitos
+                    </p>
                     <p className="text-muted-foreground whitespace-pre-wrap">
                       {tipoSeleccionado.requisitos}
                     </p>
@@ -375,6 +394,19 @@ export default function NuevoEventoForm({
                 )}
               </div>
             )}
+
+            {/* Nombre del evento (calculado automáticamente) */}
+            <div className="space-y-1">
+              <Label>Nombre del evento</Label>
+              <div className={readonlyClass}>
+                {nombreEvento || "—"}
+              </div>
+              {!nombreEvento && (
+                <p className="text-xs text-muted-foreground">
+                  Se genera al seleccionar la confraternidad, el tipo de evento y la fecha de inicio.
+                </p>
+              )}
+            </div>
 
             {/* Niveles de discernimiento (derivados del tipo) */}
             {tipoSeleccionado && (
@@ -419,7 +451,10 @@ export default function NuevoEventoForm({
                 onChange={handleChange}
                 className="h-4 w-4 rounded border-border"
               />
-              <label htmlFor="es_apv" className="text-sm text-foreground cursor-pointer">
+              <label
+                htmlFor="es_apv"
+                className="text-sm text-foreground cursor-pointer"
+              >
                 Es de aporte voluntario DAV
               </label>
             </div>
@@ -461,8 +496,8 @@ export default function NuevoEventoForm({
                     handleChange(e)
                     setFechasEjecucion((prev) =>
                       prev.map((f, i) =>
-                        i === 0 ? { ...f, fecha_inicio: e.target.value } : f
-                      )
+                        i === 0 ? { ...f, fecha_inicio: e.target.value } : f,
+                      ),
                     )
                   }}
                   required
@@ -479,8 +514,8 @@ export default function NuevoEventoForm({
                     handleChange(e)
                     setFechasEjecucion((prev) =>
                       prev.map((f, i) =>
-                        i === 0 ? { ...f, fecha_fin: e.target.value } : f
-                      )
+                        i === 0 ? { ...f, fecha_fin: e.target.value } : f,
+                      ),
                     )
                   }}
                   required
@@ -501,7 +536,7 @@ export default function NuevoEventoForm({
                     setFechasEjecucion((prev) =>
                       prev.length < 2
                         ? [...prev, { fecha_inicio: "", fecha_fin: "" }]
-                        : prev
+                        : prev,
                     )
                   }}
                 >
@@ -519,7 +554,8 @@ export default function NuevoEventoForm({
                         size="sm"
                         className="gap-1 bg-transparent h-7 text-xs"
                         disabled={
-                          !fechasEjecucion[fechasEjecucion.length - 1].fecha_inicio ||
+                          !fechasEjecucion[fechasEjecucion.length - 1]
+                            .fecha_inicio ||
                           !fechasEjecucion[fechasEjecucion.length - 1].fecha_fin
                         }
                         onClick={() =>
@@ -559,8 +595,8 @@ export default function NuevoEventoForm({
                                 prev.map((f, i) =>
                                   i === idx
                                     ? { ...f, fecha_inicio: e.target.value }
-                                    : f
-                                )
+                                    : f,
+                                ),
                               )
                             }
                           />
@@ -588,8 +624,8 @@ export default function NuevoEventoForm({
                                   prev.map((f, i) =>
                                     i === idx
                                       ? { ...f, fecha_fin: e.target.value }
-                                      : f
-                                  )
+                                      : f,
+                                  ),
                                 )
                               }
                             />
@@ -600,10 +636,11 @@ export default function NuevoEventoForm({
                               className="shrink-0 text-muted-foreground hover:text-destructive"
                               onClick={() => {
                                 const updated = fechasEjecucion.filter(
-                                  (_, i) => i !== idx
+                                  (_, i) => i !== idx,
                                 )
                                 setFechasEjecucion(updated)
-                                if (updated.length <= 1) setMostrarPeriodosExtra(false)
+                                if (updated.length <= 1)
+                                  setMostrarPeriodosExtra(false)
                               }}
                             >
                               <Trash2 className="h-4 w-4" />
@@ -787,7 +824,11 @@ export default function NuevoEventoForm({
                 {loading ? "Enviando..." : "Enviar Solicitud"}
               </Button>
               <Link href="/eventos">
-                <Button type="button" variant="outline" className="bg-transparent">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="bg-transparent"
+                >
                   Cancelar
                 </Button>
               </Link>

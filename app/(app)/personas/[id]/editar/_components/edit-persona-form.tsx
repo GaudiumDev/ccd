@@ -78,6 +78,13 @@ type Ministerio = { id: string; nombre: string; tipo: string; nivel: string }
 type Organizacion = { id: string; nombre: string; tipo: string }
 type PersonaOpcion = { id: string; nombre: string; apellido: string }
 
+type AcompañamientoActual = {
+  id: string
+  fecha_inicio: string
+  acompanante_id: string
+  acompanante: { id: string; nombre: string; apellido: string }
+} | null
+
 const NIVELES_ESTUDIOS = [
   { value: "primario", label: "Primario" },
   { value: "secundario", label: "Secundario" },
@@ -100,6 +107,8 @@ interface Props {
   personaOrgConfraternidadId: string | null
   personaOrgFraternidadId: string | null
   todasPersonas: PersonaOpcion[]
+  acompañamientoActual: AcompañamientoActual
+  cecistas: PersonaOpcion[]
 }
 
 const modoLabels: Record<string, string> = {
@@ -139,6 +148,8 @@ export function EditPersonaForm({
   personaOrgConfraternidadId,
   personaOrgFraternidadId,
   todasPersonas,
+  acompañamientoActual,
+  cecistas,
 }: Props) {
   const router = useRouter()
   const today = new Date().toISOString().split("T")[0]
@@ -173,7 +184,6 @@ export function EditPersonaForm({
     nombre_usuario: persona.nombre_usuario ?? "",
     nivel_estudios: persona.nivel_estudios ?? "",
     anio_ingreso: persona.anio_ingreso?.toString() ?? "",
-    acompanante_id: persona.acompanante_id ?? "",
     fecha_ingreso_comunidad: persona.fecha_ingreso_comunidad ?? "",
   })
   const [basicLoading, setBasicLoading] = useState(false)
@@ -273,6 +283,70 @@ export function EditPersonaForm({
     setOrgSuccess(true)
     setOrgLoading(false)
     setTimeout(() => setOrgSuccess(false), 3000)
+    router.refresh()
+  }
+
+  // Section: Acompañamiento
+  const [currentAcomp, setCurrentAcomp] = useState<AcompañamientoActual>(acompañamientoActual)
+  const [nuevoAcompanante, setNuevoAcompanante] = useState("")
+  const [acompFechaInicio, setAcompFechaInicio] = useState(today)
+  const [acompNotas, setAcompNotas] = useState("")
+  const [acompLoading, setAcompLoading] = useState(false)
+  const [acompError, setAcompError] = useState<string | null>(null)
+  const [acompSuccess, setAcompSuccess] = useState(false)
+
+  const handleAcompSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!nuevoAcompanante) return
+    setAcompError(null)
+    setAcompSuccess(false)
+    setAcompLoading(true)
+
+    const supabase = createClient()
+
+    if (currentAcomp) {
+      const { error: closeError } = await supabase
+        .from("persona_acompanamiento")
+        .update({ fecha_fin: today })
+        .eq("id", currentAcomp.id)
+
+      if (closeError) {
+        setAcompError(translateSupabaseError(closeError.message))
+        setAcompLoading(false)
+        return
+      }
+    }
+
+    const { data: newRec, error: insertError } = await supabase
+      .from("persona_acompanamiento")
+      .insert({
+        persona_id: persona.id,
+        acompanante_id: nuevoAcompanante,
+        fecha_inicio: acompFechaInicio,
+        notas: acompNotas || null,
+      })
+      .select("id, fecha_inicio, acompanante_id, acompanante:personas!acompanante_id(id, nombre, apellido)")
+      .single()
+
+    if (insertError) {
+      setAcompError(translateSupabaseError(insertError.message))
+      setAcompLoading(false)
+      return
+    }
+
+    // Sync legacy column for backwards compat (fire-and-forget)
+    await supabase
+      .from("personas")
+      .update({ acompanante_id: nuevoAcompanante })
+      .eq("id", persona.id)
+
+    setCurrentAcomp(newRec as AcompañamientoActual)
+    setNuevoAcompanante("")
+    setAcompNotas("")
+    setAcompFechaInicio(today)
+    setAcompSuccess(true)
+    setAcompLoading(false)
+    setTimeout(() => setAcompSuccess(false), 3000)
     router.refresh()
   }
 
@@ -677,25 +751,6 @@ export function EditPersonaForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="acompanante_id">Acompañante</Label>
-              <select
-                id="acompanante_id"
-                name="acompanante_id"
-                value={basicData.acompanante_id}
-                onChange={handleBasicChange}
-                disabled={basicLoading}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-              >
-                <option value="">Sin acompañante</option>
-                {todasPersonas.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.apellido}, {p.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="notas">Notas</Label>
               <textarea
                 id="notas"
@@ -895,6 +950,91 @@ export function EditPersonaForm({
             </Button>
           </CardContent>
         </form>
+      </Card>
+
+      {/* Section: Acompañamiento */}
+      <Card className="border-border">
+        <CardHeader>
+          <CardTitle className="text-foreground">Acompañamiento</CardTitle>
+          <CardDescription>
+            Acompañante espiritual actual. Cambiar el acompañante cierra el período anterior y abre uno nuevo.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-sm text-muted-foreground">Acompañante actual:</span>
+            {currentAcomp ? (
+              <>
+                <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
+                  {currentAcomp.acompanante.apellido}, {currentAcomp.acompanante.nombre}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  desde {currentAcomp.fecha_inicio}
+                </span>
+              </>
+            ) : (
+              <span className="text-sm text-muted-foreground italic">Sin acompañante asignado</span>
+            )}
+          </div>
+
+          <form onSubmit={handleAcompSubmit} className="space-y-4">
+            {acompError && (
+              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{acompError}</div>
+            )}
+            {acompSuccess && (
+              <div className="rounded-md bg-green-50 p-3 text-sm text-green-800">Acompañante actualizado correctamente</div>
+            )}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="nuevoAcompanante">
+                  {currentAcomp ? "Nuevo Acompañante" : "Asignar Acompañante"}
+                </Label>
+                <select
+                  id="nuevoAcompanante"
+                  value={nuevoAcompanante}
+                  onChange={e => setNuevoAcompanante(e.target.value)}
+                  disabled={acompLoading}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
+                >
+                  <option value="">Seleccionar cecista...</option>
+                  {cecistas.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.apellido}, {p.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="acompFechaInicio">Fecha de Inicio</Label>
+                <Input
+                  id="acompFechaInicio"
+                  type="date"
+                  value={acompFechaInicio}
+                  onChange={e => setAcompFechaInicio(e.target.value)}
+                  disabled={acompLoading}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="acompNotas">Notas (opcional)</Label>
+              <textarea
+                id="acompNotas"
+                rows={2}
+                value={acompNotas}
+                onChange={e => setAcompNotas(e.target.value)}
+                disabled={acompLoading}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
+              />
+            </div>
+            <Button type="submit" variant="outline" disabled={acompLoading || !nuevoAcompanante}>
+              {acompLoading ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Guardando...</>
+              ) : (
+                currentAcomp ? "Cambiar Acompañante" : "Asignar Acompañante"
+              )}
+            </Button>
+          </form>
+        </CardContent>
       </Card>
 
       {/* Section B: Participation mode */}

@@ -60,12 +60,13 @@ export default async function PersonaDetailPage({
     { data: asignaciones },
     { data: categoriasNoCecista },
     { data: personaOrgs },
-    { data: acompanoA },
+    { data: historialAcompanamiento },
+    { data: acompanaA },
   ] = await Promise.all([
     supabase
       .from("personas")
       .select(
-        "id, nombre, apellido, email, email_ccd, telefono, tipo_documento, documento, fecha_nacimiento, direccion, direccion_nro, localidad, codigo_postal, provincia, pais, notas, estado, created_at, acepta_comunicaciones, estado_eclesial, estado_vida, diocesis, categoria_persona, parroquia, socio_asociacion, referente_comunidad, cecista_dedicado, intercesor_dies_natalis, nombre_usuario, nivel_estudios, anio_ingreso, acompanante_id, acompanante:personas!acompanante_id(id, nombre, apellido), fecha_ingreso_comunidad, foto_url",
+        "id, nombre, apellido, email, email_ccd, telefono, tipo_documento, documento, fecha_nacimiento, direccion, direccion_nro, localidad, codigo_postal, provincia, pais, notas, estado, created_at, acepta_comunicaciones, estado_eclesial, estado_vida, diocesis, categoria_persona, parroquia, socio_asociacion, referente_comunidad, cecista_dedicado, intercesor_dies_natalis, nombre_usuario, nivel_estudios, anio_ingreso, acompanante_id, fecha_ingreso_comunidad, foto_url",
       )
       .eq("id", id)
       .single(),
@@ -91,10 +92,15 @@ export default async function PersonaDetailPage({
       .eq("persona_id", id)
       .is("fecha_fin", null),
     supabase
-      .from("personas")
-      .select("id, nombre, apellido")
+      .from("persona_acompanamiento")
+      .select("id, fecha_inicio, fecha_fin, notas, acompanante:personas!acompanante_id(id, nombre, apellido)")
+      .eq("persona_id", id)
+      .order("fecha_inicio", { ascending: false }),
+    supabase
+      .from("persona_acompanamiento")
+      .select("persona_id, persona:personas!persona_id(id, nombre, apellido)")
       .eq("acompanante_id", id)
-      .is("fecha_baja", null),
+      .is("fecha_fin", null),
   ])
 
   if (error || !persona) notFound()
@@ -190,35 +196,6 @@ export default async function PersonaDetailPage({
               value={persona.nivel_estudios ? nivelEstudiosLabel[persona.nivel_estudios] ?? persona.nivel_estudios : null}
             />
             <Field label="Año de ingreso" value={persona.anio_ingreso ? String(persona.anio_ingreso) : null} />
-            {(persona as any).acompanante && (
-              <div>
-                <dt className="text-muted-foreground text-sm">Acompañante</dt>
-                <dd className="text-foreground text-sm">
-                  <Link
-                    href={`/personas/${(persona as any).acompanante.id}`}
-                    className="text-primary hover:underline"
-                  >
-                    {(persona as any).acompanante.apellido}, {(persona as any).acompanante.nombre}
-                  </Link>
-                </dd>
-              </div>
-            )}
-            {(acompanoA ?? []).length > 0 && (
-              <div>
-                <dt className="text-muted-foreground text-sm">Acompañó a</dt>
-                <dd className="text-foreground text-sm flex flex-col gap-0.5">
-                  {(acompanoA ?? []).map((p) => (
-                    <Link
-                      key={p.id}
-                      href={`/personas/${p.id}`}
-                      className="text-primary hover:underline"
-                    >
-                      {p.apellido}, {p.nombre}
-                    </Link>
-                  ))}
-                </dd>
-              </div>
-            )}
             <Field label="Fecha de registro" value={formatDate(persona.created_at)} />
             <Field
               label="Comunicaciones"
@@ -229,6 +206,91 @@ export default async function PersonaDetailPage({
               <dd className="text-foreground text-sm whitespace-pre-wrap">{persona.notas || "—"}</dd>
             </div>
           </dl>
+        </CardContent>
+      </Card>
+
+      {/* Acompañamiento */}
+      <Card className="border-border bg-card">
+        <CardHeader>
+          <CardTitle className="text-sm font-semibold text-foreground uppercase tracking-wide">
+            Acompañamiento
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {(() => {
+            const active = (historialAcompanamiento ?? []).find((r: any) => !r.fecha_fin)
+            return (
+              <div>
+                <dt className="text-muted-foreground text-sm">Acompañante actual</dt>
+                <dd className="text-foreground text-sm mt-0.5">
+                  {active ? (
+                    <>
+                      <Link href={`/personas/${(active as any).acompanante.id}`} className="text-primary hover:underline">
+                        {(active as any).acompanante.apellido}, {(active as any).acompanante.nombre}
+                      </Link>
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        desde {formatDate((active as any).fecha_inicio)}
+                      </span>
+                    </>
+                  ) : "—"}
+                </dd>
+              </div>
+            )
+          })()}
+
+          {(acompanaA ?? []).length > 0 && (
+            <div>
+              <dt className="text-muted-foreground text-sm">Acompaña a</dt>
+              <dd className="text-foreground text-sm flex flex-col gap-0.5 mt-0.5">
+                {(acompanaA as any[]).map((r) => (
+                  <Link key={r.persona_id} href={`/personas/${r.persona_id}`} className="text-primary hover:underline">
+                    {r.persona.apellido}, {r.persona.nombre}
+                  </Link>
+                ))}
+              </dd>
+            </div>
+          )}
+
+          {(historialAcompanamiento ?? []).length > 1 && (
+            <div>
+              <p className="text-sm font-medium text-foreground mb-2">Historial</p>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Acompañante</th>
+                    <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Desde</th>
+                    <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Hasta</th>
+                    <th className="text-left py-2 font-medium text-muted-foreground">Notas</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(historialAcompanamiento as any[]).map((r) => (
+                    <tr
+                      key={r.id}
+                      className={`border-b border-border/50 last:border-0 ${
+                        !r.fecha_fin ? "bg-green-50 dark:bg-green-900/10" : ""
+                      }`}
+                    >
+                      <td className="py-2 pr-4">
+                        <Link href={`/personas/${r.acompanante.id}`} className="text-primary hover:underline">
+                          {r.acompanante.apellido}, {r.acompanante.nombre}
+                        </Link>
+                      </td>
+                      <td className="py-2 pr-4 text-muted-foreground">{formatDate(r.fecha_inicio)}</td>
+                      <td className="py-2 pr-4 text-muted-foreground">
+                        {r.fecha_fin ? (
+                          formatDate(r.fecha_fin)
+                        ) : (
+                          <span className="text-green-700 dark:text-green-400 font-medium">actual</span>
+                        )}
+                      </td>
+                      <td className="py-2 text-muted-foreground">{r.notas || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 

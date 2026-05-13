@@ -6,11 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tag, Plus, Edit2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getUserContext } from '@/lib/auth/context'
+import { canPerform } from '@/lib/auth/permissions'
 
 const categoriaLabel: Record<string, string> = {
   convivencia: 'Convivencia',
   retiro: 'Retiro',
   taller: 'Taller',
+  encuentro: 'Encuentro',
   otro: 'Otro',
 }
 
@@ -69,7 +71,7 @@ export default async function TiposEventosPage({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <CardTitle className="text-base font-semibold">Catálogo de tipos</CardTitle>
-          {ctx && (
+          {ctx && canPerform(ctx, 'tipos_eventos.create') && (
             <Button asChild size="sm">
               <Link href="/tipos-eventos/nuevo">
                 <Plus className="h-4 w-4 mr-1" />
@@ -97,6 +99,7 @@ export default async function TiposEventosPage({
               <option value="convivencia">Convivencia</option>
               <option value="retiro">Retiro</option>
               <option value="taller">Taller</option>
+              <option value="encuentro">Encuentro</option>
               <option value="otro">Otro</option>
             </select>
             <select name="alcance" defaultValue={alcance} className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground">
@@ -194,11 +197,13 @@ export default async function TiposEventosPage({
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <Button asChild variant="ghost" size="sm">
-                          <Link href={`/tipos-eventos/${tipo.id}/editar`}>
-                            <Edit2 className="h-4 w-4" />
-                          </Link>
-                        </Button>
+                        {ctx && canPerform(ctx, 'tipos_eventos.update') && (
+                          <Button asChild variant="ghost" size="sm">
+                            <Link href={`/tipos-eventos/${tipo.id}/editar`}>
+                              <Edit2 className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   ))}

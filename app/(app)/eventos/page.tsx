@@ -47,6 +47,7 @@ const tipoLabel: Record<string, string> = {
   convivencia: "Convivencia",
   retiro: "Retiro",
   taller: "Taller",
+  encuentro: "Encuentro",
 }
 
 const FILTROS = [
@@ -304,6 +305,7 @@ export default async function EventosPage({
               <option value="convivencia">Convivencia</option>
               <option value="retiro">Retiro</option>
               <option value="taller">Taller</option>
+              <option value="encuentro">Encuentro</option>
             </select>
             <div className="flex items-center gap-1">
               <label className="text-xs text-muted-foreground whitespace-nowrap">Desde</label>

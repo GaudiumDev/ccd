@@ -24,6 +24,8 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
     { data: categoriasNoCecista },
     { data: personaOrgs },
     { data: todasPersonas },
+    { data: acompañamientoActual },
+    { data: cecistas },
   ] = await Promise.all([
     supabase.from("personas").select("*").eq("id", id).single(),
     supabase
@@ -64,6 +66,19 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
       .is("fecha_baja", null)
       .neq("id", id)
       .order("apellido"),
+    supabase
+      .from("persona_acompanamiento")
+      .select("id, fecha_inicio, acompanante_id, acompanante:personas!acompanante_id(id, nombre, apellido)")
+      .eq("persona_id", id)
+      .is("fecha_fin", null)
+      .maybeSingle(),
+    supabase
+      .from("personas")
+      .select("id, nombre, apellido")
+      .eq("categoria_persona", "cecista")
+      .is("fecha_baja", null)
+      .neq("id", id)
+      .order("apellido"),
   ])
 
   if (!persona) notFound()
@@ -86,6 +101,8 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
       personaOrgConfraternidadId={confraternidadOrg?.id ?? null}
       personaOrgFraternidadId={fraternidadOrg?.id ?? null}
       todasPersonas={todasPersonas ?? []}
+      acompañamientoActual={(acompañamientoActual as any) ?? null}
+      cecistas={cecistas ?? []}
     />
   )
 }

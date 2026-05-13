@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getUserContext } from '@/lib/auth/context'
+import { canPerform } from '@/lib/auth/permissions'
 
 export async function GET(
   _request: Request,
@@ -30,6 +31,10 @@ export async function PATCH(
 
   if (!ctx) {
     return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+  }
+
+  if (!canPerform(ctx, 'tipos_eventos.update')) {
+    return NextResponse.json({ error: 'Sin permiso para editar tipos de eventos' }, { status: 403 })
   }
 
   const { id } = await params

@@ -67,7 +67,8 @@ export default async function MinisterioDetailPage({
     personas: "Personas",
     organizaciones: "Organizaciones",
     eventos: "Eventos",
-    roles: "Roles ",
+    tipos_eventos: "Tipos de Eventos",
+    roles: "Roles",
     sistema: "Sistema",
   }
 

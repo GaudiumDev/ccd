@@ -1,47 +1,58 @@
-'use client'
+"use client"
 
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import { useRouter, useParams } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
-import { LocationFields } from '@/components/location-fields'
+import { useState, useEffect } from "react"
+import Link from "next/link"
+import { useRouter, useParams } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { ArrowLeft, Plus, Trash2 } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
+import { LocationFields } from "@/components/location-fields"
 
 type OrgOption = { id: string; nombre: string; tipo: string }
 type FechaRow = { id?: string; fecha_inicio: string; fecha_fin: string }
 
-export default function EditarEventoForm({ isAdmin = false }: { isAdmin?: boolean }) {
+export default function EditarEventoForm({
+  isAdmin = false,
+}: {
+  isAdmin?: boolean
+}) {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
 
   const [loading, setLoading] = useState(false)
   const [loadingData, setLoadingData] = useState(true)
-  const [error, setError] = useState('')
+  const [error, setError] = useState("")
   const [organizaciones, setOrganizaciones] = useState<OrgOption[]>([])
   const [casasRetiro, setCasasRetiro] = useState<OrgOption[]>([])
   const [fechasEjecucion, setFechasEjecucion] = useState<FechaRow[]>([])
   const [formData, setFormData] = useState({
-    nombre: '',
-    tipo: 'convivencia',
-    fecha_inicio: '',
-    fecha_fin: '',
-    organizacion_id: '',
-    casa_retiro_id: '',
-    cupo_maximo: '30',
-    precio: '',
-    audiencia: 'cerrado',
-    modalidad: 'presencial',
-    estado: 'borrador',
-    descripcion: '',
-    ciudad: '',
-    codigo_postal: '',
-    diocesis: '',
-    provincia_evento: '',
-    pais_evento: 'Argentina',
+    nombre: "",
+    tipo: "convivencia",
+    fecha_solicitud: "",
+    fecha_inicio: "",
+    fecha_fin: "",
+    organizacion_id: "",
+    casa_retiro_id: "",
+    cupo_maximo: "30",
+    precio: "",
+    audiencia: "cerrado",
+    modalidad: "presencial",
+    estado: "borrador",
+    descripcion: "",
+    ciudad: "",
+    codigo_postal: "",
+    diocesis: "",
+    provincia_evento: "",
+    pais_evento: "Argentina",
   })
 
   useEffect(() => {
@@ -49,83 +60,103 @@ export default function EditarEventoForm({ isAdmin = false }: { isAdmin?: boolea
 
     Promise.all([
       supabase
-        .from('eventos')
-        .select('id, nombre, tipo, fecha_inicio, fecha_fin, organizacion_id, casa_retiro_id, cupo_maximo, precio, audiencia, modalidad, estado, descripcion, ciudad, codigo_postal, diocesis, provincia_evento, pais_evento')
-        .eq('id', id)
+        .from("eventos")
+        .select(
+          "id, nombre, tipo, fecha_solicitud, fecha_inicio, fecha_fin, organizacion_id, casa_retiro_id, cupo_maximo, precio, audiencia, modalidad, estado, descripcion, ciudad, codigo_postal, diocesis, provincia_evento, pais_evento",
+        )
+        .eq("id", id)
         .single(),
       supabase
-        .from('organizaciones')
-        .select('id, nombre, tipo')
-        .is('fecha_baja', null)
-        .neq('tipo', 'casa_retiro')
-        .order('nombre'),
+        .from("organizaciones")
+        .select("id, nombre, tipo")
+        .is("fecha_baja", null)
+        .neq("tipo", "casa_retiro")
+        .order("nombre"),
       supabase
-        .from('evento_fechas')
-        .select('id, fecha_inicio, fecha_fin')
-        .eq('evento_id', id)
-        .order('fecha_inicio'),
+        .from("evento_fechas")
+        .select("id, fecha_inicio, fecha_fin")
+        .eq("evento_id", id)
+        .order("fecha_inicio"),
       supabase
-        .from('casas_retiro')
-        .select('id, nombre')
-        .is('fecha_baja', null)
-        .eq('estado', 'activa')
-        .order('nombre'),
-    ]).then(([{ data: evento, error: eventoError }, { data: orgs }, { data: fechas }, { data: casas }]) => {
-      if (eventoError || !evento) {
-        setError('No se encontró el evento')
+        .from("casas_retiro")
+        .select("id, nombre")
+        .is("fecha_baja", null)
+        .eq("estado", "activa")
+        .order("nombre"),
+    ]).then(
+      ([
+        { data: evento, error: eventoError },
+        { data: orgs },
+        { data: fechas },
+        { data: casas },
+      ]) => {
+        if (eventoError || !evento) {
+          setError("No se encontró el evento")
+          setLoadingData(false)
+          return
+        }
+        setFormData({
+          nombre: evento.nombre ?? "",
+          tipo: evento.tipo ?? "convivencia",
+          fecha_solicitud: evento.fecha_solicitud ?? "",
+          fecha_inicio: evento.fecha_inicio ?? "",
+          fecha_fin: evento.fecha_fin ?? "",
+          organizacion_id: evento.organizacion_id ?? "",
+          casa_retiro_id: evento.casa_retiro_id ?? "",
+          cupo_maximo: evento.cupo_maximo?.toString() ?? "30",
+          precio: evento.precio?.toString() ?? "",
+          audiencia: evento.audiencia ?? "cerrado",
+          modalidad: evento.modalidad ?? "presencial",
+          estado: evento.estado ?? "borrador",
+          descripcion: evento.descripcion ?? "",
+          ciudad: evento.ciudad ?? "",
+          codigo_postal: evento.codigo_postal ?? "",
+          diocesis: evento.diocesis ?? "",
+          provincia_evento: evento.provincia_evento ?? "",
+          pais_evento: evento.pais_evento ?? "Argentina",
+        })
+        if (orgs) {
+          setOrganizaciones(orgs)
+        }
+        if (casas) {
+          setCasasRetiro(casas)
+        }
+        setFechasEjecucion(
+          fechas && fechas.length > 0
+            ? fechas.map((f) => ({
+                id: f.id,
+                fecha_inicio: f.fecha_inicio,
+                fecha_fin: f.fecha_fin,
+              }))
+            : [{ fecha_inicio: "", fecha_fin: "" }],
+        )
         setLoadingData(false)
-        return
-      }
-      setFormData({
-        nombre: evento.nombre ?? '',
-        tipo: evento.tipo ?? 'convivencia',
-        fecha_inicio: evento.fecha_inicio ?? '',
-        fecha_fin: evento.fecha_fin ?? '',
-        organizacion_id: evento.organizacion_id ?? '',
-        casa_retiro_id: evento.casa_retiro_id ?? '',
-        cupo_maximo: evento.cupo_maximo?.toString() ?? '30',
-        precio: evento.precio?.toString() ?? '',
-        audiencia: evento.audiencia ?? 'cerrado',
-        modalidad: evento.modalidad ?? 'presencial',
-        estado: evento.estado ?? 'borrador',
-        descripcion: evento.descripcion ?? '',
-        ciudad: evento.ciudad ?? '',
-        codigo_postal: evento.codigo_postal ?? '',
-        diocesis: evento.diocesis ?? '',
-        provincia_evento: evento.provincia_evento ?? '',
-        pais_evento: evento.pais_evento ?? 'Argentina',
-      })
-      if (orgs) {
-        setOrganizaciones(orgs)
-      }
-      if (casas) {
-        setCasasRetiro(casas)
-      }
-      setFechasEjecucion(
-        fechas && fechas.length > 0
-          ? fechas.map(f => ({ id: f.id, fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin }))
-          : [{ fecha_inicio: '', fecha_fin: '' }]
-      )
-      setLoadingData(false)
-    })
+      },
+    )
   }, [id])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    setError('')
+    setError("")
 
     try {
       // Validate fechas de ejecución are within the proposed range
-      const fechasCompletas = fechasEjecucion.filter(f => f.fecha_inicio && f.fecha_fin)
+      const fechasCompletas = fechasEjecucion.filter(
+        (f) => f.fecha_inicio && f.fecha_fin,
+      )
       for (const f of fechasCompletas) {
         if (formData.fecha_inicio && f.fecha_inicio < formData.fecha_inicio) {
-          setError('Las fechas de ejecución no pueden comenzar antes de la fecha de inicio propuesta.')
+          setError(
+            "Las fechas de ejecución no pueden comenzar antes de la fecha de inicio propuesta.",
+          )
           setLoading(false)
           return
         }
         if (formData.fecha_fin && f.fecha_fin > formData.fecha_fin) {
-          setError('Las fechas de ejecución no pueden terminar después de la fecha de fin propuesta.')
+          setError(
+            "Las fechas de ejecución no pueden terminar después de la fecha de fin propuesta.",
+          )
           setLoading(false)
           return
         }
@@ -136,6 +167,7 @@ export default function EditarEventoForm({ isAdmin = false }: { isAdmin?: boolea
       const updateData: Record<string, unknown> = {
         nombre: formData.nombre,
         tipo: formData.tipo,
+        fecha_solicitud: formData.fecha_solicitud || null,
         fecha_inicio: formData.fecha_inicio,
         fecha_fin: formData.fecha_fin,
         audiencia: formData.audiencia,
@@ -143,63 +175,83 @@ export default function EditarEventoForm({ isAdmin = false }: { isAdmin?: boolea
         estado: formData.estado,
         organizacion_id: formData.organizacion_id || null,
         casa_retiro_id: formData.casa_retiro_id || null,
-        cupo_maximo: formData.cupo_maximo ? parseInt(formData.cupo_maximo) : null,
+        cupo_maximo: formData.cupo_maximo
+          ? parseInt(formData.cupo_maximo)
+          : null,
         precio: formData.precio ? parseFloat(formData.precio) : null,
         descripcion: formData.descripcion || null,
         ciudad: formData.ciudad || null,
         codigo_postal: formData.codigo_postal || null,
         diocesis: formData.diocesis || null,
         provincia_evento: formData.provincia_evento || null,
-        pais_evento: formData.pais_evento || 'Argentina',
+        pais_evento: formData.pais_evento || "Argentina",
       }
 
       const { error: updateError } = await supabase
-        .from('eventos')
+        .from("eventos")
         .update(updateData)
-        .eq('id', id)
+        .eq("id", id)
 
       if (updateError) throw updateError
 
       // Sync evento_fechas
-      const validas = fechasEjecucion.filter(f => f.fecha_inicio && f.fecha_fin)
-      const nuevas = validas.filter(f => !f.id)
-      const existentes = validas.filter(f => !!f.id)
+      const validas = fechasEjecucion.filter(
+        (f) => f.fecha_inicio && f.fecha_fin,
+      )
+      const nuevas = validas.filter((f) => !f.id)
+      const existentes = validas.filter((f) => !!f.id)
 
       // Delete rows that were removed (existing ids not in current list)
-      const idsActuales = existentes.map(f => f.id!)
+      const idsActuales = existentes.map((f) => f.id!)
       const { data: prevFechas } = await supabase
-        .from('evento_fechas')
-        .select('id')
-        .eq('evento_id', id)
-      const idsEliminar = (prevFechas ?? []).map(f => f.id).filter(fid => !idsActuales.includes(fid))
+        .from("evento_fechas")
+        .select("id")
+        .eq("evento_id", id)
+      const idsEliminar = (prevFechas ?? [])
+        .map((f) => f.id)
+        .filter((fid) => !idsActuales.includes(fid))
       if (idsEliminar.length > 0) {
-        await supabase.from('evento_fechas').delete().in('id', idsEliminar)
+        await supabase.from("evento_fechas").delete().in("id", idsEliminar)
       }
 
       // Upsert existing rows
       for (const f of existentes) {
-        await supabase.from('evento_fechas').update({ fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin }).eq('id', f.id!)
+        await supabase
+          .from("evento_fechas")
+          .update({ fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin })
+          .eq("id", f.id!)
       }
 
       // Insert new rows
       if (nuevas.length > 0) {
-        await supabase.from('evento_fechas').insert(
-          nuevas.map(f => ({ evento_id: id, fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin }))
-        )
+        await supabase
+          .from("evento_fechas")
+          .insert(
+            nuevas.map((f) => ({
+              evento_id: id,
+              fecha_inicio: f.fecha_inicio,
+              fecha_fin: f.fecha_fin,
+            })),
+          )
       }
 
-      router.push('/eventos')
+      router.push("/eventos")
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Error al actualizar el evento'
+      const msg =
+        err instanceof Error ? err.message : "Error al actualizar el evento"
       setError(msg)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
+  ) => {
     const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+    setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
   if (loadingData) {
@@ -212,7 +264,10 @@ export default function EditarEventoForm({ isAdmin = false }: { isAdmin?: boolea
 
   return (
     <div className="space-y-6">
-      <Link href="/eventos" className="inline-flex items-center gap-2 text-primary hover:underline">
+      <Link
+        href="/eventos"
+        className="inline-flex items-center gap-2 text-primary hover:underline"
+      >
         <ArrowLeft className="h-4 w-4" />
         Volver a Eventos
       </Link>
@@ -258,6 +313,7 @@ export default function EditarEventoForm({ isAdmin = false }: { isAdmin?: boolea
                   <option value="convivencia">Convivencia</option>
                   <option value="retiro">Retiro</option>
                   <option value="taller">Taller</option>
+                  <option value="encuentro">Encuentro</option>
                 </select>
               </div>
               {isAdmin ? (
@@ -272,8 +328,12 @@ export default function EditarEventoForm({ isAdmin = false }: { isAdmin?: boolea
                   >
                     <option value="borrador">Borrador</option>
                     <option value="solicitado">Solicitado</option>
-                    <option value="discernimiento_confra">Discernimiento Confra</option>
-                    <option value="discernimiento_timon">Discernimiento Timón</option>
+                    <option value="discernimiento_confra">
+                      Discernimiento Confra
+                    </option>
+                    <option value="discernimiento_timon">
+                      Discernimiento Timón
+                    </option>
                     <option value="aprobado">Aprobado</option>
                     <option value="publicado">Publicado</option>
                     <option value="rechazado">Rechazado</option>
@@ -285,11 +345,25 @@ export default function EditarEventoForm({ isAdmin = false }: { isAdmin?: boolea
                 <div className="space-y-2">
                   <Label>Estado</Label>
                   <div className="rounded-md border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground capitalize">
-                    {formData.estado.replace('_', ' ')}
-                    <span className="ml-2 text-xs">(gestionado por el flujo de aprobación)</span>
+                    {formData.estado.replace("_", " ")}
+                    <span className="ml-2 text-xs">
+                      (gestionado por el flujo de aprobación)
+                    </span>
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Fecha solicitud */}
+            <div className="space-y-2">
+              <Label htmlFor="fecha_solicitud">Fecha de Solicitud</Label>
+              <Input
+                id="fecha_solicitud"
+                name="fecha_solicitud"
+                type="date"
+                value={formData.fecha_solicitud}
+                onChange={handleChange}
+              />
             </div>
 
             {/* Fechas */}
@@ -327,8 +401,17 @@ export default function EditarEventoForm({ isAdmin = false }: { isAdmin?: boolea
                   variant="outline"
                   size="sm"
                   className="gap-1 bg-transparent h-7 text-xs"
-                  disabled={fechasEjecucion.length >= 3 || !fechasEjecucion[fechasEjecucion.length - 1].fecha_inicio || !fechasEjecucion[fechasEjecucion.length - 1].fecha_fin}
-                  onClick={() => setFechasEjecucion(prev => [...prev, { fecha_inicio: '', fecha_fin: '' }])}
+                  disabled={
+                    fechasEjecucion.length >= 3 ||
+                    !fechasEjecucion[fechasEjecucion.length - 1].fecha_inicio ||
+                    !fechasEjecucion[fechasEjecucion.length - 1].fecha_fin
+                  }
+                  onClick={() =>
+                    setFechasEjecucion((prev) => [
+                      ...prev,
+                      { fecha_inicio: "", fecha_fin: "" },
+                    ])
+                  }
                 >
                   <Plus className="h-3 w-3" />
                   Agregar período
@@ -337,7 +420,10 @@ export default function EditarEventoForm({ isAdmin = false }: { isAdmin?: boolea
               {fechasEjecucion.map((fecha, idx) => (
                 <div key={idx} className="grid gap-3 md:grid-cols-2 items-end">
                   <div className="space-y-2">
-                    <Label htmlFor={`fe_inicio_${idx}`} className="text-xs text-muted-foreground">
+                    <Label
+                      htmlFor={`fe_inicio_${idx}`}
+                      className="text-xs text-muted-foreground"
+                    >
                       Fecha Desde {idx + 1}
                     </Label>
                     <Input
@@ -346,11 +432,22 @@ export default function EditarEventoForm({ isAdmin = false }: { isAdmin?: boolea
                       value={fecha.fecha_inicio}
                       min={formData.fecha_inicio || undefined}
                       max={formData.fecha_fin || undefined}
-                      onChange={e => setFechasEjecucion(prev => prev.map((f, i) => i === idx ? { ...f, fecha_inicio: e.target.value } : f))}
+                      onChange={(e) =>
+                        setFechasEjecucion((prev) =>
+                          prev.map((f, i) =>
+                            i === idx
+                              ? { ...f, fecha_inicio: e.target.value }
+                              : f,
+                          ),
+                        )
+                      }
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor={`fe_fin_${idx}`} className="text-xs text-muted-foreground">
+                    <Label
+                      htmlFor={`fe_fin_${idx}`}
+                      className="text-xs text-muted-foreground"
+                    >
                       Fecha Hasta {idx + 1}
                     </Label>
                     <div className="flex gap-2">
@@ -358,9 +455,21 @@ export default function EditarEventoForm({ isAdmin = false }: { isAdmin?: boolea
                         id={`fe_fin_${idx}`}
                         type="date"
                         value={fecha.fecha_fin}
-                        min={fecha.fecha_inicio || formData.fecha_inicio || undefined}
+                        min={
+                          fecha.fecha_inicio ||
+                          formData.fecha_inicio ||
+                          undefined
+                        }
                         max={formData.fecha_fin || undefined}
-                        onChange={e => setFechasEjecucion(prev => prev.map((f, i) => i === idx ? { ...f, fecha_fin: e.target.value } : f))}
+                        onChange={(e) =>
+                          setFechasEjecucion((prev) =>
+                            prev.map((f, i) =>
+                              i === idx
+                                ? { ...f, fecha_fin: e.target.value }
+                                : f,
+                            ),
+                          )
+                        }
                       />
                       {fechasEjecucion.length > 1 && (
                         <Button
@@ -368,7 +477,11 @@ export default function EditarEventoForm({ isAdmin = false }: { isAdmin?: boolea
                           variant="ghost"
                           size="icon"
                           className="shrink-0 text-muted-foreground hover:text-destructive"
-                          onClick={() => setFechasEjecucion(prev => prev.filter((_, i) => i !== idx))}
+                          onClick={() =>
+                            setFechasEjecucion((prev) =>
+                              prev.filter((_, i) => i !== idx),
+                            )
+                          }
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -390,7 +503,7 @@ export default function EditarEventoForm({ isAdmin = false }: { isAdmin?: boolea
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
               >
                 <option value="">Sin organización</option>
-                {organizaciones.map(org => (
+                {organizaciones.map((org) => (
                   <option key={org.id} value={org.id}>
                     {org.nombre} ({org.tipo})
                   </option>
@@ -409,8 +522,10 @@ export default function EditarEventoForm({ isAdmin = false }: { isAdmin?: boolea
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
               >
                 <option value="">Sin casa de retiro</option>
-                {casasRetiro.map(c => (
-                  <option key={c.id} value={c.id}>{c.nombre}</option>
+                {casasRetiro.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nombre}
+                  </option>
                 ))}
               </select>
             </div>
@@ -494,20 +609,34 @@ export default function EditarEventoForm({ isAdmin = false }: { isAdmin?: boolea
               localidad={formData.ciudad}
               codigoPostal={formData.codigo_postal}
               diocesis={formData.diocesis}
-              onPaisChange={(val) => setFormData(prev => ({ ...prev, pais_evento: val }))}
-              onProvinciaChange={(val) => setFormData(prev => ({ ...prev, provincia_evento: val }))}
-              onLocalidadChange={(val) => setFormData(prev => ({ ...prev, ciudad: val }))}
-              onCodigoPostalChange={(val) => setFormData(prev => ({ ...prev, codigo_postal: val }))}
-              onDiocesisChange={(val) => setFormData(prev => ({ ...prev, diocesis: val }))}
+              onPaisChange={(val) =>
+                setFormData((prev) => ({ ...prev, pais_evento: val }))
+              }
+              onProvinciaChange={(val) =>
+                setFormData((prev) => ({ ...prev, provincia_evento: val }))
+              }
+              onLocalidadChange={(val) =>
+                setFormData((prev) => ({ ...prev, ciudad: val }))
+              }
+              onCodigoPostalChange={(val) =>
+                setFormData((prev) => ({ ...prev, codigo_postal: val }))
+              }
+              onDiocesisChange={(val) =>
+                setFormData((prev) => ({ ...prev, diocesis: val }))
+              }
             />
 
             {/* Buttons */}
             <div className="flex gap-3 pt-6">
               <Button type="submit" disabled={loading}>
-                {loading ? 'Guardando...' : 'Guardar Cambios'}
+                {loading ? "Guardando..." : "Guardar Cambios"}
               </Button>
               <Link href="/eventos">
-                <Button type="button" variant="outline" className="bg-transparent">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="bg-transparent"
+                >
                   Cancelar
                 </Button>
               </Link>

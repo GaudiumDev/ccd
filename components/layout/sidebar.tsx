@@ -146,12 +146,12 @@ function buildNavItems(p: SidebarPermissions): NavItem[] {
             children: [
               {
                 icon: <List className="h-4 w-4" />,
-                label: "Lista de tipos",
+                label: "Lista de tipos de eventos",
                 href: "/tipos-eventos",
               },
               {
                 icon: <PlusCircle className="h-4 w-4" />,
-                label: "Nuevo tipo",
+                label: "Nuevo tipo de evento",
                 href: "/tipos-eventos/nuevo",
               },
             ],

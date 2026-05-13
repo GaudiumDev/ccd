@@ -70,7 +70,7 @@ export default async function CatalogoMinisteriosPage() {
           <Link href="/ministerios/catalogo/nuevo">
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
-              Nuevo Rol en Ministerio
+              Nuevo Rol
             </Button>
           </Link>
         </CardHeader>
