@@ -16,6 +16,7 @@ const estadoClases: Record<string, string> = {
   solicitud: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400',
   discernimiento_confra: 'bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400',
   discernimiento_eqt: 'bg-sky-100 text-sky-700 dark:bg-sky-900/20 dark:text-sky-400',
+  pendiente_datos_noticias: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400',
   aprobado: 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400',
   publicado: 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400',
   rechazado: 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400',
@@ -28,6 +29,7 @@ const estadoLabel: Record<string, string> = {
   solicitud: 'Pend. Disc. Confra/Delegado',
   discernimiento_confra: 'Pend. Disc. Equipo Timón',
   discernimiento_eqt: 'Disc. Equipo Timón',
+  pendiente_datos_noticias: 'Pendiente Datos Noticias',
   aprobado: 'Aprobado',
   publicado: 'Publicado',
   rechazado: 'Rechazado',
@@ -67,7 +69,8 @@ export default async function EventoDetailPage({
       requiere_discernimiento_confra, requiere_discernimiento_eqt,
       coordinadores_propuestos, asesor_propuesto, asesor_voluntario, es_apv,
       ciudad, codigo_postal, diocesis, provincia_evento, pais_evento,
-      notas_discernimiento,
+      notas_discernimiento, casa_retiro_id,
+      coordinador_asignado_id, asesor_asignado_id,
       fecha_solicitud, fecha_aprobacion, fecha_rechazo, motivo_rechazo,
       fecha_publicacion,
       organizacion_id,
@@ -78,6 +81,8 @@ export default async function EventoDetailPage({
       confraternidad:organizaciones!organizacion_id(id, nombre),
       fraternidad:organizaciones!fraternidad_id(id, nombre),
       casa_retiro:casas_retiro!casa_retiro_id(id, nombre, ciudad, provincia),
+      coordinador_asignado:personas!coordinador_asignado_id(id, nombre, apellido),
+      asesor_asignado:personas!asesor_asignado_id(id, nombre, apellido),
       solicitado_por_persona:personas!solicitado_por(nombre, apellido),
       aprobado_por_persona:personas!aprobado_por(nombre, apellido),
       rechazado_por_persona:personas!rechazado_por(nombre, apellido),
@@ -100,13 +105,27 @@ export default async function EventoDetailPage({
     .eq('evento_id', id)
     .order('fecha', { ascending: true })
 
+  const { data: casasRetiro } = await supabase
+    .from('casas_retiro')
+    .select('id, nombre, ciudad, provincia')
+    .order('nombre')
+
+  const { data: personasCecistas } = await supabase
+    .from('personas')
+    .select('id, nombre, apellido')
+    .eq('estado', 'activo')
+    .order('apellido')
+    .order('nombre')
+
   const campoLabel: Record<string, string> = {
     nombre: 'Nombre', fecha_inicio: 'Fecha inicio', fecha_fin: 'Fecha fin',
     ciudad: 'Ciudad', provincia_evento: 'Provincia', pais_evento: 'País',
     codigo_postal: 'CP', diocesis: 'Diócesis',
-    coordinadores_propuestos: 'Coordinadores', asesor_propuesto: 'Asesor',
+    coordinadores_propuestos: 'Coordinadores propuestos', asesor_propuesto: 'Asesor propuesto',
     asesor_voluntario: 'Asesor voluntario', modalidad: 'Modalidad',
-    notas: 'Notas', cupo_maximo: 'Cupo máximo',
+    notas: 'Notas', casa_retiro_id: 'Casa de Retiro',
+    coordinador_asignado_id: 'Coordinador asignado', asesor_asignado_id: 'Asesor asignado',
+    fechas_ejecucion: 'Fechas de ejecución',
   }
 
   const nivelDiscLabel: Record<string, string> = {
@@ -117,6 +136,8 @@ export default async function EventoDetailPage({
   const confraternidad = evento.confraternidad as { id: string; nombre: string } | null
   const fraternidad = evento.fraternidad as { id: string; nombre: string } | null
   const casaRetiro = evento.casa_retiro as { id: string; nombre: string; ciudad?: string | null; provincia?: string | null } | null
+  const coordinadorAsignado = (evento as Record<string, unknown>).coordinador_asignado as { id: string; nombre: string; apellido: string } | null
+  const asesorAsignado = (evento as Record<string, unknown>).asesor_asignado as { id: string; nombre: string; apellido: string } | null
   const solicitadoPor = evento.solicitado_por_persona as { nombre: string; apellido: string } | null
   const aprobadoPor = evento.aprobado_por_persona as { nombre: string; apellido: string } | null
   const rechazadoPor = evento.rechazado_por_persona as { nombre: string; apellido: string } | null
@@ -320,21 +341,21 @@ export default async function EventoDetailPage({
 
           {/* Organización */}
           <div className="grid gap-3 sm:grid-cols-2">
-            {fraternidad && (
-              <div className="flex items-start gap-2 text-sm">
-                <Users className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
-                <div>
-                  <p className="text-xs text-muted-foreground">Fraternidad</p>
-                  <p className="text-foreground">{fraternidad.nombre}</p>
-                </div>
-              </div>
-            )}
             {confraternidad && (
               <div className="flex items-start gap-2 text-sm">
                 <Users className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
                 <div>
                   <p className="text-xs text-muted-foreground">Confraternidad</p>
                   <p className="text-foreground">{confraternidad.nombre}</p>
+                </div>
+              </div>
+            )}
+            {fraternidad && (
+              <div className="flex items-start gap-2 text-sm">
+                <Users className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
+                <div>
+                  <p className="text-xs text-muted-foreground">Fraternidad</p>
+                  <p className="text-foreground">{fraternidad.nombre}</p>
                 </div>
               </div>
             )}
@@ -388,39 +409,23 @@ export default async function EventoDetailPage({
             </div>
           )}
 
-          {/* Casa de retiro, cupo y audiencia */}
-          {(casaRetiro || evento.cupo_maximo || evento.audiencia) && (
-            <div className="grid gap-2 sm:grid-cols-3 text-sm border-t border-border pt-4">
-              {casaRetiro && (
-                <div>
-                  <p className="text-xs text-muted-foreground">Casa de Retiro</p>
-                  <p className="text-foreground">{casaRetiro.nombre}</p>
-                  {(casaRetiro.ciudad || casaRetiro.provincia) && (
-                    <p className="text-xs text-muted-foreground">{[casaRetiro.ciudad, casaRetiro.provincia].filter(Boolean).join(', ')}</p>
-                  )}
-                </div>
-              )}
-              {evento.cupo_maximo && (
-                <div>
-                  <p className="text-xs text-muted-foreground">Cupo máximo</p>
-                  <p className="text-foreground">{evento.cupo_maximo}</p>
-                </div>
-              )}
-              {evento.audiencia && (
-                <div>
-                  <p className="text-xs text-muted-foreground">Audiencia</p>
-                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${evento.audiencia === 'abierto' ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}`}>
-                    {evento.audiencia === 'abierto' ? 'Abierto' : 'Cerrado'}
-                  </span>
-                </div>
-              )}
+          {/* Casa de retiro */}
+          {casaRetiro && (
+            <div className="border-t border-border pt-4 text-sm">
+              <div>
+                <p className="text-xs text-muted-foreground">Casa de Retiro</p>
+                <p className="text-foreground">{casaRetiro.nombre}</p>
+                {(casaRetiro.ciudad || casaRetiro.provincia) && (
+                  <p className="text-xs text-muted-foreground">{[casaRetiro.ciudad, casaRetiro.provincia].filter(Boolean).join(', ')}</p>
+                )}
+              </div>
             </div>
           )}
 
-          {/* Personas propuestas */}
-          {(evento.coordinadores_propuestos || evento.asesor_propuesto) && (
+          {/* Personas propuestas — visible cuando la confra ya discernió */}
+          {evento.disc_confra_estado && (evento.coordinadores_propuestos || evento.asesor_propuesto) && (
             <div className="space-y-2 border-t border-border pt-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-wide">Personas propuestas</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Personas propuestas (Confraternidad)</p>
               <div className="grid gap-2 sm:grid-cols-2 text-sm">
                 <Field label="Coordinador/es" value={evento.coordinadores_propuestos} />
                 {evento.asesor_propuesto && (
@@ -430,6 +435,31 @@ export default async function EventoDetailPage({
                       {evento.asesor_propuesto}
                       {evento.asesor_voluntario && <span className="ml-2 text-xs text-muted-foreground">(voluntario)</span>}
                     </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Coordinador y asesor asignados por EqT */}
+          {(coordinadorAsignado || asesorAsignado) && (
+            <div className="space-y-2 border-t border-border pt-4">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Personas asignadas (Equipo Timón)</p>
+              <div className="grid gap-2 sm:grid-cols-2 text-sm">
+                {coordinadorAsignado && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Coordinador asignado</p>
+                    <Link href={`/personas/${coordinadorAsignado.id}`} className="text-foreground hover:text-primary hover:underline">
+                      {coordinadorAsignado.nombre} {coordinadorAsignado.apellido}
+                    </Link>
+                  </div>
+                )}
+                {asesorAsignado && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Asesor asignado</p>
+                    <Link href={`/personas/${asesorAsignado.id}`} className="text-foreground hover:text-primary hover:underline">
+                      {asesorAsignado.nombre} {asesorAsignado.apellido}
+                    </Link>
                   </div>
                 )}
               </div>
@@ -537,8 +567,13 @@ export default async function EventoDetailPage({
                 asesor_voluntario: evento.asesor_voluntario ?? null,
                 modalidad: evento.modalidad ?? null,
                 notas: evento.notas ?? null,
-                cupo_maximo: evento.cupo_maximo ?? null,
+                casa_retiro_id: (evento as Record<string, unknown>).casa_retiro_id as string | null,
+                coordinador_asignado_id: (evento as Record<string, unknown>).coordinador_asignado_id as string | null,
+                asesor_asignado_id: (evento as Record<string, unknown>).asesor_asignado_id as string | null,
               }}
+              fechasEjecucion={(fechasEjecucion ?? []) as { id: string; fecha_inicio: string; fecha_fin: string }[]}
+              casasRetiro={(casasRetiro ?? []) as { id: string; nombre: string; ciudad?: string | null; provincia?: string | null }[]}
+              personas={(personasCecistas ?? []) as { id: string; nombre: string; apellido: string }[]}
             />
           </div>
         </div>

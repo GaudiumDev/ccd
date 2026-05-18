@@ -21,14 +21,23 @@ type CampoEvento =
   | 'asesor_voluntario'
   | 'modalidad'
   | 'notas'
-  | 'cupo_maximo'
+  | 'casa_retiro_id'
+  | 'coordinador_asignado_id'
+  | 'asesor_asignado_id'
 
 const CAMPOS_EDITABLES: CampoEvento[] = [
   'nombre', 'fecha_inicio', 'fecha_fin',
   'ciudad', 'provincia_evento', 'pais_evento', 'codigo_postal', 'diocesis',
   'coordinadores_propuestos', 'asesor_propuesto', 'asesor_voluntario',
-  'modalidad', 'notas', 'cupo_maximo',
+  'modalidad', 'notas', 'casa_retiro_id',
+  'coordinador_asignado_id', 'asesor_asignado_id',
 ]
+
+type FechaEjecucion = {
+  id?: string | null
+  fecha_inicio: string
+  fecha_fin: string
+}
 
 export async function POST(
   request: Request,
@@ -45,6 +54,7 @@ export async function POST(
   const resultado = body.resultado_discernimiento as ResultadoDiscernimiento
   const notas = body.notas_discernimiento as string | undefined
   const cambios = (body.cambios ?? {}) as Partial<Record<CampoEvento, unknown>>
+  const fechasEjecucion = body.fechas_ejecucion as FechaEjecucion[] | undefined
 
   const validResultados: ResultadoDiscernimiento[] = [
     'aprobado_sin_modificaciones',
@@ -81,7 +91,8 @@ export async function POST(
       nombre, fecha_inicio, fecha_fin,
       ciudad, provincia_evento, pais_evento, codigo_postal, diocesis,
       coordinadores_propuestos, asesor_propuesto, asesor_voluntario,
-      modalidad, notas, cupo_maximo
+      modalidad, notas, casa_retiro_id,
+      coordinador_asignado_id, asesor_asignado_id
     `)
     .eq('id', id)
     .single()
@@ -150,7 +161,6 @@ export async function POST(
     const valorAnterior = anteriorRaw == null ? null : String(anteriorRaw)
     const valorNuevo = nuevoValor == null ? null : String(nuevoValor)
 
-    // Skip if value hasn't actually changed
     if (valorAnterior === valorNuevo) continue
 
     fieldUpdates[campo] = nuevoValor
@@ -166,27 +176,22 @@ export async function POST(
 
   // Compute next state
   // Flows:
-  //   confra + eqt: solicitud → (confra acts) → discernimiento_confra → (EqT acts) → aprobado
-  //   solo confra:  solicitud → (confra acts) → discernimiento_confra → aprobado (no eqt required)
-  //   solo eqt:     solicitud → (EqT acts) → aprobado
+  //   confra + eqt: solicitud → confra → discernimiento_confra → eqt → pendiente_datos_noticias
+  //   solo confra:  solicitud → confra → discernimiento_confra → pendiente_datos_noticias (no eqt)
+  //   solo eqt:     solicitud → eqt → pendiente_datos_noticias
   let nextEstado: string
   if (accion === 'rechazar') {
     nextEstado = 'rechazado'
   } else if (estadoActual === 'solicitud' && requiereConfra) {
-    // Confra discerned — move to discernimiento_confra (EqT's turn next, or done if no EqT needed)
     nextEstado = 'discernimiento_confra'
-  } else if (estadoActual === 'solicitud' && requiereEqt) {
-    // No confra needed, EqT acts directly → aprobado
-    nextEstado = 'aprobado'
   } else {
-    // discernimiento_confra (EqT acting) or discernimiento_eqt → aprobado
-    nextEstado = 'aprobado'
+    // EqT approved (directly or after confra) → pendiente_datos_noticias
+    nextEstado = 'pendiente_datos_noticias'
   }
 
   const today = new Date().toISOString().split('T')[0]
   const updateData: Record<string, unknown> = { estado: nextEstado }
 
-  // Save discernimiento details for this level
   if (nivel === 'confra') {
     updateData.disc_confra_estado = resultado
     updateData.disc_confra_fecha = today
@@ -199,12 +204,11 @@ export async function POST(
     updateData.disc_eqt_por = ctx.persona_id
   }
 
-  // Track rejection globally too
   if (accion === 'rechazar') {
     updateData.rechazado_por = ctx.persona_id
     updateData.motivo_rechazo = notas
     updateData.fecha_rechazo = today
-  } else if (nextEstado === 'aprobado') {
+  } else if (nextEstado === 'pendiente_datos_noticias') {
     updateData.aprobado_por = ctx.persona_id
     updateData.fecha_aprobacion = today
   }
@@ -218,7 +222,44 @@ export async function POST(
     return NextResponse.json({ error: updateError.message }, { status: 400 })
   }
 
-  // Insert change rows (non-blocking: event update already succeeded)
+  // Sync fechas_ejecucion if provided (EqT may modify event periods)
+  if (fechasEjecucion !== undefined) {
+    const validFechas = fechasEjecucion.filter(f => f.fecha_inicio && f.fecha_fin)
+
+    // Delete all existing periods and re-insert
+    const { error: deleteError } = await supabase
+      .from('evento_fechas')
+      .delete()
+      .eq('evento_id', id)
+
+    if (deleteError) {
+      console.error('[aprobar] Failed to delete evento_fechas:', deleteError.message)
+    } else if (validFechas.length > 0) {
+      const { error: insertError } = await supabase
+        .from('evento_fechas')
+        .insert(validFechas.map(f => ({
+          evento_id: id,
+          fecha_inicio: f.fecha_inicio,
+          fecha_fin: f.fecha_fin,
+        })))
+
+      if (insertError) {
+        console.error('[aprobar] Failed to insert evento_fechas:', insertError.message)
+      }
+    }
+
+    // Record the change in historial
+    cambiosRows.push({
+      evento_id: id,
+      nivel_disc: nivel,
+      campo: 'fechas_ejecucion',
+      valor_anterior: null,
+      valor_nuevo: JSON.stringify(validFechas.map(f => `${f.fecha_inicio} → ${f.fecha_fin}`)),
+      modificado_por: ctx.persona_id,
+    })
+  }
+
+  // Insert change rows
   if (cambiosRows.length > 0) {
     const { error: cambiosError } = await supabase
       .from('evento_cambios')
