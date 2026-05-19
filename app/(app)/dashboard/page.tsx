@@ -43,6 +43,8 @@ const ESTADO_EVENT_COLORS: Record<string, string> = {
     "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
   discernimiento_eqt:
     "bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-200",
+  pendiente_datos_noticias:
+    "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
   aprobado: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
   publicado:
     "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
@@ -56,6 +58,7 @@ const ESTADO_LABELS: Record<string, string> = {
   solicitud: "Pend. Disc. Confra",
   discernimiento_confra: "Pend. Disc. EqT",
   discernimiento_eqt: "Disc. EqT",
+  pendiente_datos_noticias: "Pend. Datos Noticias",
   aprobado: "Aprobado",
   publicado: "Publicado",
   finalizado: "Finalizado",
@@ -131,6 +134,7 @@ export default async function DashboardPage() {
     discernimientoContraResult,
     discernimientoEqtResult,
     misRechazadosResult,
+    pendienteDatosNoticiasResult,
   ] = await Promise.all([
     // 1. Count personas (non-admin count se calcula en el bloque cecistas más abajo)
     ctx.is_admin
@@ -208,6 +212,7 @@ export default async function DashboardPage() {
             "solicitud",
             "discernimiento_confra",
             "discernimiento_eqt",
+            "pendiente_datos_noticias",
             "aprobado",
             "publicado",
           ])
@@ -254,6 +259,46 @@ export default async function DashboardPage() {
           .order("fecha_rechazo", { ascending: false })
           .limit(5)
       : Promise.resolve({ data: null, error: null }),
+
+    // 12. Pendiente Datos Noticias — visible para solicitante, confra approver y EqT
+    (() => {
+      if (!hasPersonaId && !canApproveConfra && !canApproveEqt) {
+        return Promise.resolve({ data: null, error: null })
+      }
+      const selectSuperior = "id, nombre, tipo, fecha_inicio, organizacion:organizaciones!organizacion_id(nombre), solicitado_por_persona:personas!solicitado_por(nombre, apellido)"
+      const selectPropio = "id, nombre, tipo, fecha_inicio, organizacion:organizaciones!organizacion_id(nombre)"
+      // EqT ve todos
+      if (canApproveEqt) {
+        return supabase
+          .from("eventos")
+          .select(selectSuperior)
+          .eq("estado", "pendiente_datos_noticias")
+          .order("fecha_aprobacion", { ascending: true })
+          .limit(10)
+      }
+      // Responsable de Confraternidad ve los de su org y todas sus fraternidades hijas
+      if (canApproveConfra) {
+        let q = supabase
+          .from("eventos")
+          .select(selectSuperior)
+          .eq("estado", "pendiente_datos_noticias")
+          .order("fecha_aprobacion", { ascending: true })
+          .limit(10)
+        if (!ctx.is_admin) {
+          if (ctx.org_ids.length > 0) q = q.in("organizacion_id", ctx.org_ids)
+          else return Promise.resolve({ data: [], error: null })
+        }
+        return q
+      }
+      // Solicitante: solo los propios
+      return supabase
+        .from("eventos")
+        .select(selectPropio)
+        .eq("estado", "pendiente_datos_noticias")
+        .eq("solicitado_por", ctx.persona_id!)
+        .order("fecha_aprobacion", { ascending: true })
+        .limit(10)
+    })(),
   ])
 
   let totalPersonas = personasCountResult.count ?? 0
@@ -340,6 +385,7 @@ export default async function DashboardPage() {
     | any[]
     | null
   const misRechazados = (misRechazadosResult as any).data as any[] | null
+  const pendienteDatosNoticias = (pendienteDatosNoticiasResult as any).data as any[] | null
 
   const primaryRole = ctx.roles[0]?.rol ?? null
   const roleName =
@@ -809,6 +855,60 @@ export default async function DashboardPage() {
             >
               <Button variant="outline" className="w-full bg-transparent">
                 Ver todos en discernimiento EqT
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Pendiente Datos Noticias */}
+      {pendienteDatosNoticias && pendienteDatosNoticias.length > 0 && (
+        <Card className="border-indigo-200 dark:border-indigo-900 bg-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <AlertCircle className="h-5 w-5 text-indigo-500" />
+              Pendiente de Datos para Noticias
+            </CardTitle>
+            <CardDescription>
+              Eventos aprobados que esperan carga de centralizadores y datos de publicación
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {pendienteDatosNoticias.map((evento: any) => {
+                const solicitante = evento.solicitado_por_persona
+                return (
+                  <div
+                    key={evento.id}
+                    className="flex items-center justify-between rounded-lg border border-border p-3"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground truncate">
+                        {evento.nombre}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {evento.organizacion?.nombre ?? "—"}
+                        {evento.fecha_inicio
+                          ? ` · ${formatDateShort(evento.fecha_inicio)}`
+                          : ""}
+                        {solicitante
+                          ? ` · Solicitado por ${solicitante.nombre} ${solicitante.apellido}`
+                          : ""}
+                      </p>
+                    </div>
+                    <Link href={`/eventos/${evento.id}`} className="ml-3 shrink-0">
+                      <Button size="sm" className="h-7 text-xs">
+                        Cargar datos
+                      </Button>
+                    </Link>
+                  </div>
+                )
+              })}
+            </div>
+            <Link href="/eventos?estado=pendiente_datos_noticias" className="block mt-4">
+              <Button variant="outline" className="w-full bg-transparent">
+                Ver todos
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </Link>

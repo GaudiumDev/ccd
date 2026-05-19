@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft, Edit2, Calendar, MapPin, Users } from 'lucide-react'
 import DiscernimientoPanel from './_components/approval-panel'
+import DatosNoticiasPannel from './_components/datos-noticias-panel'
 import { PublicarButton } from './_components/publicar-button'
 import { formatDateAR } from '@/lib/utils'
 
@@ -71,6 +72,11 @@ export default async function EventoDetailPage({
       ciudad, codigo_postal, diocesis, provincia_evento, pais_evento,
       notas_discernimiento, casa_retiro_id,
       coordinador_asignado_id, asesor_asignado_id,
+      solicitado_por,
+      centralizador_1_nombre, centralizador_1_email, centralizador_1_telefono,
+      centralizador_2_nombre, centralizador_2_email, centralizador_2_telefono,
+      centralizador_3_nombre, centralizador_3_email, centralizador_3_telefono,
+      notas_noticias,
       fecha_solicitud, fecha_aprobacion, fecha_rechazo, motivo_rechazo,
       fecha_publicacion,
       organizacion_id,
@@ -112,7 +118,7 @@ export default async function EventoDetailPage({
 
   const { data: personasCecistas } = await supabase
     .from('personas')
-    .select('id, nombre, apellido')
+    .select('id, nombre, apellido, email, telefono')
     .eq('estado', 'activo')
     .order('apellido')
     .order('nombre')
@@ -220,6 +226,14 @@ export default async function EventoDetailPage({
   const canEdit = ctx && canPerform(ctx, 'event.update', evento.organizacion_id ?? null)
   const canPublish = ctx && evento.estado === 'aprobado' && canPerform(ctx, 'event.publish', evento.organizacion_id ?? null)
 
+  // Datos noticias panel: visible when pendiente_datos_noticias and user has permission
+  const esSolicitante = ctx?.persona_id && ctx.persona_id === (evento as Record<string, unknown>).solicitado_por
+  const canDatosNoticias = ctx && evento.estado === 'pendiente_datos_noticias' && (
+    esSolicitante ||
+    canPerform(ctx, 'event.approve_confra', evento.organizacion_id ?? null) ||
+    canPerform(ctx, 'event.approve_eqt')
+  )
+
   // Build discernimiento niveles for the panel
   type NivelDiscernimiento = {
     nivel: 'confra' | 'eqt'
@@ -320,8 +334,8 @@ export default async function EventoDetailPage({
         </div>
       )}
 
-      {/* Main grid: event card + discernimiento sidebar */}
-      <div className={discNiveles.length > 0 ? 'grid gap-6 lg:grid-cols-3 items-start' : undefined}>
+      {/* Main grid: event card + sidebar */}
+      <div className={discNiveles.length > 0 || canDatosNoticias ? 'grid gap-6 lg:grid-cols-3 items-start' : undefined}>
 
       <Card className="border-border bg-card lg:col-span-2">
         <CardHeader>
@@ -574,6 +588,32 @@ export default async function EventoDetailPage({
               fechasEjecucion={(fechasEjecucion ?? []) as { id: string; fecha_inicio: string; fecha_fin: string }[]}
               casasRetiro={(casasRetiro ?? []) as { id: string; nombre: string; ciudad?: string | null; provincia?: string | null }[]}
               personas={(personasCecistas ?? []) as { id: string; nombre: string; apellido: string }[]}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Datos Noticias sidebar */}
+      {canDatosNoticias && (
+        <div className="lg:col-span-1 order-first lg:order-last">
+          <div className="sticky top-6">
+            <DatosNoticiasPannel
+              eventoId={id}
+              inicial={{
+                casa_retiro_id: (evento as Record<string, unknown>).casa_retiro_id as string | null,
+                centralizador_1_nombre: (evento as Record<string, unknown>).centralizador_1_nombre as string | null,
+                centralizador_1_email: (evento as Record<string, unknown>).centralizador_1_email as string | null,
+                centralizador_1_telefono: (evento as Record<string, unknown>).centralizador_1_telefono as string | null,
+                centralizador_2_nombre: (evento as Record<string, unknown>).centralizador_2_nombre as string | null,
+                centralizador_2_email: (evento as Record<string, unknown>).centralizador_2_email as string | null,
+                centralizador_2_telefono: (evento as Record<string, unknown>).centralizador_2_telefono as string | null,
+                centralizador_3_nombre: (evento as Record<string, unknown>).centralizador_3_nombre as string | null,
+                centralizador_3_email: (evento as Record<string, unknown>).centralizador_3_email as string | null,
+                centralizador_3_telefono: (evento as Record<string, unknown>).centralizador_3_telefono as string | null,
+                notas_noticias: (evento as Record<string, unknown>).notas_noticias as string | null,
+              }}
+              casasRetiro={(casasRetiro ?? []) as { id: string; nombre: string; ciudad?: string | null; provincia?: string | null }[]}
+              personas={(personasCecistas ?? []) as { id: string; nombre: string; apellido: string; email?: string | null; telefono?: string | null }[]}
             />
           </div>
         </div>

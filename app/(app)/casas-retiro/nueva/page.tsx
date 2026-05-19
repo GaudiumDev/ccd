@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -28,6 +28,8 @@ const AMENITY_LABELS: Record<string, string> = {
 
 export default function NuevaCasaRetiroPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const returnTo = searchParams.get('returnTo')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [orgs, setOrgs] = useState<OrgOption[]>([])
@@ -114,7 +116,7 @@ export default function NuevaCasaRetiroPage() {
       }
 
       const { id } = await res.json()
-      router.push(`/casas-retiro/${id}`)
+      router.push(returnTo ?? `/casas-retiro/${id}`)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Error al crear la casa de retiro')
     } finally {

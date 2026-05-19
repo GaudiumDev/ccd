@@ -13,8 +13,6 @@ import { Combobox } from "@/components/ui/combobox"
 import { formatDateAR } from "@/lib/utils"
 
 type OrgOption = { id: string; nombre: string; parent_id?: string | null }
-type CasaRetiroOption = { id: string; nombre: string }
-type PersonaOption = { id: string; nombre: string }
 type TipoEvento = {
   id: string
   nombre: string
@@ -37,8 +35,6 @@ type Props = {
   fraternidades: OrgOption[]
   confraternidades: OrgOption[]
   tiposEventos: TipoEvento[]
-  casasRetiro: CasaRetiroOption[]
-  personasCoordinadores: PersonaOption[]
   personaNombre: string
   isAdmin?: boolean
   canEditConfra?: boolean
@@ -50,8 +46,6 @@ export default function NuevoEventoForm({
   fraternidades,
   confraternidades,
   tiposEventos,
-  casasRetiro,
-  personasCoordinadores,
   personaNombre,
 }: Props) {
   const router = useRouter()
@@ -73,12 +67,6 @@ export default function NuevoEventoForm({
     { fecha_inicio: "", fecha_fin: "" },
   ])
   const [mostrarPeriodosExtra, setMostrarPeriodosExtra] = useState(false)
-
-  // Coordinadores: lista de IDs seleccionados (hasta 3)
-  const [coordinadores, setCoordinadores] = useState<string[]>([""])
-
-  // Asesores: lista de textos libres
-  const [asesores, setAsesores] = useState<string[]>([""])
 
   const tiposFiltrados = categoria
     ? tiposEventos.filter((t) => t.categoria === categoria)
@@ -147,28 +135,6 @@ export default function NuevoEventoForm({
     setFormData((prev) => ({ ...prev, [target.name]: value }))
   }
 
-  // Coordinadores helpers
-  const setCoordinador = (idx: number, value: string) => {
-    setCoordinadores((prev) => prev.map((v, i) => (i === idx ? value : v)))
-  }
-  const addCoordinador = () => {
-    if (coordinadores.length < 3) setCoordinadores((prev) => [...prev, ""])
-  }
-  const removeCoordinador = (idx: number) => {
-    setCoordinadores((prev) => prev.filter((_, i) => i !== idx))
-  }
-
-  // Asesores helpers
-  const setAsesor = (idx: number, value: string) => {
-    setAsesores((prev) => prev.map((v, i) => (i === idx ? value : v)))
-  }
-  const addAsesor = () => {
-    setAsesores((prev) => [...prev, ""])
-  }
-  const removeAsesor = (idx: number) => {
-    setAsesores((prev) => prev.filter((_, i) => i !== idx))
-  }
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setLoading(true)
@@ -195,9 +161,6 @@ export default function NuevoEventoForm({
         }
       }
 
-      const coordinadoresFiltrados = coordinadores.filter(Boolean)
-      const asesoresFiltrados = asesores.map((a) => a.trim()).filter(Boolean)
-
       const payload = {
         ...formData,
         tipo: tipoSeleccionado?.categoria ?? categoria ?? "",
@@ -210,12 +173,6 @@ export default function NuevoEventoForm({
           tipoSeleccionado?.requiere_discernimiento_eqt ?? false,
         estado: "solicitud",
         fecha_solicitud: formData.fecha_solicitud || today,
-        casa_retiro_id: formData.casa_retiro_id || null,
-        cupo_maximo: formData.cupo_maximo
-          ? parseInt(formData.cupo_maximo)
-          : null,
-        coordinadores_propuestos: coordinadoresFiltrados.join(", "),
-        asesor_propuesto: asesoresFiltrados.join(", "),
         fechas_ejecucion: fechasCompletas,
         nombre: nombreEvento,
       }
@@ -244,12 +201,6 @@ export default function NuevoEventoForm({
     "w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
   const readonlyClass =
     "w-full rounded-md border border-border bg-muted/50 px-3 py-2 text-muted-foreground text-sm"
-
-  // Options for coordinator combobox — exclude already-selected ones
-  const coordinadorOptions = (idx: number) =>
-    personasCoordinadores
-      .filter((p) => !coordinadores.some((c, i) => i !== idx && c === p.id))
-      .map((p) => ({ label: p.nombre, value: p.id }))
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -654,146 +605,19 @@ export default function NuevoEventoForm({
               )}
             </div>
 
-            {/* 13. Coordinadores propuestos */}
-            <div className="space-y-2">
-              <Label>Coordinador/es propuesto/s</Label>
-              <div className="space-y-2">
-                {coordinadores.map((coordId, idx) => (
-                  <div key={idx} className="flex gap-2 items-center">
-                    <div className="flex-1">
-                      <Combobox
-                        value={coordId}
-                        onSelect={(val) => setCoordinador(idx, val)}
-                        options={coordinadorOptions(idx)}
-                        placeholder="Buscar coordinador..."
-                        searchPlaceholder="Nombre..."
-                        emptyText="No se encontraron personas."
-                      />
-                    </div>
-                    {coordinadores.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="shrink-0 text-muted-foreground hover:text-destructive"
-                        onClick={() => removeCoordinador(idx)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-              {coordinadores.length < 3 && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="gap-1 bg-transparent h-7 text-xs"
-                  onClick={addCoordinador}
-                >
-                  <Plus className="h-3 w-3" />
-                  Agregar coordinador
-                </Button>
-              )}
-            </div>
-
-            {/* 14. Asesores (texto libre, múltiple) */}
-            <div className="space-y-2">
-              <Label>Asesor/es propuesto/s</Label>
-              <div className="space-y-2">
-                {asesores.map((asesor, idx) => (
-                  <div key={idx} className="flex gap-2 items-center">
-                    <Input
-                      placeholder="Nombre del asesor (puede ser externo)"
-                      value={asesor}
-                      onChange={(e) => setAsesor(idx, e.target.value)}
-                      className="flex-1"
-                    />
-                    {asesores.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="shrink-0 text-muted-foreground hover:text-destructive"
-                        onClick={() => removeAsesor(idx)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="gap-1 bg-transparent h-7 text-xs"
-                onClick={addAsesor}
-              >
-                <Plus className="h-3 w-3" />
-                Agregar asesor
-              </Button>
-            </div>
-
-            {/* Modalidad + Cupo + Audiencia */}
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="space-y-1">
-                <Label htmlFor="modalidad">Modalidad</Label>
-                <select
-                  id="modalidad"
-                  name="modalidad"
-                  value={formData.modalidad}
-                  onChange={handleChange}
-                  className={fieldClass}
-                >
-                  <option value="presencial">Presencial</option>
-                  <option value="virtual">Virtual</option>
-                  <option value="bimodal">Bimodal</option>
-                </select>
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="cupo_maximo">Cupo máximo</Label>
-                <Input
-                  id="cupo_maximo"
-                  name="cupo_maximo"
-                  type="number"
-                  min="1"
-                  value={formData.cupo_maximo}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="audiencia">Audiencia</Label>
-                <select
-                  id="audiencia"
-                  name="audiencia"
-                  value={formData.audiencia}
-                  onChange={handleChange}
-                  className={fieldClass}
-                >
-                  <option value="cerrado">Cerrado</option>
-                  <option value="abierto">Abierto</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Casa de retiro */}
+            {/* Modalidad */}
             <div className="space-y-1">
-              <Label htmlFor="casa_retiro_id">Casa de retiro</Label>
+              <Label htmlFor="modalidad">Modalidad</Label>
               <select
-                id="casa_retiro_id"
-                name="casa_retiro_id"
-                value={formData.casa_retiro_id}
+                id="modalidad"
+                name="modalidad"
+                value={formData.modalidad}
                 onChange={handleChange}
                 className={fieldClass}
               >
-                <option value="">— Sin definir —</option>
-                {casasRetiro.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nombre}
-                  </option>
-                ))}
+                <option value="presencial">Presencial</option>
+                <option value="virtual">Virtual</option>
+                <option value="bimodal">Bimodal</option>
               </select>
             </div>
 
