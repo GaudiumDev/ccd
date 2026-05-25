@@ -46,7 +46,7 @@ export default async function TiposEventosPage({
 
   let query = supabase
     .from('tipos_eventos')
-    .select('id, nombre, categoria, alcance, requiere_discernimiento_confra, requiere_discernimiento_eqt, requisitos, activo')
+    .select('id, nombre, categoria, alcance, requiere_discernimiento_confra, requiere_discernimiento_eqt, requisitos, activo, tipo_evento_roles_solicitantes(ministerios(nombre))')
     .order('nombre')
 
   if (q) query = query.ilike('nombre', `%${q}%`)
@@ -147,66 +147,89 @@ export default async function TiposEventosPage({
                     <th className="px-4 py-3 text-left font-medium text-muted-foreground">Alcance</th>
                     <th className="px-4 py-3 text-center font-medium text-muted-foreground">Req. Confraternidad</th>
                     <th className="px-4 py-3 text-center font-medium text-muted-foreground">Req. Equipo Timón</th>
+                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">Roles solicitantes</th>
                     <th className="px-4 py-3 text-center font-medium text-muted-foreground">Estado</th>
                     <th className="px-4 py-3 text-right font-medium text-muted-foreground">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {tipos.map((tipo) => (
-                    <tr key={tipo.id} className="border-b border-border last:border-0 hover:bg-muted/30">
-                      <td className="px-4 py-3 font-medium">
-                        <Link href={`/tipos-eventos/${tipo.id}/editar`} className="hover:underline text-foreground">
-                          {tipo.nombre}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {categoriaLabel[tipo.categoria] ?? tipo.categoria}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                          tipo.alcance === 'abierto'
-                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
-                            : tipo.alcance === 'mixto'
-                              ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400'
+                  {tipos.map((tipo) => {
+                    const roles = (tipo.tipo_evento_roles_solicitantes ?? [])
+                      .map((r: any) => r.ministerios?.nombre)
+                      .filter(Boolean) as string[]
+
+                    return (
+                      <tr key={tipo.id} className="border-b border-border last:border-0 hover:bg-muted/30">
+                        <td className="px-4 py-3 font-medium">
+                          <Link href={`/tipos-eventos/${tipo.id}/editar`} className="hover:underline text-foreground">
+                            {tipo.nombre}
+                          </Link>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {categoriaLabel[tipo.categoria] ?? tipo.categoria}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                            tipo.alcance === 'abierto'
+                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+                              : tipo.alcance === 'mixto'
+                                ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400'
+                                : 'bg-muted text-muted-foreground'
+                          }`}>
+                            {alcanceLabel[tipo.alcance] ?? tipo.alcance}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {tipo.requiere_discernimiento_confra ? (
+                            <span className="text-green-600 font-medium">Sí</span>
+                          ) : (
+                            <span className="text-muted-foreground">No</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {tipo.requiere_discernimiento_eqt ? (
+                            <span className="text-green-600 font-medium">Sí</span>
+                          ) : (
+                            <span className="text-muted-foreground">No</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {roles.length === 0 ? (
+                            <span className="text-xs text-muted-foreground italic">Sin configurar</span>
+                          ) : (
+                            <div className="flex flex-wrap gap-1">
+                              {roles.map((nombre) => (
+                                <span
+                                  key={nombre}
+                                  className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary"
+                                >
+                                  {nombre}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                            tipo.activo
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
                               : 'bg-muted text-muted-foreground'
-                        }`}>
-                          {alcanceLabel[tipo.alcance] ?? tipo.alcance}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {tipo.requiere_discernimiento_confra ? (
-                          <span className="text-green-600 font-medium">Sí</span>
-                        ) : (
-                          <span className="text-muted-foreground">No</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {tipo.requiere_discernimiento_eqt ? (
-                          <span className="text-green-600 font-medium">Sí</span>
-                        ) : (
-                          <span className="text-muted-foreground">No</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                          tipo.activo
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                            : 'bg-muted text-muted-foreground'
-                        }`}>
-                          {tipo.activo ? 'Activo' : 'Inactivo'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        {ctx && canPerform(ctx, 'tipos_eventos.update') && (
-                          <Button asChild variant="ghost" size="sm">
-                            <Link href={`/tipos-eventos/${tipo.id}/editar`}>
-                              <Edit2 className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                          }`}>
+                            {tipo.activo ? 'Activo' : 'Inactivo'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {ctx && canPerform(ctx, 'tipos_eventos.update') && (
+                            <Button asChild variant="ghost" size="sm">
+                              <Link href={`/tipos-eventos/${tipo.id}/editar`}>
+                                <Edit2 className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>

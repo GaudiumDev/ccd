@@ -50,11 +50,11 @@ export async function POST(request: Request) {
   }
   if (body.requisitos) insertData.requisitos = body.requisitos
 
-  const { error } = await supabase.from('tipos_eventos').insert(insertData)
+  const { data, error } = await supabase.from('tipos_eventos').insert(insertData).select('id').single()
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 })
   }
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ id: data.id })
 }
