@@ -41,20 +41,35 @@ export default async function LandingPage() {
   const supabase = await createClient()
   const today = new Date().toISOString().split("T")[0]
 
-  const { data: eventos } = await supabase
-    .from("eventos")
-    .select(
-      `id, nombre, tipo, fecha_inicio, fecha_fin, ciudad, provincia_evento, modalidad, cupo_maximo,
-       organizacion:organizaciones!organizacion_id(nombre)`,
-    )
-    .eq("estado", "publicado")
-    .gte("fecha_fin", today)
-    .order("fecha_inicio", { ascending: true })
+  const eventosSelect = `id, nombre, tipo, fecha_inicio, fecha_fin, ciudad, provincia_evento, modalidad, cupo_maximo,
+       organizacion:organizaciones!organizacion_id(nombre)`
+
+  const [{ data: eventos }, { data: eventosAnteriores }] = await Promise.all([
+    supabase
+      .from("eventos")
+      .select(eventosSelect)
+      .eq("estado", "publicado")
+      .gte("fecha_fin", today)
+      .order("fecha_inicio", { ascending: true }),
+    supabase
+      .from("eventos")
+      .select(eventosSelect)
+      .or(`estado.eq.finalizado,and(estado.eq.publicado,fecha_fin.lt.${today})`)
+      .order("fecha_inicio", { ascending: false })
+      .limit(12),
+  ])
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:px-4 focus:py-2 focus:bg-white focus:text-foreground focus:underline"
+      >
+        Ir al contenido principal
+      </a>
+
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
+      <header className="sticky top-0 z-50 border-b border-border bg-white/95 backdrop-blur supports-backdrop-filter:bg-white/80">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <Link href="/" className="flex items-center gap-2">
             <Image
@@ -63,8 +78,9 @@ export default async function LandingPage() {
               width={32}
               height={32}
               className="rounded-md"
+              priority
             />
-            <span className="text-sm font-semibold text-foreground">
+            <span className="text-sm font-semibold text-foreground" translate="no">
               Convivencia con Dios
             </span>
           </Link>
@@ -75,33 +91,49 @@ export default async function LandingPage() {
       </header>
 
       {/* Hero */}
-      <section className="flex flex-col items-center justify-center gap-6 px-4 py-16 text-center md:py-24">
+      <section
+        id="main"
+        className="flex flex-col items-center justify-center gap-6 px-4 py-20 text-center md:py-28"
+        style={{ backgroundColor: "#F08020" }}
+      >
         <Image
           src="/logoccd.jpeg"
           alt="Convivencia con Dios"
           width={96}
           height={96}
           className="rounded-2xl shadow-lg"
+          priority
         />
         <div className="space-y-3">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+          <h1 className="text-4xl font-bold tracking-tight text-white text-balance md:text-5xl" translate="no">
             Convivencia con Dios
           </h1>
-          <p className="mx-auto max-w-md text-muted-foreground">
-            Somos una comunidad de oración, apostolado y vida que ayuda a las
-            personas a encontrarse con un Dios vivo, alentándolos hacia la
-            santidad, brindando una experiencia comunitaria de su presencia.
+          <p className="mx-auto max-w-md text-white/90 text-lg">
+            Una meta posible y deseable
           </p>
         </div>
-        <Button asChild size="lg">
+        <Button
+          asChild
+          size="lg"
+          className="bg-white text-[#F08020] hover:bg-orange-50 font-semibold shadow"
+        >
           <Link href="/auth/login">Acceder a la plataforma</Link>
         </Button>
       </section>
 
+      {/* About */}
+      <section className="bg-white px-4 py-14 text-center">
+        <p className="mx-auto max-w-xl text-muted-foreground leading-relaxed">
+          Somos una <strong className="text-foreground">comunidad de oración, apostolado y vida</strong> que
+          ayuda a las personas a encontrarse con un Dios vivo, alentándolos hacia la santidad,
+          brindando una experiencia comunitaria de su presencia.
+        </p>
+      </section>
+
       {/* Events */}
-      <section className="flex-1 px-4 pb-16">
+      <section className="flex-1 bg-background px-4 pb-20 pt-10">
         <div className="mx-auto max-w-6xl">
-          <h2 className="mb-6 text-xl font-semibold text-foreground">
+          <h2 className="mb-8 text-2xl font-bold text-foreground text-center">
             Próximos eventos
           </h2>
 
@@ -134,13 +166,13 @@ export default async function LandingPage() {
                             </Badge>
                           )}
                       </div>
-                      <CardTitle className="mt-2 text-base leading-snug">
+                      <CardTitle className="mt-2 text-base leading-snug line-clamp-2">
                         {evento.nombre}
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="flex flex-col gap-2 text-sm text-muted-foreground">
                       <div className="flex items-center gap-2">
-                        <CalendarDays className="h-4 w-4 shrink-0" />
+                        <CalendarDays className="h-4 w-4 shrink-0" aria-hidden="true" />
                         <span>
                           {formatDateRange(
                             evento.fecha_inicio,
@@ -150,7 +182,7 @@ export default async function LandingPage() {
                       </div>
                       {(evento.ciudad || evento.provincia_evento) && (
                         <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 shrink-0" />
+                          <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
                           <span>
                             {[evento.ciudad, evento.provincia_evento]
                               .filter(Boolean)
@@ -160,7 +192,7 @@ export default async function LandingPage() {
                       )}
                       {evento.cupo_maximo && (
                         <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4 shrink-0" />
+                          <Users className="h-4 w-4 shrink-0" aria-hidden="true" />
                           <span>Cupo: {evento.cupo_maximo} personas</span>
                         </div>
                       )}
@@ -178,9 +210,67 @@ export default async function LandingPage() {
         </div>
       </section>
 
+      {/* Past Events */}
+      {eventosAnteriores && eventosAnteriores.length > 0 && (
+        <section className="bg-white px-4 pb-20 pt-10">
+          <div className="mx-auto max-w-6xl">
+            <h2 className="mb-8 text-2xl font-bold text-foreground text-center">
+              Eventos anteriores
+            </h2>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {eventosAnteriores.map((evento) => {
+                const org = evento.organizacion as unknown as { nombre: string } | null
+                return (
+                  <Card key={evento.id} className="flex flex-col opacity-75">
+                    <CardHeader className="pb-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <Badge variant="secondary" className="shrink-0 capitalize">
+                          {TIPO_LABELS[evento.tipo] ?? evento.tipo}
+                        </Badge>
+                        {evento.modalidad && evento.modalidad !== "presencial" && (
+                          <Badge variant="outline" className="shrink-0 text-xs">
+                            {MODALIDAD_LABELS[evento.modalidad] ?? evento.modalidad}
+                          </Badge>
+                        )}
+                      </div>
+                      <CardTitle className="mt-2 text-base leading-snug line-clamp-2 text-muted-foreground">
+                        {evento.nombre}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex flex-col gap-2 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <CalendarDays className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        <span>{formatDateRange(evento.fecha_inicio, evento.fecha_fin)}</span>
+                      </div>
+                      {(evento.ciudad || evento.provincia_evento) && (
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
+                          <span>
+                            {[evento.ciudad, evento.provincia_evento].filter(Boolean).join(", ")}
+                          </span>
+                        </div>
+                      )}
+                      {org?.nombre && (
+                        <p className="mt-1 text-xs text-muted-foreground/70">{org.nombre}</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Footer */}
-      <footer className="border-t border-border px-4 py-6 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} Convivencia con Dios.
+      <footer
+        className="px-4 py-8 text-center text-sm text-white/80"
+        style={{ backgroundColor: "#1B3A4C" }}
+      >
+        <p className="font-medium text-white mb-1" translate="no">
+          Convivencia con Dios
+        </p>
+        <p>© {new Date().getFullYear()} Todos los derechos reservados.</p>
       </footer>
     </div>
   )
