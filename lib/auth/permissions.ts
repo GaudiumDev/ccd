@@ -21,6 +21,7 @@ export type Permission =
   | 'event.approve_confra' // aprobar en discernimiento confra (tecnico_confraternidad, responsable_fraternidad)
   | 'event.approve_eqt'  // aprobar en discernimiento equipo timón (admin_general)
   | 'event.publish'       // publicar eventos aprobados (aprobado → publicado)
+  | 'event.suspend'       // suspender eventos en cualquier instancia — solo Equipo Timón
   | 'event.update'
   | 'event.manage_participants'
   | 'organization.create' // solo admin
@@ -54,6 +55,7 @@ export const rolePermissions: Record<SystemRole, Permission[]> = {
     'event.approve_confra',
     'event.approve_eqt',
     'event.publish',
+    'event.suspend',
     'event.update',
     'event.manage_participants',
     'organization.create',

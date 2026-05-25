@@ -111,14 +111,10 @@ export async function POST(
     )
   }
 
-  const updates: Record<string, unknown> = { estado: 'publicado' }
+  const updates: Record<string, unknown> = { estado: 'pendiente_aprobacion_final' }
   for (const campo of CAMPOS_NOTICIAS) {
     updates[campo] = body[campo as keyof DatosNoticias] ?? null
   }
-
-  const today = new Date().toISOString().split('T')[0]
-  updates.publicado_por = ctx.persona_id
-  updates.fecha_publicacion = today
 
   const { error: updateError } = await supabase
     .from('eventos')
@@ -127,5 +123,5 @@ export async function POST(
 
   if (updateError) return NextResponse.json({ error: updateError.message }, { status: 400 })
 
-  return NextResponse.json({ estado: 'publicado' })
+  return NextResponse.json({ estado: 'pendiente_aprobacion_final' })
 }

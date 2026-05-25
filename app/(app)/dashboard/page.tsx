@@ -24,6 +24,7 @@ import {
   ArrowRight,
   Clock,
   AlertCircle,
+  AlertTriangle,
 } from "lucide-react"
 import Link from "next/link"
 
@@ -113,6 +114,7 @@ export default async function DashboardPage() {
     canPerform(ctx, "event.approve_eqt")
   const canApproveConfra = canPerform(ctx, "event.approve_confra")
   const canApproveEqt = canPerform(ctx, "event.approve_eqt")
+  const canSuspend = canPerform(ctx, "event.suspend")
   const canCreatePerson = canPerform(ctx, "person.create")
   const canCreateOrg = canPerform(ctx, "organization.create")
   const canCreateEvent = canPerform(ctx, "event.create")
@@ -374,6 +376,21 @@ export default async function DashboardPage() {
       cecistas = []
       totalPersonas = 0
     }
+  }
+
+  // Solicitudes de suspensión — solo para Timonel
+  let solicitudesSuspension: any[] | null = null
+  if (canSuspend) {
+    const { data: suspData } = await supabase
+      .from("eventos")
+      .select(
+        "id, nombre, tipo, fecha_inicio, solicitud_suspension_notas, solicitud_suspension_fecha, organizacion:organizaciones!organizacion_id(nombre), solicitud_suspension_por_persona:personas!solicitud_suspension_por(nombre, apellido)"
+      )
+      .not("solicitud_suspension_fecha", "is", null)
+      .not("estado", "in", "(suspendido,cancelado,finalizado,rechazado)")
+      .order("solicitud_suspension_fecha", { ascending: true })
+      .limit(10)
+    solicitudesSuspension = suspData ?? []
   }
 
   const proximosEventos = (proximosEventosResult as any).data as any[] | null
@@ -909,6 +926,65 @@ export default async function DashboardPage() {
             <Link href="/eventos?estado=pendiente_datos_noticias" className="block mt-4">
               <Button variant="outline" className="w-full bg-transparent">
                 Ver todos
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Solicitudes de Suspensión — solo Timonel */}
+      {canSuspend && solicitudesSuspension && solicitudesSuspension.length > 0 && (
+        <Card className="border-orange-300 dark:border-orange-700 bg-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <AlertTriangle className="h-5 w-5 text-orange-500" />
+              Solicitudes de Suspensión
+            </CardTitle>
+            <CardDescription>
+              Eventos con solicitud de suspensión pendiente de revisión
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {solicitudesSuspension.map((evento: any) => {
+                const solicitante = evento.solicitud_suspension_por_persona
+                return (
+                  <div
+                    key={evento.id}
+                    className="flex items-center justify-between rounded-lg border border-border p-3"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground truncate">
+                        {evento.nombre}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {evento.organizacion?.nombre ?? "—"}
+                        {evento.solicitud_suspension_fecha
+                          ? ` · Solicitado el ${formatDateShort(evento.solicitud_suspension_fecha)}`
+                          : ""}
+                        {solicitante
+                          ? ` por ${solicitante.nombre} ${solicitante.apellido}`
+                          : ""}
+                      </p>
+                      {evento.solicitud_suspension_notas && (
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                          Motivo: {evento.solicitud_suspension_notas}
+                        </p>
+                      )}
+                    </div>
+                    <Link href={`/eventos/${evento.id}`} className="ml-3 shrink-0">
+                      <Button size="sm" variant="outline" className="h-7 text-xs bg-transparent border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400">
+                        Revisar
+                      </Button>
+                    </Link>
+                  </div>
+                )
+              })}
+            </div>
+            <Link href="/eventos?solicitud_suspension=1" className="block mt-4">
+              <Button variant="outline" className="w-full bg-transparent">
+                Ver todas
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </Link>

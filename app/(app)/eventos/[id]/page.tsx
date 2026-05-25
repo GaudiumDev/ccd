@@ -9,6 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft, Edit2, Calendar, MapPin, Users } from 'lucide-react'
 import DiscernimientoPanel from './_components/approval-panel'
 import DatosNoticiasPannel from './_components/datos-noticias-panel'
+import AprobacionFinalPanel from './_components/aprobacion-final-panel'
+import SuspenderEventoButton from './_components/suspender-evento-button'
+import SolicitarSuspensionPanel from './_components/solicitar-suspension-panel'
 import { PublicarButton } from './_components/publicar-button'
 import { formatDateAR } from '@/lib/utils'
 
@@ -18,9 +21,11 @@ const estadoClases: Record<string, string> = {
   discernimiento_confra: 'bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400',
   discernimiento_eqt: 'bg-sky-100 text-sky-700 dark:bg-sky-900/20 dark:text-sky-400',
   pendiente_datos_noticias: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400',
+  pendiente_aprobacion_final: 'bg-violet-100 text-violet-700 dark:bg-violet-900/20 dark:text-violet-400',
   aprobado: 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400',
   publicado: 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400',
   rechazado: 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400',
+  suspendido: 'bg-orange-200 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
   finalizado: 'bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400',
   cancelado: 'bg-red-200 text-red-800 dark:bg-red-900/40 dark:text-red-300',
 }
@@ -31,9 +36,11 @@ const estadoLabel: Record<string, string> = {
   discernimiento_confra: 'Pend. Disc. Equipo Timón',
   discernimiento_eqt: 'Disc. Equipo Timón',
   pendiente_datos_noticias: 'Pendiente Datos Noticias',
+  pendiente_aprobacion_final: 'Pend. Aprobación Final EqT',
   aprobado: 'Aprobado',
   publicado: 'Publicado',
   rechazado: 'Rechazado',
+  suspendido: 'Suspendido',
   finalizado: 'Finalizado',
   cancelado: 'Cancelado',
 }
@@ -76,7 +83,11 @@ export default async function EventoDetailPage({
       centralizador_1_nombre, centralizador_1_email, centralizador_1_telefono,
       centralizador_2_nombre, centralizador_2_email, centralizador_2_telefono,
       centralizador_3_nombre, centralizador_3_email, centralizador_3_telefono,
-      notas_noticias,
+      notas_noticias, notas_aprobacion_final,
+      solicitud_suspension_notas, solicitud_suspension_fecha,
+      solicitud_suspension_por_persona:personas!solicitud_suspension_por(nombre, apellido),
+      suspendido_por_persona:personas!suspendido_por(nombre, apellido),
+      fecha_suspension, notas_suspension,
       fecha_solicitud, fecha_aprobacion, fecha_rechazo, motivo_rechazo,
       fecha_publicacion,
       organizacion_id,
@@ -234,6 +245,25 @@ export default async function EventoDetailPage({
     canPerform(ctx, 'event.approve_eqt')
   )
 
+  // Aprobación final panel: visible when pendiente_aprobacion_final and user is EqT
+  const canAprobacionFinal = ctx &&
+    evento.estado === 'pendiente_aprobacion_final' &&
+    canPerform(ctx, 'event.approve_eqt')
+
+  const ESTADOS_TERMINALES = ['suspendido', 'cancelado', 'finalizado', 'rechazado']
+
+  // Suspender directo: solo Timonel, cualquier estado no-terminal excepto pendiente_aprobacion_final
+  const canSuspend = ctx &&
+    canPerform(ctx, 'event.suspend') &&
+    !ESTADOS_TERMINALES.includes(evento.estado) &&
+    evento.estado !== 'pendiente_aprobacion_final'
+
+  // Solicitar suspensión: confra/solicitante sin permiso de suspender directo
+  const canSolicitarSuspension = ctx &&
+    !canPerform(ctx, 'event.suspend') &&
+    !ESTADOS_TERMINALES.includes(evento.estado) &&
+    (esSolicitante || canPerform(ctx, 'event.approve_confra', evento.organizacion_id ?? null))
+
   // Build discernimiento niveles for the panel
   type NivelDiscernimiento = {
     nivel: 'confra' | 'eqt'
@@ -303,7 +333,7 @@ export default async function EventoDetailPage({
           <ArrowLeft className="h-4 w-4" />
           Volver a Eventos
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {canPublish && <PublicarButton eventoId={id} />}
           {canEdit && (
             <Link href={`/eventos/${id}/editar`}>
@@ -313,6 +343,7 @@ export default async function EventoDetailPage({
               </Button>
             </Link>
           )}
+          {canSuspend && <SuspenderEventoButton eventoId={id} />}
         </div>
       </div>
 
@@ -334,8 +365,35 @@ export default async function EventoDetailPage({
         </div>
       )}
 
+      {/* Suspension notice — full width */}
+      {evento.estado === 'suspendido' && (
+        <div className="rounded-lg border border-orange-300 bg-orange-50 dark:border-orange-700 dark:bg-orange-950/30 p-5 space-y-1">
+          <p className="font-semibold text-orange-800 dark:text-orange-300 text-sm uppercase tracking-wide">
+            Evento Suspendido
+          </p>
+          {(() => {
+            const suspendidoPorPersona = (evento as Record<string, unknown>).suspendido_por_persona as { nombre: string; apellido: string } | null
+            const fechaSuspension = (evento as Record<string, unknown>).fecha_suspension as string | null
+            const notasSuspension = (evento as Record<string, unknown>).notas_suspension as string | null
+            return (
+              <>
+                {suspendidoPorPersona && (
+                  <p className="text-sm text-orange-700 dark:text-orange-400">
+                    Suspendido por: {suspendidoPorPersona.nombre} {suspendidoPorPersona.apellido}
+                    {fechaSuspension && ` el ${formatDateAR(fechaSuspension)}`}
+                  </p>
+                )}
+                {notasSuspension && (
+                  <p className="text-sm text-orange-700 dark:text-orange-400">Motivo: {notasSuspension}</p>
+                )}
+              </>
+            )
+          })()}
+        </div>
+      )}
+
       {/* Main grid: event card + sidebar */}
-      <div className={discNiveles.length > 0 || canDatosNoticias ? 'grid gap-6 lg:grid-cols-3 items-start' : undefined}>
+      <div className={discNiveles.length > 0 || canDatosNoticias || canAprobacionFinal || canSolicitarSuspension ? 'grid gap-6 lg:grid-cols-3 items-start' : undefined}>
 
       <Card className="border-border bg-card lg:col-span-2">
         <CardHeader>
@@ -614,6 +672,49 @@ export default async function EventoDetailPage({
               }}
               casasRetiro={(casasRetiro ?? []) as { id: string; nombre: string; ciudad?: string | null; provincia?: string | null }[]}
               personas={(personasCecistas ?? []) as { id: string; nombre: string; apellido: string; email?: string | null; telefono?: string | null }[]}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Aprobación Final sidebar (EqT) */}
+      {canAprobacionFinal && (
+        <div className="lg:col-span-1 order-first lg:order-last">
+          <div className="sticky top-6">
+            <AprobacionFinalPanel
+              eventoId={id}
+              inicial={{
+                casa_retiro_id: (evento as Record<string, unknown>).casa_retiro_id as string | null,
+                coordinador_asignado_id: (evento as Record<string, unknown>).coordinador_asignado_id as string | null,
+                asesor_asignado_id: (evento as Record<string, unknown>).asesor_asignado_id as string | null,
+                centralizador_1_nombre: (evento as Record<string, unknown>).centralizador_1_nombre as string | null,
+                centralizador_1_email: (evento as Record<string, unknown>).centralizador_1_email as string | null,
+                centralizador_1_telefono: (evento as Record<string, unknown>).centralizador_1_telefono as string | null,
+                centralizador_2_nombre: (evento as Record<string, unknown>).centralizador_2_nombre as string | null,
+                centralizador_2_email: (evento as Record<string, unknown>).centralizador_2_email as string | null,
+                centralizador_2_telefono: (evento as Record<string, unknown>).centralizador_2_telefono as string | null,
+                centralizador_3_nombre: (evento as Record<string, unknown>).centralizador_3_nombre as string | null,
+                centralizador_3_email: (evento as Record<string, unknown>).centralizador_3_email as string | null,
+                centralizador_3_telefono: (evento as Record<string, unknown>).centralizador_3_telefono as string | null,
+                notas_aprobacion_final: (evento as Record<string, unknown>).notas_aprobacion_final as string | null,
+              }}
+              casasRetiro={(casasRetiro ?? []) as { id: string; nombre: string; ciudad?: string | null; provincia?: string | null }[]}
+              personas={(personasCecistas ?? []) as { id: string; nombre: string; apellido: string; email?: string | null; telefono?: string | null }[]}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Solicitar Suspensión sidebar (confra/solicitante) */}
+      {canSolicitarSuspension && (
+        <div className="lg:col-span-1 order-first lg:order-last">
+          <div className="sticky top-6">
+            <SolicitarSuspensionPanel
+              eventoId={id}
+              inicial={{
+                solicitud_suspension_notas: (evento as Record<string, unknown>).solicitud_suspension_notas as string | null,
+                solicitud_suspension_fecha: (evento as Record<string, unknown>).solicitud_suspension_fecha as string | null,
+              }}
             />
           </div>
         </div>

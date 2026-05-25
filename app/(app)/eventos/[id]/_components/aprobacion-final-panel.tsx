@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Combobox } from '@/components/ui/combobox'
@@ -25,6 +24,8 @@ type Props = {
   eventoId: string
   inicial: {
     casa_retiro_id: string | null
+    coordinador_asignado_id: string | null
+    asesor_asignado_id: string | null
     centralizador_1_nombre: string | null
     centralizador_1_email: string | null
     centralizador_1_telefono: string | null
@@ -34,7 +35,7 @@ type Props = {
     centralizador_3_nombre: string | null
     centralizador_3_email: string | null
     centralizador_3_telefono: string | null
-    notas_noticias: string | null
+    notas_aprobacion_final: string | null
   }
   casasRetiro: { id: string; nombre: string; ciudad?: string | null; provincia?: string | null }[]
   personas: Persona[]
@@ -44,25 +45,25 @@ function toStr(v: string | null | undefined): string {
   return v ?? ''
 }
 
-export default function DatosNoticiasPannel({ eventoId, inicial, casasRetiro, personas }: Props) {
+export default function AprobacionFinalPanel({ eventoId, inicial, casasRetiro, personas }: Props) {
   const router = useRouter()
 
   const [casaRetiroId, setCasaRetiroId] = useState(toStr(inicial.casa_retiro_id))
+  const [coordinadorId, setCoordinadorId] = useState(toStr(inicial.coordinador_asignado_id))
+  const [asesorId, setAsesorId] = useState(toStr(inicial.asesor_asignado_id))
   const [centralizadores, setCentralizadores] = useState<Centralizador[]>([
     { personaId: '', nombre: toStr(inicial.centralizador_1_nombre), email: toStr(inicial.centralizador_1_email), telefono: toStr(inicial.centralizador_1_telefono) },
     { personaId: '', nombre: toStr(inicial.centralizador_2_nombre), email: toStr(inicial.centralizador_2_email), telefono: toStr(inicial.centralizador_2_telefono) },
     { personaId: '', nombre: toStr(inicial.centralizador_3_nombre), email: toStr(inicial.centralizador_3_email), telefono: toStr(inicial.centralizador_3_telefono) },
   ])
-  const [notas, setNotas] = useState(toStr(inicial.notas_noticias))
-  const [loading, setLoading] = useState<'guardar' | 'publicar' | null>(null)
+  const [notas, setNotas] = useState(toStr(inicial.notas_aprobacion_final))
+  const [loading, setLoading] = useState<'publicar' | 'suspender' | null>(null)
   const [error, setError] = useState('')
-  const [savedOk, setSavedOk] = useState(false)
 
   const personaOptions = personas.map(p => ({ value: p.id, label: `${p.apellido}, ${p.nombre}` }))
 
-  function selectPersona(i: number, personaId: string) {
+  function selectCentralizador(i: number, personaId: string) {
     const p = personas.find(x => x.id === personaId)
-    setSavedOk(false)
     if (!p) {
       setCentralizadores(prev => {
         const next = [...prev]
@@ -83,18 +84,21 @@ export default function DatosNoticiasPannel({ eventoId, inicial, casasRetiro, pe
     })
   }
 
-  function updateField(i: number, field: 'email' | 'telefono', value: string) {
+  function updateCentralizadorField(i: number, field: 'email' | 'telefono', value: string) {
     setCentralizadores(prev => {
       const next = [...prev]
       next[i] = { ...next[i], [field]: value }
       return next
     })
-    setSavedOk(false)
   }
 
-  function buildPayload() {
+  function buildPayload(accion: 'publicar' | 'suspender') {
     return {
+      accion,
+      notas_aprobacion_final: notas || null,
       casa_retiro_id: casaRetiroId || null,
+      coordinador_asignado_id: coordinadorId || null,
+      asesor_asignado_id: asesorId || null,
       centralizador_1_nombre: centralizadores[0].nombre || null,
       centralizador_1_email: centralizadores[0].email || null,
       centralizador_1_telefono: centralizadores[0].telefono || null,
@@ -104,50 +108,25 @@ export default function DatosNoticiasPannel({ eventoId, inicial, casasRetiro, pe
       centralizador_3_nombre: centralizadores[2].nombre || null,
       centralizador_3_email: centralizadores[2].email || null,
       centralizador_3_telefono: centralizadores[2].telefono || null,
-      notas_noticias: notas || null,
     }
   }
 
-  async function handleGuardar() {
-    setLoading('guardar')
-    setError('')
-    setSavedOk(false)
-    try {
-      const res = await fetch(`/api/eventos/${eventoId}/datos-noticias`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(buildPayload()),
-      })
-      if (!res.ok) {
-        const { error: e } = await res.json()
-        throw new Error(e ?? 'Error al guardar')
-      }
-      setSavedOk(true)
-      router.refresh()
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Error inesperado')
-    } finally {
-      setLoading(null)
+  async function handleAccion(accion: 'publicar' | 'suspender') {
+    if (accion === 'suspender') {
+      const ok = window.confirm('¿Confirmás que querés suspender este evento? Esta acción cambiará el estado a Suspendido.')
+      if (!ok) return
     }
-  }
-
-  async function handlePublicar() {
-    if (!centralizadores[0].nombre.trim()) {
-      setError('Seleccioná al menos el Centralizador 1')
-      return
-    }
-    setLoading('publicar')
+    setLoading(accion)
     setError('')
-    setSavedOk(false)
     try {
-      const res = await fetch(`/api/eventos/${eventoId}/datos-noticias`, {
+      const res = await fetch(`/api/eventos/${eventoId}/aprobacion-final`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(buildPayload()),
+        body: JSON.stringify(buildPayload(accion)),
       })
       if (!res.ok) {
         const { error: e } = await res.json()
-        throw new Error(e ?? 'Error al publicar')
+        throw new Error(e ?? 'Error inesperado')
       }
       router.refresh()
     } catch (err: unknown) {
@@ -160,21 +139,21 @@ export default function DatosNoticiasPannel({ eventoId, inicial, casasRetiro, pe
   const inputClass = 'w-full rounded border border-border bg-background px-3 py-1.5 text-sm text-foreground'
 
   return (
-    <div className="rounded-lg border border-indigo-200 dark:border-indigo-900 bg-card p-6 space-y-5">
+    <div className="rounded-lg border border-violet-200 dark:border-violet-900 bg-card p-6 space-y-5">
       <h3 className="text-sm font-bold uppercase tracking-widest text-foreground border-b border-border pb-3">
-        Datos para Noticias
+        Aprobación Final — Equipo Timón
       </h3>
       <p className="text-xs text-muted-foreground">
-        Completá los datos necesarios para la publicación del evento. Podés guardar un borrador y volver más tarde.
+        Revisá y confirmá los datos definitivos antes de publicar. Podés modificar la casa de retiros, coordinador, asesor y centralizadores.
       </p>
 
       {/* Casa de Retiro */}
       <div className="space-y-1.5">
         <p className="text-xs text-muted-foreground uppercase tracking-wide">Casa de Retiros</p>
         <select
-          className="w-full rounded border border-border bg-background px-3 py-1.5 text-sm text-foreground"
+          className={inputClass}
           value={casaRetiroId}
-          onChange={e => { setCasaRetiroId(e.target.value); setSavedOk(false) }}
+          onChange={e => setCasaRetiroId(e.target.value)}
         >
           <option value="">— Sin asignar —</option>
           {casasRetiro.map(cr => (
@@ -183,12 +162,32 @@ export default function DatosNoticiasPannel({ eventoId, inicial, casasRetiro, pe
             </option>
           ))}
         </select>
-        <Link
-          href={`/casas-retiro/nueva?returnTo=/eventos/${eventoId}`}
-          className="text-xs text-primary hover:underline"
-        >
-          + Crear nueva casa de retiro
-        </Link>
+      </div>
+
+      {/* Coordinador */}
+      <div className="space-y-1.5">
+        <p className="text-xs text-muted-foreground uppercase tracking-wide">Coordinador</p>
+        <Combobox
+          value={coordinadorId}
+          onSelect={setCoordinadorId}
+          options={personaOptions}
+          placeholder="Buscar coordinador..."
+          searchPlaceholder="Buscar por apellido o nombre..."
+          emptyText="No se encontraron personas."
+        />
+      </div>
+
+      {/* Asesor */}
+      <div className="space-y-1.5">
+        <p className="text-xs text-muted-foreground uppercase tracking-wide">Asesor</p>
+        <Combobox
+          value={asesorId}
+          onSelect={setAsesorId}
+          options={personaOptions}
+          placeholder="Buscar asesor..."
+          searchPlaceholder="Buscar por apellido o nombre..."
+          emptyText="No se encontraron personas."
+        />
       </div>
 
       {/* Centralizadores */}
@@ -205,7 +204,7 @@ export default function DatosNoticiasPannel({ eventoId, inicial, casasRetiro, pe
               <p className="text-xs text-muted-foreground mb-1">Persona cecista</p>
               <Combobox
                 value={c.personaId}
-                onSelect={(id) => selectPersona(i, id)}
+                onSelect={(id) => selectCentralizador(i, id)}
                 options={personaOptions}
                 placeholder="Buscar cecista..."
                 searchPlaceholder="Buscar por apellido o nombre..."
@@ -223,7 +222,7 @@ export default function DatosNoticiasPannel({ eventoId, inicial, casasRetiro, pe
                   className={inputClass}
                   value={c.email}
                   placeholder="correo@ejemplo.com"
-                  onChange={e => updateField(i, 'email', e.target.value)}
+                  onChange={e => updateCentralizadorField(i, 'email', e.target.value)}
                 />
               </div>
               <div>
@@ -233,7 +232,7 @@ export default function DatosNoticiasPannel({ eventoId, inicial, casasRetiro, pe
                   className={inputClass}
                   value={c.telefono}
                   placeholder="+54 11 0000-0000"
-                  onChange={e => updateField(i, 'telefono', e.target.value)}
+                  onChange={e => updateCentralizadorField(i, 'telefono', e.target.value)}
                 />
               </div>
             </div>
@@ -247,31 +246,30 @@ export default function DatosNoticiasPannel({ eventoId, inicial, casasRetiro, pe
         <textarea
           className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground min-h-20"
           value={notas}
-          placeholder="Información adicional para la publicación del evento..."
-          onChange={e => { setNotas(e.target.value); setSavedOk(false) }}
+          placeholder="Observaciones de la aprobación final..."
+          onChange={e => setNotas(e.target.value)}
         />
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
-      {savedOk && <p className="text-sm text-green-600 dark:text-green-400">Borrador guardado correctamente.</p>}
 
       <div className="flex gap-2">
         <Button
-          variant="outline"
           size="sm"
+          variant="destructive"
           disabled={loading !== null}
-          onClick={handleGuardar}
-          className="flex-1 bg-transparent"
+          onClick={() => handleAccion('suspender')}
+          className="flex-1"
         >
-          {loading === 'guardar' ? 'Guardando...' : 'Guardar borrador'}
+          {loading === 'suspender' ? 'Suspendiendo...' : 'Suspender Evento'}
         </Button>
         <Button
           size="sm"
           disabled={loading !== null}
-          onClick={handlePublicar}
-          className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
+          onClick={() => handleAccion('publicar')}
+          className="flex-1 bg-green-600 hover:bg-green-700 text-white"
         >
-          {loading === 'publicar' ? 'Enviando...' : 'Solicitar Publicación Final'}
+          {loading === 'publicar' ? 'Publicando...' : 'Publicar Evento'}
         </Button>
       </div>
     </div>
