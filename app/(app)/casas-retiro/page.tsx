@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Hotel, Plus, Edit2 } from 'lucide-react'
+import { Hotel, Plus, Edit2, MapPin } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getUserContext, canPerform } from '@/lib/auth/context'
 import SortableHeader from '@/components/ui/sortable-header'
@@ -40,7 +40,7 @@ export default async function CasasRetiroPage({
 
   let query = supabase
     .from('casas_retiro')
-    .select('id, nombre, ciudad, provincia, estado, tipo_propiedad, aforo')
+    .select('id, nombre, ciudad, provincia, estado, tipo_propiedad, aforo, link_maps')
     .is('fecha_baja', null)
     .order(sortCol, { ascending: sortAsc })
 
@@ -195,13 +195,22 @@ export default async function CasasRetiroPage({
                           </span>
                         </td>
                         <td className="py-3 px-4 text-center">
-                          {canUpdate && (
-                            <Link href={`/casas-retiro/${casa.id}/editar`}>
-                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                                <Edit2 className="h-4 w-4" />
-                              </Button>
-                            </Link>
-                          )}
+                          <div className="flex items-center justify-center gap-1">
+                            {casa.link_maps && (
+                              <a href={casa.link_maps} target="_blank" rel="noopener noreferrer">
+                                <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary">
+                                  <MapPin className="h-4 w-4" />
+                                </Button>
+                              </a>
+                            )}
+                            {canUpdate && (
+                              <Link href={`/casas-retiro/${casa.id}/editar`}>
+                                <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                                  <Edit2 className="h-4 w-4" />
+                                </Button>
+                              </Link>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}

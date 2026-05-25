@@ -44,6 +44,7 @@ type FormData = {
   pais: string
   latitud: string
   longitud: string
+  link_maps: string
   estacionamiento: boolean
   rampa_discapacitados: boolean
   capilla: boolean
@@ -94,6 +95,7 @@ export default function EditarCasaRetiroPage() {
     tiene_ascensor: false,
     latitud: '',
     longitud: '',
+    link_maps: '',
     cant_hab_x2: '',
     cant_hab_x3: '',
     cant_hab_x4: '',
@@ -135,6 +137,7 @@ export default function EditarCasaRetiroPage() {
         tiene_ascensor: casaData.tiene_ascensor ?? false,
         latitud: casaData.latitud != null ? String(casaData.latitud) : '',
         longitud: casaData.longitud != null ? String(casaData.longitud) : '',
+        link_maps: casaData.link_maps ?? '',
         cant_hab_x2: casaData.cant_hab_x2 != null ? String(casaData.cant_hab_x2) : '',
         cant_hab_x3: casaData.cant_hab_x3 != null ? String(casaData.cant_hab_x3) : '',
         cant_hab_x4: casaData.cant_hab_x4 != null ? String(casaData.cant_hab_x4) : '',
@@ -362,6 +365,10 @@ export default function EditarCasaRetiroPage() {
                   <Label htmlFor="longitud">Longitud GPS</Label>
                   <Input id="longitud" name="longitud" placeholder="-58.8341" value={formData.longitud} onChange={handleChange} />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="link_maps">Link de Google Maps</Label>
+                <Input id="link_maps" name="link_maps" placeholder="https://maps.google.com/..." value={formData.link_maps} onChange={handleChange} />
               </div>
             </div>
 

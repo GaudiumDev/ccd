@@ -82,6 +82,7 @@ export async function PATCH(
     tiene_ascensor: body.tiene_ascensor ?? false,
     latitud: body.latitud ? parseFloat(body.latitud) || null : null,
     longitud: body.longitud ? parseFloat(body.longitud) || null : null,
+    link_maps: body.link_maps || null,
     cant_hab_x2: parseInt(body.cant_hab_x2) || 0,
     cant_hab_x3: parseInt(body.cant_hab_x3) || 0,
     cant_hab_x4: parseInt(body.cant_hab_x4) || 0,

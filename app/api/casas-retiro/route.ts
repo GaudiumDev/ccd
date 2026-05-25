@@ -52,6 +52,7 @@ export async function POST(request: Request) {
   if (body.notas) insertData.notas = body.notas
   if (body.latitud) insertData.latitud = parseFloat(body.latitud) || null
   if (body.longitud) insertData.longitud = parseFloat(body.longitud) || null
+  if (body.link_maps) insertData.link_maps = body.link_maps
 
   const { data, error } = await supabase
     .from('casas_retiro')

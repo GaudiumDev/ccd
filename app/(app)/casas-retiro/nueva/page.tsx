@@ -60,6 +60,7 @@ export default function NuevaCasaRetiroPage() {
     tiene_ascensor: false,
     latitud: '',
     longitud: '',
+    link_maps: '',
     cant_hab_x2: '',
     cant_hab_x3: '',
     cant_hab_x4: '',
@@ -348,6 +349,16 @@ export default function NuevaCasaRetiroPage() {
                     onChange={handleChange}
                   />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="link_maps">Link de Google Maps</Label>
+                <Input
+                  id="link_maps"
+                  name="link_maps"
+                  placeholder="https://maps.google.com/..."
+                  value={formData.link_maps}
+                  onChange={handleChange}
+                />
               </div>
             </div>
 

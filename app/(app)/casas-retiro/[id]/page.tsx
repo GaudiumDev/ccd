@@ -141,16 +141,16 @@ export default async function CasaRetiroDetailPage({
                 </div>
               </div>
             )}
-            {casa.latitud != null && casa.longitud != null && (
+            {(casa.link_maps || (casa.latitud != null && casa.longitud != null)) && (
               <div className="flex items-center gap-2">
                 <Navigation className="h-4 w-4 text-muted-foreground shrink-0" />
                 <a
-                  href={`https://www.google.com/maps?q=${casa.latitud},${casa.longitud}`}
+                  href={casa.link_maps ?? `https://www.google.com/maps?q=${casa.latitud},${casa.longitud}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-primary hover:underline text-sm"
                 >
-                  Ver en Google Maps ({casa.latitud}, {casa.longitud})
+                  Abrir en Google Maps
                 </a>
               </div>
             )}
@@ -196,6 +196,21 @@ export default async function CasaRetiroDetailPage({
           </CardContent>
         </Card>
       </div>
+
+      {/* Mapa */}
+      {casa.latitud != null && casa.longitud != null && (
+        <Card className="border-border bg-card overflow-hidden">
+          <iframe
+            src={`https://maps.google.com/maps?q=${casa.latitud},${casa.longitud}&output=embed`}
+            width="100%"
+            height="320"
+            style={{ border: 0, display: 'block' }}
+            allowFullScreen
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+          />
+        </Card>
+      )}
 
       {/* Servicios */}
       <Card className="border-border bg-card">

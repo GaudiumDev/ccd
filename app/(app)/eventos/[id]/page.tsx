@@ -97,7 +97,7 @@ export default async function EventoDetailPage({
       disc_eqt_por_persona:personas!disc_eqt_por(nombre, apellido),
       confraternidad:organizaciones!organizacion_id(id, nombre),
       fraternidad:organizaciones!fraternidad_id(id, nombre),
-      casa_retiro:casas_retiro!casa_retiro_id(id, nombre, ciudad, provincia),
+      casa_retiro:casas_retiro!casa_retiro_id(id, nombre, ciudad, provincia, link_maps),
       coordinador_asignado:personas!coordinador_asignado_id(id, nombre, apellido),
       asesor_asignado:personas!asesor_asignado_id(id, nombre, apellido),
       solicitado_por_persona:personas!solicitado_por(nombre, apellido),
@@ -152,7 +152,7 @@ export default async function EventoDetailPage({
 
   const confraternidad = evento.confraternidad as { id: string; nombre: string } | null
   const fraternidad = evento.fraternidad as { id: string; nombre: string } | null
-  const casaRetiro = evento.casa_retiro as { id: string; nombre: string; ciudad?: string | null; provincia?: string | null } | null
+  const casaRetiro = evento.casa_retiro as { id: string; nombre: string; ciudad?: string | null; provincia?: string | null; link_maps?: string | null } | null
   const coordinadorAsignado = (evento as Record<string, unknown>).coordinador_asignado as { id: string; nombre: string; apellido: string } | null
   const asesorAsignado = (evento as Record<string, unknown>).asesor_asignado as { id: string; nombre: string; apellido: string } | null
   const solicitadoPor = evento.solicitado_por_persona as { nombre: string; apellido: string } | null
@@ -486,9 +486,17 @@ export default async function EventoDetailPage({
             <div className="border-t border-border pt-4 text-sm">
               <div>
                 <p className="text-xs text-muted-foreground">Casa de Retiro</p>
-                <p className="text-foreground">{casaRetiro.nombre}</p>
+                <Link href={`/casas-retiro/${casaRetiro.id}`} className="text-foreground hover:text-primary">
+                  {casaRetiro.nombre}
+                </Link>
                 {(casaRetiro.ciudad || casaRetiro.provincia) && (
                   <p className="text-xs text-muted-foreground">{[casaRetiro.ciudad, casaRetiro.provincia].filter(Boolean).join(', ')}</p>
+                )}
+                {casaRetiro.link_maps && (
+                  <a href={casaRetiro.link_maps} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-0.5">
+                    <MapPin className="h-3 w-3" />
+                    Ver en Google Maps
+                  </a>
                 )}
               </div>
             </div>
