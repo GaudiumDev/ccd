@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
+const TIPO_PERSONA_LABELS: Record<string, string> = {
+  interesado: 'Interesado/a',
+  inscripto: 'Inscripto/a',
+  convivente: 'Convivente',
+  cecista: 'Cecista',
+  otro: 'Otro',
+}
+
+function tipoPersonaLabel(tipo: string | null | undefined): string {
+  return tipo ? (TIPO_PERSONA_LABELS[tipo] ?? tipo) : ''
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const q = searchParams.get('q') ?? ''
@@ -52,7 +64,7 @@ export async function GET(req: NextRequest) {
       tipo_documento, documento,
       localidad, provincia, pais,
       estado, estado_eclesial, diocesis,
-      categoria_persona, parroquia,
+      tipo_persona, parroquia,
       socio_asociacion, referente_comunidad, cecista_dedicado,
       fecha_nacimiento, fecha_alta, acepta_comunicaciones
     `)
@@ -124,7 +136,7 @@ export async function GET(req: NextRequest) {
     'Fecha nacimiento': p.fecha_nacimiento ?? '',
     'Fecha alta': p.fecha_alta ?? '',
     'Acepta comunicaciones': p.acepta_comunicaciones ? 'Sí' : 'No',
-    Categoría: p.categoria_persona === 'no_cecista' ? 'No Cecista' : p.categoria_persona === 'cecista' ? 'Cecista' : '',
+    Tipo: tipoPersonaLabel(p.tipo_persona),
     Parroquia: p.parroquia ?? '',
     'Socio asociación': p.socio_asociacion ? 'Sí' : 'No',
     'Referente comunidad': p.referente_comunidad ? 'Sí' : 'No',

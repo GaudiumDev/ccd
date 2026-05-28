@@ -21,7 +21,6 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
     { data: historialAsignaciones },
     { data: ministerios },
     { data: organizaciones },
-    { data: categoriasNoCecista },
     { data: personaOrgs },
     { data: todasPersonas },
     { data: acompañamientoActual },
@@ -52,10 +51,6 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
     supabase.from("ministerios").select("id, nombre, tipo, nivel").eq("activo", true).order("tipo").order("nombre"),
     supabase.from("organizaciones").select("id, nombre, tipo").is("fecha_baja", null).order("nombre"),
     supabase
-      .from("persona_categoria_no_cecista")
-      .select("categoria")
-      .eq("persona_id", id),
-    supabase
       .from("persona_organizacion")
       .select("id, tipo_relacion, organizacion_id, organizacion:organizaciones!organizacion_id(nombre)")
       .eq("persona_id", id)
@@ -75,7 +70,7 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
     supabase
       .from("personas")
       .select("id, nombre, apellido")
-      .eq("categoria_persona", "cecista")
+      .eq("tipo_persona", "cecista")
       .is("fecha_baja", null)
       .neq("id", id)
       .order("apellido"),
@@ -95,7 +90,6 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
       historialAsignaciones={historialAsignaciones ?? []}
       ministerios={ministerios ?? []}
       organizaciones={organizaciones ?? []}
-      categoriasNoCecista={(categoriasNoCecista ?? []).map(c => c.categoria)}
       confraternidadActualId={confraternidadOrg?.organizacion_id ?? null}
       fraternidadActualId={fraternidadOrg?.organizacion_id ?? null}
       personaOrgConfraternidadId={confraternidadOrg?.id ?? null}

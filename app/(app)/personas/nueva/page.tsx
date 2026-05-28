@@ -51,11 +51,12 @@ const NIVELES_ESTUDIOS = [
   { value: "posgrado_doctorado", label: "Posgrado / Doctorado" },
 ]
 
-const NO_CECISTA_CATEGORIAS = [
-  { value: "voluntario", label: "Voluntario" },
+const TIPOS_PERSONA = [
+  { value: "interesado", label: "Interesado/a" },
+  { value: "inscripto", label: "Inscripto/a" },
   { value: "convivente", label: "Convivente" },
-  { value: "cooperador", label: "Cooperador" },
-  { value: "contacto_casa_retiro", label: "Contacto Casa Retiro" },
+  { value: "cecista", label: "Cecista" },
+  { value: "otro", label: "Otro" },
 ]
 
 export default function NewPersonaPage() {
@@ -101,7 +102,7 @@ export default function NewPersonaPage() {
     estado_eclesial: "laico",
     estado_vida: "",
     diocesis: "",
-    categoria_persona: "",
+    tipo_persona: "",
     parroquia: "",
     socio_asociacion: false,
     referente_comunidad: false,
@@ -112,7 +113,6 @@ export default function NewPersonaPage() {
     acompanante_id: "",
   })
 
-  const [categoriasNoCecista, setCategoriasNoCecista] = useState<string[]>([])
   const [modoAdjunto, setModoAdjunto] = useState<File | null>(null)
 
   useEffect(() => {
@@ -182,7 +182,6 @@ export default function NewPersonaPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          categorias_no_cecista: categoriasNoCecista,
           documento_url_modo: documentoUrlModo,
         }),
       })
@@ -196,7 +195,7 @@ export default function NewPersonaPage() {
 
       // Create org relationships for cecista
       const today = new Date().toISOString().split("T")[0]
-      if (formData.categoria_persona === "cecista") {
+      if (formData.tipo_persona === "cecista") {
         const orgInserts = []
         if (formData.confraternidad_id) {
           orgInserts.push({
@@ -277,14 +276,6 @@ export default function NewPersonaPage() {
       [name]:
         type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
     }))
-  }
-
-  const handleToggleCategoriaNoCecista = (categoria: string) => {
-    setCategoriasNoCecista((prev) =>
-      prev.includes(categoria)
-        ? prev.filter((c) => c !== categoria)
-        : [...prev, categoria],
-    )
   }
 
   return (
@@ -573,24 +564,28 @@ export default function NewPersonaPage() {
           <CardHeader>
             <CardTitle className="text-foreground">Relación con CcD</CardTitle>
             <CardDescription>
-              Categoría institucional y pertenencia a la comunidad
+              Tipo de vínculo con la comunidad
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
-                <Label htmlFor="categoria_persona">Categoría</Label>
+                <Label htmlFor="tipo_persona">Tipo</Label>
                 <select
-                  id="categoria_persona"
-                  name="categoria_persona"
-                  value={formData.categoria_persona}
+                  id="tipo_persona"
+                  name="tipo_persona"
+                  value={formData.tipo_persona}
                   onChange={handleChange}
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
                 >
-                  <option value="">Otro</option>
-                  <option value="cecista">Cecista</option>
-                  <option value="no_cecista">No Cecista</option>
+                  <option value="">Sin especificar</option>
+                  {TIPOS_PERSONA.map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
                 </select>
+                {formData.tipo_persona === "cecista" && (
+                  <p className="text-xs text-amber-600">Recordá asignar un Modo de Participación a este cecista.</p>
+                )}
               </div>
               <div className="flex items-end gap-4 md:col-span-2">
                 <div className="flex items-center gap-2">
@@ -620,29 +615,7 @@ export default function NewPersonaPage() {
               </div>
             </div>
 
-            {formData.categoria_persona === "no_cecista" && (
-              <div className="space-y-2">
-                <Label>Si es No Cecista</Label>
-                <div className="flex flex-wrap gap-4">
-                  {NO_CECISTA_CATEGORIAS.map((cat) => (
-                    <div key={cat.value} className="flex items-center gap-2">
-                      <input
-                        id={`cat_nc_${cat.value}`}
-                        type="checkbox"
-                        checked={categoriasNoCecista.includes(cat.value)}
-                        onChange={() =>
-                          handleToggleCategoriaNoCecista(cat.value)
-                        }
-                        className="h-4 w-4 rounded border-border"
-                      />
-                      <Label htmlFor={`cat_nc_${cat.value}`}>{cat.label}</Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {formData.categoria_persona === "cecista" && (
+            {formData.tipo_persona === "cecista" && (
               <>
                 <div className="flex items-center gap-2">
                   <input

@@ -30,13 +30,6 @@ const nivelEstudiosLabel: Record<string, string> = {
   posgrado_doctorado: "Posgrado / Doctorado",
 }
 
-const categoriaNoCecistaLabel: Record<string, string> = {
-  voluntario: "Voluntario",
-  convivente: "Convivente",
-  cooperador: "Cooperador",
-  contacto_casa_retiro: "Contacto Casa Retiro",
-}
-
 function Field({ label, value }: { label: string; value?: string | null }) {
   return (
     <div>
@@ -58,7 +51,6 @@ export default async function PersonaDetailPage({
     { data: persona, error },
     { data: modos },
     { data: asignaciones },
-    { data: categoriasNoCecista },
     { data: personaOrgs },
     { data: historialAcompanamiento },
     { data: acompanaA },
@@ -66,7 +58,7 @@ export default async function PersonaDetailPage({
     supabase
       .from("personas")
       .select(
-        "id, nombre, apellido, email, email_ccd, telefono, tipo_documento, documento, fecha_nacimiento, direccion, direccion_nro, localidad, codigo_postal, provincia, pais, notas, estado, created_at, acepta_comunicaciones, estado_eclesial, estado_vida, diocesis, categoria_persona, parroquia, socio_asociacion, referente_comunidad, cecista_dedicado, intercesor_dies_natalis, nombre_usuario, nivel_estudios, anio_ingreso, acompanante_id, fecha_ingreso_comunidad, foto_url",
+        "id, nombre, apellido, email, email_ccd, telefono, tipo_documento, documento, fecha_nacimiento, direccion, direccion_nro, localidad, codigo_postal, provincia, pais, notas, estado, created_at, acepta_comunicaciones, estado_eclesial, estado_vida, diocesis, tipo_persona, parroquia, socio_asociacion, referente_comunidad, cecista_dedicado, intercesor_dies_natalis, nombre_usuario, nivel_estudios, anio_ingreso, acompanante_id, fecha_ingreso_comunidad, foto_url",
       )
       .eq("id", id)
       .single(),
@@ -82,10 +74,6 @@ export default async function PersonaDetailPage({
       )
       .eq("persona_id", id)
       .order("fecha_inicio", { ascending: false }),
-    supabase
-      .from("persona_categoria_no_cecista")
-      .select("categoria")
-      .eq("persona_id", id),
     supabase
       .from("persona_organizacion")
       .select("tipo_relacion, organizacion:organizaciones!organizacion_id(id, nombre)")
@@ -304,12 +292,10 @@ export default async function PersonaDetailPage({
         <CardContent>
           <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
             <Field
-              label="Categoría"
+              label="Tipo"
               value={
-                persona.categoria_persona === "no_cecista"
-                  ? "No Cecista"
-                  : persona.categoria_persona === "cecista"
-                  ? "Cecista"
+                persona.tipo_persona
+                  ? ({ interesado: "Interesado/a", inscripto: "Inscripto/a", convivente: "Convivente", cecista: "Cecista", otro: "Otro" }[persona.tipo_persona] ?? persona.tipo_persona)
                   : null
               }
             />
@@ -330,18 +316,6 @@ export default async function PersonaDetailPage({
                   {persona.cecista_dedicado && (
                     <span className="text-xs bg-muted px-2 py-0.5 rounded-full">Dedicado</span>
                   )}
-                </dd>
-              </div>
-            )}
-            {persona.categoria_persona === "no_cecista" && (categoriasNoCecista ?? []).length > 0 && (
-              <div className="col-span-2">
-                <dt className="text-muted-foreground text-sm mb-1">Si es No Cecista</dt>
-                <dd className="flex gap-2 flex-wrap">
-                  {(categoriasNoCecista ?? []).map((c) => (
-                    <span key={c.categoria} className="text-xs bg-muted px-2 py-0.5 rounded-full">
-                      {categoriaNoCecistaLabel[c.categoria] ?? c.categoria}
-                    </span>
-                  ))}
                 </dd>
               </div>
             )}

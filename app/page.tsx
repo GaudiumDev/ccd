@@ -1,10 +1,11 @@
 import Image from "next/image"
 import Link from "next/link"
-import { CalendarDays, MapPin, Users } from "lucide-react"
+import { CalendarDays, MapPin } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/server"
+import { EventosPublicosGrid } from "@/components/landing/EventosPublicosGrid"
 
 const TIPO_LABELS: Record<string, string> = {
   convivencia: "Convivencia",
@@ -142,70 +143,7 @@ export default async function LandingPage() {
               No hay eventos publicados próximamente.
             </div>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {eventos.map((evento) => {
-                const org = evento.organizacion as { nombre: string } | null
-                return (
-                  <Card key={evento.id} className="flex flex-col">
-                    <CardHeader className="pb-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <Badge
-                          variant="secondary"
-                          className="shrink-0 capitalize"
-                        >
-                          {TIPO_LABELS[evento.tipo] ?? evento.tipo}
-                        </Badge>
-                        {evento.modalidad &&
-                          evento.modalidad !== "presencial" && (
-                            <Badge
-                              variant="outline"
-                              className="shrink-0 text-xs"
-                            >
-                              {MODALIDAD_LABELS[evento.modalidad] ??
-                                evento.modalidad}
-                            </Badge>
-                          )}
-                      </div>
-                      <CardTitle className="mt-2 text-base leading-snug line-clamp-2">
-                        {evento.nombre}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex flex-col gap-2 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-2">
-                        <CalendarDays className="h-4 w-4 shrink-0" aria-hidden="true" />
-                        <span>
-                          {formatDateRange(
-                            evento.fecha_inicio,
-                            evento.fecha_fin,
-                          )}
-                        </span>
-                      </div>
-                      {(evento.ciudad || evento.provincia_evento) && (
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
-                          <span>
-                            {[evento.ciudad, evento.provincia_evento]
-                              .filter(Boolean)
-                              .join(", ")}
-                          </span>
-                        </div>
-                      )}
-                      {evento.cupo_maximo && (
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4 shrink-0" aria-hidden="true" />
-                          <span>Cupo: {evento.cupo_maximo} personas</span>
-                        </div>
-                      )}
-                      {org?.nombre && (
-                        <p className="mt-1 text-xs text-muted-foreground/70">
-                          {org.nombre}
-                        </p>
-                      )}
-                    </CardContent>
-                  </Card>
-                )
-              })}
-            </div>
+            <EventosPublicosGrid eventos={eventos} />
           )}
         </div>
       </section>

@@ -33,7 +33,7 @@ type Persona = {
   estado_eclesial: string | null
   estado_vida: string | null
   diocesis: string | null
-  categoria_persona: string | null
+  tipo_persona: string | null
   parroquia: string | null
   socio_asociacion: boolean | null
   referente_comunidad: boolean | null
@@ -101,7 +101,6 @@ interface Props {
   historialAsignaciones: HistorialAsignacion[]
   ministerios: Ministerio[]
   organizaciones: Organizacion[]
-  categoriasNoCecista: string[]
   confraternidadActualId: string | null
   fraternidadActualId: string | null
   personaOrgConfraternidadId: string | null
@@ -127,11 +126,12 @@ const tipoMinisterioLabel: Record<string, string> = {
   sistema: "Acceso al Sistema",
 }
 
-const NO_CECISTA_CATEGORIAS = [
-  { value: "voluntario", label: "Voluntario" },
+const TIPOS_PERSONA = [
+  { value: "interesado", label: "Interesado/a" },
+  { value: "inscripto", label: "Inscripto/a" },
   { value: "convivente", label: "Convivente" },
-  { value: "cooperador", label: "Cooperador" },
-  { value: "contacto_casa_retiro", label: "Contacto Casa Retiro" },
+  { value: "cecista", label: "Cecista" },
+  { value: "otro", label: "Otro" },
 ]
 
 export function EditPersonaForm({
@@ -142,7 +142,6 @@ export function EditPersonaForm({
   historialAsignaciones,
   ministerios,
   organizaciones,
-  categoriasNoCecista: initialCategoriasNoCecista,
   confraternidadActualId,
   fraternidadActualId,
   personaOrgConfraternidadId,
@@ -175,7 +174,7 @@ export function EditPersonaForm({
     estado_eclesial: persona.estado_eclesial ?? "laico",
     estado_vida: persona.estado_vida ?? "",
     diocesis: persona.diocesis ?? "",
-    categoria_persona: persona.categoria_persona ?? "",
+    tipo_persona: persona.tipo_persona ?? "",
     parroquia: persona.parroquia ?? "",
     socio_asociacion: persona.socio_asociacion ?? false,
     referente_comunidad: persona.referente_comunidad ?? false,
@@ -215,10 +214,6 @@ export function EditPersonaForm({
       setTimeout(() => setUsernameSuccess(false), 3000)
     }
   }
-
-  // No cecista subcategories
-  const [categoriasNoCecista, setCategoriasNoCecista] = useState<string[]>(initialCategoriasNoCecista)
-  const [catLoading, setCatLoading] = useState(false)
 
   // Section B: Participation mode
   const [nuevoModo, setNuevoModo] = useState("")
@@ -389,27 +384,6 @@ export function EditPersonaForm({
       router.refresh()
     }
     setBasicLoading(false)
-  }
-
-  const handleToggleCategoriaNoCecista = async (categoria: string) => {
-    setCatLoading(true)
-    const supabase = createClient()
-    const isActive = categoriasNoCecista.includes(categoria)
-
-    if (isActive) {
-      await supabase
-        .from("persona_categoria_no_cecista")
-        .delete()
-        .eq("persona_id", persona.id)
-        .eq("categoria", categoria)
-      setCategoriasNoCecista(prev => prev.filter(c => c !== categoria))
-    } else {
-      await supabase
-        .from("persona_categoria_no_cecista")
-        .insert({ persona_id: persona.id, categoria })
-      setCategoriasNoCecista(prev => [...prev, categoria])
-    }
-    setCatLoading(false)
   }
 
   const handleModoSubmit = async (e: React.FormEvent) => {
@@ -781,25 +755,29 @@ export function EditPersonaForm({
       <Card className="border-border">
         <CardHeader>
           <CardTitle className="text-foreground">Relación con CcD</CardTitle>
-          <CardDescription>Categoría institucional y pertenencia a la comunidad</CardDescription>
+          <CardDescription>Tipo de vínculo con la comunidad</CardDescription>
         </CardHeader>
         <form onSubmit={handleBasicSubmit}>
           <CardContent className="space-y-6">
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
-                <Label htmlFor="categoria_persona">Categoría</Label>
+                <Label htmlFor="tipo_persona">Tipo</Label>
                 <select
-                  id="categoria_persona"
-                  name="categoria_persona"
-                  value={basicData.categoria_persona}
+                  id="tipo_persona"
+                  name="tipo_persona"
+                  value={basicData.tipo_persona}
                   onChange={handleBasicChange}
                   disabled={basicLoading}
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
                 >
-                  <option value="">Otro</option>
-                  <option value="cecista">Cecista</option>
-                  <option value="no_cecista">No Cecista</option>
+                  <option value="">Sin especificar</option>
+                  {TIPOS_PERSONA.map(t => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
                 </select>
+                {basicData.tipo_persona === "cecista" && !modoActual && (
+                  <p className="text-xs text-amber-600">Recordá asignar un Modo de Participación a este cecista.</p>
+                )}
               </div>
               <div className="flex items-end gap-4 md:col-span-2">
                 <div className="flex items-center gap-2">
@@ -842,28 +820,7 @@ export function EditPersonaForm({
               />
             </div>
 
-            {basicData.categoria_persona === "no_cecista" && (
-              <div className="space-y-2">
-                <Label>Si es No Cecista</Label>
-                <div className="flex flex-wrap gap-4">
-                  {NO_CECISTA_CATEGORIAS.map(cat => (
-                    <div key={cat.value} className="flex items-center gap-2">
-                      <input
-                        id={`cat_nc_${cat.value}`}
-                        type="checkbox"
-                        checked={categoriasNoCecista.includes(cat.value)}
-                        onChange={() => handleToggleCategoriaNoCecista(cat.value)}
-                        disabled={catLoading}
-                        className="h-4 w-4 rounded border-border"
-                      />
-                      <Label htmlFor={`cat_nc_${cat.value}`}>{cat.label}</Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {basicData.categoria_persona === "cecista" && (
+            {basicData.tipo_persona === "cecista" && (
               <div className="flex items-center gap-2">
                 <input
                   id="cecista_dedicado"
@@ -879,7 +836,7 @@ export function EditPersonaForm({
             )}
 
             {/* Confraternidad / Fraternidad — editable when cecista */}
-            {basicData.categoria_persona === "cecista" && (
+            {basicData.tipo_persona === "cecista" && (
               <div className="space-y-4">
                 {orgError && (
                   <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{orgError}</div>

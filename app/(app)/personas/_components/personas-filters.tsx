@@ -1,6 +1,6 @@
 "use client"
 
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { useRef } from "react"
 
 type Ministerio = { id: string; nombre: string }
@@ -22,12 +22,14 @@ type Props = {
     modo: string
     ministerio_id: string
     organizacion_id: string
+    tipo_persona: string
   }
 }
 
+const selectClass = "w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+
 export default function PersonasFilters({ ministerios, organizaciones, defaults }: Props) {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const formRef = useRef<HTMLFormElement>(null)
 
   function handleClear() {
@@ -37,9 +39,9 @@ export default function PersonasFilters({ ministerios, organizaciones, defaults 
   const hasActiveFilters = Object.values(defaults).some((v) => v !== "")
 
   return (
-    <form ref={formRef} method="GET" className="flex flex-wrap items-end gap-2">
-      {/* Búsqueda texto */}
-      <div className="relative min-w-[200px] flex-1">
+    <form ref={formRef} method="GET" className="space-y-3">
+      {/* Búsqueda — fila completa */}
+      <div className="relative">
         <input
           name="q"
           defaultValue={defaults.q}
@@ -53,113 +55,95 @@ export default function PersonasFilters({ ministerios, organizaciones, defaults 
           viewBox="0 0 24 24"
           stroke="currentColor"
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-          />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
       </div>
 
-      {/* Estado */}
-      <select
-        name="estado"
-        defaultValue={defaults.estado}
-        className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-      >
-        <option value="">Todos los estados</option>
-        <option value="activo">Activo</option>
-        <option value="inactivo">Inactivo</option>
-      </select>
-
-      {/* Estado eclesiástico */}
-      <select
-        name="estado_eclesial"
-        defaultValue={defaults.estado_eclesial}
-        className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-      >
-        <option value="">Estado ecl.</option>
-        <option value="laico">Laico</option>
-        <option value="religioso">Religioso/a</option>
-        <option value="diacono">Diácono</option>
-        <option value="sacerdote">Sacerdote</option>
-        <option value="obispo">Obispo</option>
-        <option value="cardenal">Cardenal</option>
-      </select>
-
-      {/* Provincia */}
-      <input
-        name="provincia"
-        defaultValue={defaults.provincia}
-        placeholder="Provincia..."
-        className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground w-32"
-      />
-
-      {/* Modo de participación */}
-      <select
-        name="modo"
-        defaultValue={defaults.modo}
-        className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-      >
-        <option value="">Modo de participación</option>
-        <option value="colaborador">Colaborador</option>
-        <option value="servidor">Servidor</option>
-        <option value="asesor">Asesor</option>
-        <option value="familiar">Familiar</option>
-        <option value="orante">Orante</option>
-        <option value="intercesor">Intercesor</option>
-      </select>
-
-      {/* Ministerio */}
-      {ministerios.length > 0 && (
-        <select
-          name="ministerio_id"
-          defaultValue={defaults.ministerio_id}
-          className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-        >
-          <option value="">Rol Asignado</option>
-          {ministerios.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.nombre}
-            </option>
-          ))}
+      {/* Grid de filtros */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+        <select name="tipo_persona" defaultValue={defaults.tipo_persona} className={selectClass}>
+          <option value="">Tipo de persona</option>
+          <option value="interesado">Interesado</option>
+          <option value="inscripto">Inscripto</option>
+          <option value="convivente">Convivente</option>
+          <option value="cecista">Cecista</option>
+          <option value="otro">Otro</option>
         </select>
-      )}
 
-      {/* Confraternidad / Fraternidad */}
-      {organizaciones.length > 0 && (
-        <select
-          name="organizacion_id"
-          defaultValue={defaults.organizacion_id}
-          className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-        >
-          <option value="">Confraternidad/Fraternidad</option>
-          {organizaciones.map((o) => (
-            <option key={o.id} value={o.id}>
-              {o.nombre} ({tipoLabel[o.tipo] ?? o.tipo})
-            </option>
-          ))}
+        <select name="estado" defaultValue={defaults.estado} className={selectClass}>
+          <option value="">Todos los estados</option>
+          <option value="activo">Activo</option>
+          <option value="inactivo">Inactivo</option>
         </select>
-      )}
+
+        <select name="modo" defaultValue={defaults.modo} className={selectClass}>
+          <option value="">Modo de participación</option>
+          <option value="colaborador">Colaborador</option>
+          <option value="servidor">Servidor</option>
+          <option value="asesor">Asesor</option>
+          <option value="familiar">Familiar</option>
+          <option value="orante">Orante</option>
+          <option value="intercesor">Intercesor</option>
+        </select>
+
+        <select name="estado_eclesial" defaultValue={defaults.estado_eclesial} className={selectClass}>
+          <option value="">Estado eclesiástico</option>
+          <option value="laico">Laico</option>
+          <option value="religioso">Religioso/a</option>
+          <option value="diacono">Diácono</option>
+          <option value="sacerdote">Sacerdote</option>
+          <option value="obispo">Obispo</option>
+          <option value="cardenal">Cardenal</option>
+        </select>
+
+        <input
+          name="provincia"
+          defaultValue={defaults.provincia}
+          placeholder="Provincia..."
+          className={selectClass}
+        />
+
+        {organizaciones.length > 0 && (
+          <select name="organizacion_id" defaultValue={defaults.organizacion_id} className={selectClass}>
+            <option value="">Confraternidad / Fraternidad</option>
+            {organizaciones.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.nombre} ({tipoLabel[o.tipo] ?? o.tipo})
+              </option>
+            ))}
+          </select>
+        )}
+
+        {ministerios.length > 0 && (
+          <select name="ministerio_id" defaultValue={defaults.ministerio_id} className={selectClass}>
+            <option value="">Rol asignado</option>
+            {ministerios.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.nombre}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
 
       {/* Botones */}
-      <button
-        type="submit"
-        className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-      >
-        Filtrar
-      </button>
-
-      {hasActiveFilters && (
+      <div className="flex items-center justify-end gap-2">
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="rounded-md border border-border px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
+          >
+            Limpiar filtros
+          </button>
+        )}
         <button
-          type="button"
-          onClick={handleClear}
-          className="rounded-md border border-border px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
+          type="submit"
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
-          Limpiar
+          Filtrar
         </button>
-      )}
+      </div>
     </form>
   )
 }

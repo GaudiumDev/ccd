@@ -41,7 +41,7 @@ export async function POST(request: Request) {
   if (body.estado_eclesial) insertData.estado_eclesial = body.estado_eclesial
   if (body.estado_vida) insertData.estado_vida = body.estado_vida
   if (body.diocesis) insertData.diocesis = body.diocesis
-  if (body.categoria_persona) insertData.categoria_persona = body.categoria_persona
+  if (body.tipo_persona) insertData.tipo_persona = body.tipo_persona
   if (body.parroquia) insertData.parroquia = body.parroquia
   if (body.socio_asociacion !== undefined) insertData.socio_asociacion = body.socio_asociacion
   if (body.referente_comunidad !== undefined) insertData.referente_comunidad = body.referente_comunidad
@@ -73,17 +73,6 @@ export async function POST(request: Request) {
       })
     if (modoError) {
       return NextResponse.json({ error: translateSupabaseError(modoError.message) }, { status: 400 })
-    }
-  }
-
-  if (Array.isArray(body.categorias_no_cecista) && body.categorias_no_cecista.length > 0 && persona) {
-    const rows = body.categorias_no_cecista.map((categoria: string) => ({
-      persona_id: persona.id,
-      categoria,
-    }))
-    const { error: catError } = await supabase.from('persona_categoria_no_cecista').insert(rows)
-    if (catError) {
-      return NextResponse.json({ error: translateSupabaseError(catError.message) }, { status: 400 })
     }
   }
 

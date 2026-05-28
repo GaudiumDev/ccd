@@ -27,7 +27,7 @@ type PersonaDetalle = {
   estado_eclesial: string | null
   estado_vida: string | null
   diocesis: string | null
-  categoria_persona: string | null
+  tipo_persona: string | null
   parroquia: string | null
   socio_asociacion: boolean | null
   referente_comunidad: boolean | null
@@ -53,8 +53,6 @@ type AsignacionMinisterio = {
   organizacion: { nombre: string } | null
 }
 
-type CategoriaNoCecista = { categoria: string }
-
 type PersonaOrg = {
   tipo_relacion: string
   organizacion: { nombre: string } | null
@@ -76,18 +74,18 @@ const estadoVidaLabel: Record<string, string> = {
   consagrado: 'Consagrado/a',
 }
 
-const categoriaNoCecistaLabel: Record<string, string> = {
-  voluntario: 'Voluntario',
+const tipoPersonaLabel: Record<string, string> = {
+  interesado: 'Interesado/a',
+  inscripto: 'Inscripto/a',
   convivente: 'Convivente',
-  cooperador: 'Cooperador',
-  contacto_casa_retiro: 'Contacto Casa Retiro',
+  cecista: 'Cecista',
+  otro: 'Otro',
 }
 
 export default function PersonaDetailModal({ personaId }: { personaId: string }) {
   const [persona, setPersona] = useState<PersonaDetalle | null>(null)
   const [modos, setModos] = useState<PersonaModo[]>([])
   const [asignaciones, setAsignaciones] = useState<AsignacionMinisterio[]>([])
-  const [categoriasNoCecista, setCategoriasNoCecista] = useState<CategoriaNoCecista[]>([])
   const [personaOrgs, setPersonaOrgs] = useState<PersonaOrg[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -98,7 +96,7 @@ export default function PersonaDetailModal({ personaId }: { personaId: string })
     Promise.all([
       supabase
         .from('personas')
-        .select('id, nombre, apellido, email, email_ccd, telefono, tipo_documento, documento, fecha_nacimiento, direccion, direccion_nro, localidad, codigo_postal, provincia, pais, notas, estado, created_at, acepta_comunicaciones, estado_eclesial, estado_vida, diocesis, categoria_persona, parroquia, socio_asociacion, referente_comunidad, cecista_dedicado, intercesor_dies_natalis, nombre_usuario, fecha_ingreso_comunidad')
+        .select('id, nombre, apellido, email, email_ccd, telefono, tipo_documento, documento, fecha_nacimiento, direccion, direccion_nro, localidad, codigo_postal, provincia, pais, notas, estado, created_at, acepta_comunicaciones, estado_eclesial, estado_vida, diocesis, tipo_persona, parroquia, socio_asociacion, referente_comunidad, cecista_dedicado, intercesor_dies_natalis, nombre_usuario, fecha_ingreso_comunidad')
         .eq('id', personaId)
         .single(),
       supabase
@@ -112,19 +110,14 @@ export default function PersonaDetailModal({ personaId }: { personaId: string })
         .eq('persona_id', personaId)
         .order('fecha_inicio', { ascending: false }),
       supabase
-        .from('persona_categoria_no_cecista')
-        .select('categoria')
-        .eq('persona_id', personaId),
-      supabase
         .from('persona_organizacion')
         .select('tipo_relacion, organizacion:organizaciones!organizacion_id(nombre)')
         .eq('persona_id', personaId)
         .is('fecha_fin', null),
-    ]).then(([personaRes, modosRes, asignacionesRes, catsRes, orgsRes]) => {
+    ]).then(([personaRes, modosRes, asignacionesRes, orgsRes]) => {
       if (personaRes.data) setPersona(personaRes.data)
       if (modosRes.data) setModos(modosRes.data)
       if (asignacionesRes.data) setAsignaciones(asignacionesRes.data as AsignacionMinisterio[])
-      if (catsRes.data) setCategoriasNoCecista(catsRes.data)
       if (orgsRes.data) setPersonaOrgs(orgsRes.data as PersonaOrg[])
       setLoading(false)
     })
@@ -252,11 +245,11 @@ export default function PersonaDetailModal({ personaId }: { personaId: string })
       <div>
         <SectionTitle>Relación con CcD</SectionTitle>
         <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-          {persona.categoria_persona && (
+          {persona.tipo_persona && (
             <div>
-              <dt className="text-muted-foreground">Categoría</dt>
-              <dd className="text-foreground capitalize">
-                {persona.categoria_persona === 'no_cecista' ? 'No Cecista' : 'Cecista'}
+              <dt className="text-muted-foreground">Tipo</dt>
+              <dd className="text-foreground">
+                {tipoPersonaLabel[persona.tipo_persona] ?? persona.tipo_persona}
               </dd>
             </div>
           )}
@@ -273,18 +266,6 @@ export default function PersonaDetailModal({ personaId }: { personaId: string })
                 {persona.referente_comunidad && <span className="text-xs bg-muted px-2 py-0.5 rounded-full">Referente de Comunidad</span>}
                 {persona.socio_asociacion && <span className="text-xs bg-muted px-2 py-0.5 rounded-full">Socio Activo</span>}
                 {persona.cecista_dedicado && <span className="text-xs bg-muted px-2 py-0.5 rounded-full">Dedicado</span>}
-              </dd>
-            </div>
-          )}
-          {persona.categoria_persona === 'no_cecista' && categoriasNoCecista.length > 0 && (
-            <div className="col-span-2">
-              <dt className="text-muted-foreground">Si es No Cecista</dt>
-              <dd className="text-foreground flex gap-2 flex-wrap mt-1">
-                {categoriasNoCecista.map(c => (
-                  <span key={c.categoria} className="text-xs bg-muted px-2 py-0.5 rounded-full">
-                    {categoriaNoCecistaLabel[c.categoria] ?? c.categoria}
-                  </span>
-                ))}
               </dd>
             </div>
           )}

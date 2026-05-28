@@ -20,6 +20,7 @@ export default async function PersonasPage({
     modo?: string
     ministerio_id?: string
     organizacion_id?: string
+    tipo_persona?: string
     persona?: string
     sortBy?: string
     sortDir?: string
@@ -33,6 +34,7 @@ export default async function PersonasPage({
   const modo = params.modo ?? ''
   const ministerio_id = params.ministerio_id ?? ''
   const organizacion_id = params.organizacion_id ?? ''
+  const tipo_persona = params.tipo_persona ?? ''
   const initialPersonaId = params.persona ?? null
   const sortBy = params.sortBy ?? ''
   const sortDir = (params.sortDir === 'asc' || params.sortDir === 'desc') ? params.sortDir : 'asc'
@@ -107,13 +109,14 @@ export default async function PersonasPage({
     if (estado) query = query.eq('estado', estado)
     if (estado_eclesial) query = query.eq('estado_eclesial', estado_eclesial)
     if (provincia) query = query.ilike('provincia', `%${provincia}%`)
+    if (tipo_persona) query = query.eq('tipo_persona', tipo_persona)
     if (filterIds !== null) query = query.in('id', filterIds)
 
     const { data } = await query
     personas = data ?? []
   }
 
-  const hasFilters = !!(q || estado || estado_eclesial || provincia || modo || ministerio_id || organizacion_id)
+  const hasFilters = !!(q || estado || estado_eclesial || provincia || modo || ministerio_id || organizacion_id || tipo_persona)
 
   // Build search string for export button
   const exportParams = new URLSearchParams()
@@ -124,6 +127,7 @@ export default async function PersonasPage({
   if (modo) exportParams.set('modo', modo)
   if (ministerio_id) exportParams.set('ministerio_id', ministerio_id)
   if (organizacion_id) exportParams.set('organizacion_id', organizacion_id)
+  if (tipo_persona) exportParams.set('tipo_persona', tipo_persona)
   const exportSearch = exportParams.size > 0 ? `?${exportParams.toString()}` : ''
 
   return (
@@ -158,7 +162,7 @@ export default async function PersonasPage({
           <PersonasFilters
             ministerios={ministerios ?? []}
             organizaciones={organizaciones ?? []}
-            defaults={{ q, estado, estado_eclesial, provincia, modo, ministerio_id, organizacion_id }}
+            defaults={{ q, estado, estado_eclesial, provincia, modo, ministerio_id, organizacion_id, tipo_persona }}
           />
 
           {/* Table — always rendered so ?persona=id deep-links work even with active filters */}

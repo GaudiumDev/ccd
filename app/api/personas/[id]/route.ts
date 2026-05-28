@@ -60,7 +60,7 @@ export async function PATCH(
   if (body.notas !== undefined) updateData.notas = body.notas || null
   if (body.estado_eclesial !== undefined) updateData.estado_eclesial = body.estado_eclesial || 'laico'
   if (body.diocesis !== undefined) updateData.diocesis = body.diocesis || null
-  if (body.categoria_persona !== undefined) updateData.categoria_persona = body.categoria_persona || null
+  if (body.tipo_persona !== undefined) updateData.tipo_persona = body.tipo_persona || null
   if (body.parroquia !== undefined) updateData.parroquia = body.parroquia || null
   if (body.socio_asociacion !== undefined) updateData.socio_asociacion = body.socio_asociacion
   if (body.referente_comunidad !== undefined) updateData.referente_comunidad = body.referente_comunidad

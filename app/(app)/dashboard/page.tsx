@@ -118,6 +118,7 @@ export default async function DashboardPage() {
   const canCreatePerson = canPerform(ctx, "person.create")
   const canCreateOrg = canPerform(ctx, "organization.create")
   const canCreateEvent = canPerform(ctx, "event.create")
+  const canManageParticipants = canPerform(ctx, "event.manage_participants")
   const hasPersonaId = ctx.persona_id !== null
 
   // ── Queries paralelas ────────────────────────────────────────────────────────
@@ -391,6 +392,26 @@ export default async function DashboardPage() {
       .order("solicitud_suspension_fecha", { ascending: true })
       .limit(10)
     solicitudesSuspension = suspData ?? []
+  }
+
+  // Nuevos Interesados — visible para quienes gestionan participantes
+  let nuevosInteresados: any[] | null = null
+  if (canManageParticipants) {
+    let q = supabase
+      .from("evento_participantes")
+      .select(
+        "id, fecha_inscripcion, persona:personas!inner(id, nombre, apellido, email, telefono, tipo_persona), evento:eventos!inner(id, nombre, fecha_inicio, organizacion_id)"
+      )
+      .eq("rol_en_evento", "convivente")
+      .eq("estado_inscripcion", "pendiente")
+      .eq("personas.tipo_persona", "interesado")
+      .order("fecha_inscripcion", { ascending: false })
+      .limit(10)
+    if (!ctx.is_admin && primaryOrgId) {
+      q = q.eq("eventos.organizacion_id", primaryOrgId)
+    }
+    const { data: interesadosData } = await q
+    nuevosInteresados = interesadosData ?? []
   }
 
   const proximosEventos = (proximosEventosResult as any).data as any[] | null
@@ -985,6 +1006,70 @@ export default async function DashboardPage() {
             <Link href="/eventos?solicitud_suspension=1" className="block mt-4">
               <Button variant="outline" className="w-full bg-transparent">
                 Ver todas
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Nuevos Interesados */}
+      {canManageParticipants && nuevosInteresados && nuevosInteresados.length > 0 && (
+        <Card className="border-amber-200 dark:border-amber-900 bg-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <Users className="h-5 w-5 text-amber-500" />
+              Nuevos Interesados
+            </CardTitle>
+            <CardDescription>
+              Personas que manifestaron interés en participar en un evento
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {nuevosInteresados.map((ep: any) => {
+                const persona = ep.persona
+                const evento = ep.evento
+                return (
+                  <div
+                    key={ep.id}
+                    className="flex items-start justify-between rounded-lg border border-border p-3 gap-3"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground">
+                        {persona?.nombre} {persona?.apellido}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {[persona?.email, persona?.telefono].filter(Boolean).join(" · ")}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Interesado en:{" "}
+                        <span className="font-medium text-foreground">
+                          {evento?.nombre}
+                        </span>
+                        {evento?.fecha_inicio
+                          ? ` · ${formatDateShort(evento.fecha_inicio)}`
+                          : ""}
+                      </p>
+                    </div>
+                    {persona?.id && (
+                      <Link href={`/personas/${persona.id}`} className="shrink-0">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs bg-transparent border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400"
+                        >
+                          Ver
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+            <Link href="/personas?tipo_persona=interesado" className="block mt-4">
+              <Button variant="outline" className="w-full bg-transparent">
+                Ver todos los interesados
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </Link>

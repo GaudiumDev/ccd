@@ -47,9 +47,12 @@ const MODOS_LABEL: Record<string, string> = {
   intercesor: 'Intercesor',
 }
 
-const CATEGORIAS_LABEL: Record<string, string> = {
+const TIPOS_PERSONA_LABEL: Record<string, string> = {
+  interesado: 'Interesado/a',
+  inscripto: 'Inscripto/a',
+  convivente: 'Convivente',
   cecista: 'Cecista',
-  no_cecista: 'No cecista',
+  otro: 'Otro',
 }
 
 type Persona = {
@@ -76,7 +79,7 @@ type Persona = {
   anio_ingreso: number | null
   acompanante_id: string | null
   notas: string | null
-  categoria_persona: string | null
+  tipo_persona: string | null
   foto_url: string | null
 }
 
@@ -204,7 +207,7 @@ export default function SettingsPage() {
 
       const { data } = await supabase
         .from('personas')
-        .select('id, nombre, apellido, email, email_ccd, telefono, fecha_nacimiento, tipo_documento, documento, direccion, direccion_nro, codigo_postal, localidad, provincia, pais, diocesis, estado_eclesial, parroquia, estado_vida, nivel_estudios, anio_ingreso, acompanante_id, notas, categoria_persona, foto_url')
+        .select('id, nombre, apellido, email, email_ccd, telefono, fecha_nacimiento, tipo_documento, documento, direccion, direccion_nro, codigo_postal, localidad, provincia, pais, diocesis, estado_eclesial, parroquia, estado_vida, nivel_estudios, anio_ingreso, acompanante_id, notas, tipo_persona, foto_url')
         .eq('auth_user_id', user.id)
         .single()
 
@@ -313,7 +316,7 @@ export default function SettingsPage() {
         email: editForm.email || null,
         email_ccd: editForm.email_ccd || null,
         telefono: editForm.telefono || null,
-        categoria_persona: persona.categoria_persona,
+        tipo_persona: persona.tipo_persona,
       })
       setEditSuccess(true)
       setTimeout(() => setEditSuccess(false), 3000)
@@ -443,9 +446,9 @@ export default function SettingsPage() {
                   <div>
                     <p className="font-semibold text-foreground text-lg leading-tight">{persona.nombre} {persona.apellido}</p>
                     <div className="flex flex-wrap gap-2 mt-1">
-                      {persona.categoria_persona && (
+                      {persona.tipo_persona && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
-                          {CATEGORIAS_LABEL[persona.categoria_persona] ?? persona.categoria_persona}
+                          {TIPOS_PERSONA_LABEL[persona.tipo_persona] ?? persona.tipo_persona}
                         </span>
                       )}
                       {modoActual && (

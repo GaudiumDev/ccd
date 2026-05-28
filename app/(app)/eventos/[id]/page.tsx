@@ -418,7 +418,9 @@ export default async function EventoDetailPage({
                 <Users className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
                 <div>
                   <p className="text-xs text-muted-foreground">Confraternidad</p>
-                  <p className="text-foreground">{confraternidad.nombre}</p>
+                  <Link href={`/organizaciones/${confraternidad.id}`} className="text-foreground hover:text-primary hover:underline">
+                    {confraternidad.nombre}
+                  </Link>
                 </div>
               </div>
             )}
@@ -427,7 +429,9 @@ export default async function EventoDetailPage({
                 <Users className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
                 <div>
                   <p className="text-xs text-muted-foreground">Fraternidad</p>
-                  <p className="text-foreground">{fraternidad.nombre}</p>
+                  <Link href={`/organizaciones/${fraternidad.id}`} className="text-foreground hover:text-primary hover:underline">
+                    {fraternidad.nombre}
+                  </Link>
                 </div>
               </div>
             )}
@@ -542,6 +546,35 @@ export default async function EventoDetailPage({
                     </Link>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Centralizadores */}
+          {(evento.centralizador_1_nombre || evento.centralizador_2_nombre || evento.centralizador_3_nombre) && (
+            <div className="space-y-3 border-t border-border pt-4">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Centralizadores</p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {[
+                  { nombre: evento.centralizador_1_nombre, email: evento.centralizador_1_email, telefono: evento.centralizador_1_telefono, label: 'Centralizador 1' },
+                  { nombre: evento.centralizador_2_nombre, email: evento.centralizador_2_email, telefono: evento.centralizador_2_telefono, label: 'Centralizador 2' },
+                  { nombre: evento.centralizador_3_nombre, email: evento.centralizador_3_email, telefono: evento.centralizador_3_telefono, label: 'Centralizador 3' },
+                ].filter(c => c.nombre).map((c) => (
+                  <div key={c.label} className="space-y-0.5 text-sm">
+                    <p className="text-xs text-muted-foreground">{c.label}</p>
+                    <p className="text-foreground font-medium">{c.nombre}</p>
+                    {c.email && (
+                      <a href={`mailto:${c.email}`} className="block text-xs text-primary hover:underline truncate">
+                        {c.email}
+                      </a>
+                    )}
+                    {c.telefono && (
+                      <a href={`tel:${c.telefono}`} className="block text-xs text-muted-foreground hover:text-foreground">
+                        {c.telefono}
+                      </a>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           )}
