@@ -42,7 +42,7 @@ export default async function LandingPage() {
   const supabase = await createClient()
   const today = new Date().toISOString().split("T")[0]
 
-  const eventosSelect = `id, nombre, tipo, fecha_inicio, fecha_fin, ciudad, provincia_evento, modalidad, cupo_maximo,
+  const eventosSelect = `id, nombre, tipo, fecha_inicio, fecha_fin, ciudad, provincia_evento, modalidad, cupo_maximo, flyer_horizontal_url, flyer_cuadrado_url,
        organizacion:organizaciones!organizacion_id(nombre)`
 
   const [{ data: eventos }, { data: eventosAnteriores }] = await Promise.all([
@@ -158,8 +158,22 @@ export default async function LandingPage() {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {eventosAnteriores.map((evento) => {
                 const org = evento.organizacion as unknown as { nombre: string } | null
+                const flyerH = (evento as Record<string, unknown>).flyer_horizontal_url as string | null
+                const flyerC = (evento as Record<string, unknown>).flyer_cuadrado_url as string | null
                 return (
-                  <Card key={evento.id} className="flex flex-col opacity-75">
+                  <Card key={evento.id} className="flex flex-col overflow-hidden opacity-75">
+                    {(flyerH || flyerC) && (
+                      <div className="relative grayscale">
+                        {flyerC && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={flyerC} alt="" className={`w-full aspect-square object-cover${flyerH ? " sm:hidden" : ""}`} />
+                        )}
+                        {flyerH && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={flyerH} alt="" className={`w-full aspect-video object-cover${flyerC ? " hidden sm:block" : ""}`} />
+                        )}
+                      </div>
+                    )}
                     <CardHeader className="pb-2">
                       <div className="flex items-start justify-between gap-2">
                         <Badge variant="secondary" className="shrink-0 capitalize">

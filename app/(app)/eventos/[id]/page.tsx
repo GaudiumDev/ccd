@@ -13,6 +13,7 @@ import AprobacionFinalPanel from './_components/aprobacion-final-panel'
 import SuspenderEventoButton from './_components/suspender-evento-button'
 import SolicitarSuspensionPanel from './_components/solicitar-suspension-panel'
 import { PublicarButton } from './_components/publicar-button'
+import FlyerUploadPanel from './_components/flyer-upload-panel'
 import { formatDateAR } from '@/lib/utils'
 
 const estadoClases: Record<string, string> = {
@@ -85,6 +86,7 @@ export default async function EventoDetailPage({
       centralizador_1_persona_id, centralizador_1_nombre, centralizador_1_email, centralizador_1_telefono,
       centralizador_2_persona_id, centralizador_2_nombre, centralizador_2_email, centralizador_2_telefono,
       centralizador_3_persona_id, centralizador_3_nombre, centralizador_3_email, centralizador_3_telefono,
+      flyer_horizontal_url, flyer_cuadrado_url,
       notas_noticias, notas_aprobacion_final,
       solicitud_suspension_notas, solicitud_suspension_fecha,
       solicitud_suspension_por_persona:personas!solicitud_suspension_por(id, nombre, apellido),
@@ -867,6 +869,15 @@ export default async function EventoDetailPage({
       )}
 
       </div>
+
+      {/* Flyers — admin only */}
+      {ctx?.is_admin && (
+        <FlyerUploadPanel
+          eventoId={id}
+          flyerHorizontalUrl={(ev.flyer_horizontal_url as string | null) ?? null}
+          flyerCuadradoUrl={(ev.flyer_cuadrado_url as string | null) ?? null}
+        />
+      )}
     </div>
   )
 }

@@ -11,6 +11,7 @@ import { ArrowLeft, CheckCircle2, XCircle, Plus, Trash2 } from "lucide-react"
 import { LocationFields } from "@/components/location-fields"
 import { Combobox } from "@/components/ui/combobox"
 import { formatDateAR } from "@/lib/utils"
+import FlyerUploadPanel from "../[id]/_components/flyer-upload-panel"
 
 type OrgOption = { id: string; nombre: string; parent_id?: string | null }
 type TipoEvento = {
@@ -47,10 +48,12 @@ export default function NuevoEventoForm({
   confraternidades,
   tiposEventos,
   personaNombre,
+  isAdmin = false,
 }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [createdEventoId, setCreatedEventoId] = useState<string | null>(null)
 
   const [confraternidadId, setConfraternidadId] = useState(
     fraternidades[0]?.parent_id ?? confraternidades[0]?.id ?? "",
@@ -189,12 +192,59 @@ export default function NuevoEventoForm({
       }
 
       const { id } = await res.json()
-      router.push(`/eventos/${id}`)
+      if (isAdmin) {
+        setCreatedEventoId(id)
+      } else {
+        router.push(`/eventos/${id}`)
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error inesperado")
     } finally {
       setLoading(false)
     }
+  }
+
+  // Admin step 2: flyers after event creation
+  if (createdEventoId) {
+    return (
+      <div className="space-y-6">
+        <Link
+          href="/eventos"
+          className="inline-flex items-center gap-2 text-primary hover:underline"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Volver a Eventos
+        </Link>
+
+        <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30 px-4 py-3">
+          <p className="text-sm font-medium text-green-800 dark:text-green-300">
+            Solicitud creada correctamente.
+          </p>
+          <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">
+            Podés subir los flyers ahora o hacerlo más tarde desde el evento.
+          </p>
+        </div>
+
+        <FlyerUploadPanel
+          eventoId={createdEventoId}
+          flyerHorizontalUrl={null}
+          flyerCuadradoUrl={null}
+        />
+
+        <div className="flex gap-3">
+          <Button onClick={() => router.push(`/eventos/${createdEventoId}`)}>
+            Ir al evento
+          </Button>
+          <Button
+            variant="outline"
+            className="bg-transparent"
+            onClick={() => router.push('/eventos')}
+          >
+            Volver a Eventos
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   const fieldClass =

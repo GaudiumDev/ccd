@@ -16,6 +16,7 @@ import {
 import { ArrowLeft, Plus, Trash2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { LocationFields } from "@/components/location-fields"
+import FlyerUploadPanel from "../_components/flyer-upload-panel"
 
 type OrgOption = { id: string; nombre: string; tipo: string }
 type FechaRow = { id?: string; fecha_inicio: string; fecha_fin: string }
@@ -34,6 +35,7 @@ export default function EditarEventoForm({
   const [organizaciones, setOrganizaciones] = useState<OrgOption[]>([])
   const [casasRetiro, setCasasRetiro] = useState<OrgOption[]>([])
   const [fechasEjecucion, setFechasEjecucion] = useState<FechaRow[]>([])
+  const [flyerUrls, setFlyerUrls] = useState<{ horizontal: string | null; cuadrado: string | null }>({ horizontal: null, cuadrado: null })
   const [formData, setFormData] = useState({
     nombre: "",
     tipo: "convivencia",
@@ -62,7 +64,7 @@ export default function EditarEventoForm({
       supabase
         .from("eventos")
         .select(
-          "id, nombre, tipo, fecha_solicitud, fecha_inicio, fecha_fin, organizacion_id, casa_retiro_id, cupo_maximo, precio, audiencia, modalidad, estado, descripcion, ciudad, codigo_postal, diocesis, provincia_evento, pais_evento",
+          "id, nombre, tipo, fecha_solicitud, fecha_inicio, fecha_fin, organizacion_id, casa_retiro_id, cupo_maximo, precio, audiencia, modalidad, estado, descripcion, ciudad, codigo_postal, diocesis, provincia_evento, pais_evento, flyer_horizontal_url, flyer_cuadrado_url",
         )
         .eq("id", id)
         .single(),
@@ -114,6 +116,10 @@ export default function EditarEventoForm({
           diocesis: evento.diocesis ?? "",
           provincia_evento: evento.provincia_evento ?? "",
           pais_evento: evento.pais_evento ?? "Argentina",
+        })
+        setFlyerUrls({
+          horizontal: (evento as Record<string, unknown>).flyer_horizontal_url as string | null ?? null,
+          cuadrado: (evento as Record<string, unknown>).flyer_cuadrado_url as string | null ?? null,
         })
         if (orgs) {
           setOrganizaciones(orgs)
@@ -644,6 +650,14 @@ export default function EditarEventoForm({
           </form>
         </CardContent>
       </Card>
+
+      {isAdmin && (
+        <FlyerUploadPanel
+          eventoId={id}
+          flyerHorizontalUrl={flyerUrls.horizontal}
+          flyerCuadradoUrl={flyerUrls.cuadrado}
+        />
+      )}
     </div>
   )
 }

@@ -41,6 +41,8 @@ interface Evento {
   provincia_evento?: string | null
   modalidad?: string | null
   cupo_maximo?: number | null
+  flyer_horizontal_url?: string | null
+  flyer_cuadrado_url?: string | null
   organizacion?: unknown
 }
 
@@ -56,8 +58,22 @@ export function EventosPublicosGrid({ eventos }: Props) {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {eventos.map((evento) => {
           const org = evento.organizacion as unknown as { nombre: string } | null
+          const flyerH = evento.flyer_horizontal_url ?? null
+          const flyerC = evento.flyer_cuadrado_url ?? null
           return (
-            <Card key={evento.id} className="flex flex-col">
+            <Card key={evento.id} className="flex flex-col overflow-hidden">
+              {(flyerH || flyerC) && (
+                <div className="relative">
+                  {flyerC && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={flyerC} alt="" className={`w-full aspect-square object-cover${flyerH ? ' sm:hidden' : ''}`} />
+                  )}
+                  {flyerH && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={flyerH} alt="" className={`w-full aspect-video object-cover${flyerC ? ' hidden sm:block' : ''}`} />
+                  )}
+                </div>
+              )}
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-2">
                   <Badge variant="secondary" className="shrink-0 capitalize">
