@@ -25,12 +25,15 @@ type Props = {
   eventoId: string
   inicial: {
     casa_retiro_id: string | null
+    centralizador_1_persona_id: string | null
     centralizador_1_nombre: string | null
     centralizador_1_email: string | null
     centralizador_1_telefono: string | null
+    centralizador_2_persona_id: string | null
     centralizador_2_nombre: string | null
     centralizador_2_email: string | null
     centralizador_2_telefono: string | null
+    centralizador_3_persona_id: string | null
     centralizador_3_nombre: string | null
     centralizador_3_email: string | null
     centralizador_3_telefono: string | null
@@ -49,9 +52,9 @@ export default function DatosNoticiasPannel({ eventoId, inicial, casasRetiro, pe
 
   const [casaRetiroId, setCasaRetiroId] = useState(toStr(inicial.casa_retiro_id))
   const [centralizadores, setCentralizadores] = useState<Centralizador[]>([
-    { personaId: '', nombre: toStr(inicial.centralizador_1_nombre), email: toStr(inicial.centralizador_1_email), telefono: toStr(inicial.centralizador_1_telefono) },
-    { personaId: '', nombre: toStr(inicial.centralizador_2_nombre), email: toStr(inicial.centralizador_2_email), telefono: toStr(inicial.centralizador_2_telefono) },
-    { personaId: '', nombre: toStr(inicial.centralizador_3_nombre), email: toStr(inicial.centralizador_3_email), telefono: toStr(inicial.centralizador_3_telefono) },
+    { personaId: toStr(inicial.centralizador_1_persona_id), nombre: toStr(inicial.centralizador_1_nombre), email: toStr(inicial.centralizador_1_email), telefono: toStr(inicial.centralizador_1_telefono) },
+    { personaId: toStr(inicial.centralizador_2_persona_id), nombre: toStr(inicial.centralizador_2_nombre), email: toStr(inicial.centralizador_2_email), telefono: toStr(inicial.centralizador_2_telefono) },
+    { personaId: toStr(inicial.centralizador_3_persona_id), nombre: toStr(inicial.centralizador_3_nombre), email: toStr(inicial.centralizador_3_email), telefono: toStr(inicial.centralizador_3_telefono) },
   ])
   const [notas, setNotas] = useState(toStr(inicial.notas_noticias))
   const [loading, setLoading] = useState<'guardar' | 'publicar' | null>(null)
@@ -76,8 +79,9 @@ export default function DatosNoticiasPannel({ eventoId, inicial, casasRetiro, pe
       next[i] = {
         personaId: p.id,
         nombre: `${p.nombre} ${p.apellido}`,
-        email: toStr(p.email),
-        telefono: toStr(p.telefono),
+        // Preserve existing value if persona has no contact info stored
+        email: p.email ? toStr(p.email) : next[i].email,
+        telefono: p.telefono ? toStr(p.telefono) : next[i].telefono,
       }
       return next
     })
@@ -95,12 +99,15 @@ export default function DatosNoticiasPannel({ eventoId, inicial, casasRetiro, pe
   function buildPayload() {
     return {
       casa_retiro_id: casaRetiroId || null,
+      centralizador_1_persona_id: centralizadores[0].personaId || null,
       centralizador_1_nombre: centralizadores[0].nombre || null,
       centralizador_1_email: centralizadores[0].email || null,
       centralizador_1_telefono: centralizadores[0].telefono || null,
+      centralizador_2_persona_id: centralizadores[1].personaId || null,
       centralizador_2_nombre: centralizadores[1].nombre || null,
       centralizador_2_email: centralizadores[1].email || null,
       centralizador_2_telefono: centralizadores[1].telefono || null,
+      centralizador_3_persona_id: centralizadores[2].personaId || null,
       centralizador_3_nombre: centralizadores[2].nombre || null,
       centralizador_3_email: centralizadores[2].email || null,
       centralizador_3_telefono: centralizadores[2].telefono || null,
@@ -211,7 +218,7 @@ export default function DatosNoticiasPannel({ eventoId, inicial, casasRetiro, pe
                 searchPlaceholder="Buscar por apellido o nombre..."
                 emptyText="No se encontraron personas."
               />
-              {c.nombre && (
+              {c.nombre && !c.personaId && (
                 <p className="mt-1 text-xs text-muted-foreground">{c.nombre}</p>
               )}
             </div>

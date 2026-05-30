@@ -46,12 +46,15 @@ const ESTADO_EVENT_COLORS: Record<string, string> = {
     "bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-200",
   pendiente_datos_noticias:
     "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
+  pendiente_aprobacion_final:
+    "bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200",
   aprobado: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
   publicado:
     "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
   finalizado: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
   rechazado: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
   cancelado: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
+  suspendido: "bg-orange-200 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
 }
 
 const ESTADO_LABELS: Record<string, string> = {
@@ -60,11 +63,13 @@ const ESTADO_LABELS: Record<string, string> = {
   discernimiento_confra: "Pend. Disc. EqT",
   discernimiento_eqt: "Disc. EqT",
   pendiente_datos_noticias: "Pend. Datos Noticias",
+  pendiente_aprobacion_final: "Pend. Aprobación Final",
   aprobado: "Aprobado",
   publicado: "Publicado",
   finalizado: "Finalizado",
   rechazado: "Rechazado",
   cancelado: "Cancelado",
+  suspendido: "Suspendido",
 }
 
 const MODO_LABELS: Record<string, string> = {
@@ -138,6 +143,7 @@ export default async function DashboardPage() {
     discernimientoEqtResult,
     misRechazadosResult,
     pendienteDatosNoticiasResult,
+    pendienteAprobacionFinalResult,
   ] = await Promise.all([
     // 1. Count personas (non-admin count se calcula en el bloque cecistas más abajo)
     ctx.is_admin
@@ -216,6 +222,7 @@ export default async function DashboardPage() {
             "discernimiento_confra",
             "discernimiento_eqt",
             "pendiente_datos_noticias",
+            "pendiente_aprobacion_final",
             "aprobado",
             "publicado",
           ])
@@ -302,6 +309,18 @@ export default async function DashboardPage() {
         .order("fecha_aprobacion", { ascending: true })
         .limit(10)
     })(),
+
+    // 13. Pendiente Aprobación Final (solo EqT)
+    canApproveEqt
+      ? supabase
+          .from("eventos")
+          .select(
+            "id, nombre, tipo, fecha_inicio, organizacion:organizaciones!organizacion_id(nombre), solicitado_por_persona:personas!solicitado_por(nombre, apellido)"
+          )
+          .eq("estado", "pendiente_aprobacion_final")
+          .order("updated_at", { ascending: true })
+          .limit(10)
+      : Promise.resolve({ data: null, error: null }),
   ])
 
   let totalPersonas = personasCountResult.count ?? 0
@@ -424,6 +443,7 @@ export default async function DashboardPage() {
     | null
   const misRechazados = (misRechazadosResult as any).data as any[] | null
   const pendienteDatosNoticias = (pendienteDatosNoticiasResult as any).data as any[] | null
+  const pendienteAprobacionFinal = (pendienteAprobacionFinalResult as any).data as any[] | null
 
   const primaryRole = ctx.roles[0]?.rol ?? null
   const roleName =
@@ -893,6 +913,66 @@ export default async function DashboardPage() {
             >
               <Button variant="outline" className="w-full bg-transparent">
                 Ver todos en discernimiento EqT
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Aprobación Final EqT */}
+      {canApproveEqt && pendienteAprobacionFinal && pendienteAprobacionFinal.length > 0 && (
+        <Card className="border-violet-200 dark:border-violet-900 bg-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <AlertCircle className="h-5 w-5 text-violet-500" />
+              Aprobación Final — Equipo Timón
+            </CardTitle>
+            <CardDescription>
+              Eventos con datos completos esperando aprobación final para su publicación
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {pendienteAprobacionFinal.map((evento: any) => {
+                const solicitante = evento.solicitado_por_persona
+                return (
+                  <div
+                    key={evento.id}
+                    className="flex items-center justify-between rounded-lg border border-border p-3"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground truncate">
+                        {evento.nombre}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {evento.organizacion?.nombre ?? "—"}
+                        {evento.fecha_inicio
+                          ? ` · ${formatDateShort(evento.fecha_inicio)}`
+                          : ""}
+                        {solicitante
+                          ? ` · ${solicitante.nombre} ${solicitante.apellido}`
+                          : ""}
+                      </p>
+                    </div>
+                    <Link href={`/eventos/${evento.id}`} className="ml-3 shrink-0">
+                      <Button
+                        size="sm"
+                        className="h-7 text-xs bg-violet-600 hover:bg-violet-700 text-white"
+                      >
+                        Revisar y publicar
+                      </Button>
+                    </Link>
+                  </div>
+                )
+              })}
+            </div>
+            <Link
+              href="/eventos?estado=pendiente_aprobacion_final"
+              className="block mt-4"
+            >
+              <Button variant="outline" className="w-full bg-transparent">
+                Ver todos
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </Link>

@@ -79,31 +79,33 @@ export default async function EventoDetailPage({
       ciudad, codigo_postal, diocesis, provincia_evento, pais_evento,
       notas_discernimiento, casa_retiro_id,
       coordinador_asignado_id, asesor_asignado_id,
-      solicitado_por,
-      centralizador_1_nombre, centralizador_1_email, centralizador_1_telefono,
-      centralizador_2_nombre, centralizador_2_email, centralizador_2_telefono,
-      centralizador_3_nombre, centralizador_3_email, centralizador_3_telefono,
+      solicitado_por, aprobado_por, rechazado_por, publicado_por,
+      disc_confra_por, disc_eqt_por,
+      solicitud_suspension_por, suspendido_por,
+      centralizador_1_persona_id, centralizador_1_nombre, centralizador_1_email, centralizador_1_telefono,
+      centralizador_2_persona_id, centralizador_2_nombre, centralizador_2_email, centralizador_2_telefono,
+      centralizador_3_persona_id, centralizador_3_nombre, centralizador_3_email, centralizador_3_telefono,
       notas_noticias, notas_aprobacion_final,
       solicitud_suspension_notas, solicitud_suspension_fecha,
-      solicitud_suspension_por_persona:personas!solicitud_suspension_por(nombre, apellido),
-      suspendido_por_persona:personas!suspendido_por(nombre, apellido),
+      solicitud_suspension_por_persona:personas!solicitud_suspension_por(id, nombre, apellido),
+      suspendido_por_persona:personas!suspendido_por(id, nombre, apellido),
       fecha_suspension, notas_suspension,
       fecha_solicitud, fecha_aprobacion, fecha_rechazo, motivo_rechazo,
       fecha_publicacion,
       organizacion_id,
       disc_confra_estado, disc_confra_fecha, disc_confra_notas,
       disc_eqt_estado, disc_eqt_fecha, disc_eqt_notas,
-      disc_confra_por_persona:personas!disc_confra_por(nombre, apellido),
-      disc_eqt_por_persona:personas!disc_eqt_por(nombre, apellido),
+      disc_confra_por_persona:personas!disc_confra_por(id, nombre, apellido),
+      disc_eqt_por_persona:personas!disc_eqt_por(id, nombre, apellido),
       confraternidad:organizaciones!organizacion_id(id, nombre),
       fraternidad:organizaciones!fraternidad_id(id, nombre),
       casa_retiro:casas_retiro!casa_retiro_id(id, nombre, ciudad, provincia, link_maps),
       coordinador_asignado:personas!coordinador_asignado_id(id, nombre, apellido),
       asesor_asignado:personas!asesor_asignado_id(id, nombre, apellido),
-      solicitado_por_persona:personas!solicitado_por(nombre, apellido),
-      aprobado_por_persona:personas!aprobado_por(nombre, apellido),
-      rechazado_por_persona:personas!rechazado_por(nombre, apellido),
-      publicado_por_persona:personas!publicado_por(nombre, apellido)
+      solicitado_por_persona:personas!solicitado_por(id, nombre, apellido),
+      aprobado_por_persona:personas!aprobado_por(id, nombre, apellido),
+      rechazado_por_persona:personas!rechazado_por(id, nombre, apellido),
+      publicado_por_persona:personas!publicado_por(id, nombre, apellido)
     `)
     .eq('id', id)
     .single()
@@ -118,7 +120,7 @@ export default async function EventoDetailPage({
 
   const { data: cambiosHistorial } = await supabase
     .from('evento_cambios')
-    .select('id, nivel_disc, campo, valor_anterior, valor_nuevo, fecha, modificado_por_persona:personas!modificado_por(nombre, apellido)')
+    .select('id, nivel_disc, campo, valor_anterior, valor_nuevo, fecha, modificado_por, modificado_por_persona:personas!modificado_por(nombre, apellido)')
     .eq('evento_id', id)
     .order('fecha', { ascending: true })
 
@@ -155,12 +157,35 @@ export default async function EventoDetailPage({
   const casaRetiro = evento.casa_retiro as { id: string; nombre: string; ciudad?: string | null; provincia?: string | null; link_maps?: string | null } | null
   const coordinadorAsignado = (evento as Record<string, unknown>).coordinador_asignado as { id: string; nombre: string; apellido: string } | null
   const asesorAsignado = (evento as Record<string, unknown>).asesor_asignado as { id: string; nombre: string; apellido: string } | null
-  const solicitadoPor = evento.solicitado_por_persona as { nombre: string; apellido: string } | null
-  const aprobadoPor = evento.aprobado_por_persona as { nombre: string; apellido: string } | null
-  const rechazadoPor = evento.rechazado_por_persona as { nombre: string; apellido: string } | null
-  const publicadoPor = evento.publicado_por_persona as { nombre: string; apellido: string } | null
-  const discConfraPor = evento.disc_confra_por_persona as { nombre: string; apellido: string } | null
-  const discEqtPor = evento.disc_eqt_por_persona as { nombre: string; apellido: string } | null
+
+  type PersonaRef = { id: string; nombre: string; apellido: string }
+  const solicitadoPor = evento.solicitado_por_persona as PersonaRef | null
+  const aprobadoPor = evento.aprobado_por_persona as PersonaRef | null
+  const rechazadoPor = evento.rechazado_por_persona as PersonaRef | null
+  const publicadoPor = evento.publicado_por_persona as PersonaRef | null
+  const discConfraPor = evento.disc_confra_por_persona as PersonaRef | null
+  const discEqtPor = evento.disc_eqt_por_persona as PersonaRef | null
+
+  // Resolve a UUID or plain-text name to { texto, personaId } using the fetched personas list.
+  // Tries: UUID match, then "Apellido, Nombre" format, then "Nombre Apellido" format.
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  const allPersonas = (personasCecistas ?? []) as { id: string; nombre: string; apellido: string }[]
+  function resolveVal(val: string): { texto: string; personaId: string | null } {
+    const t = val.trim()
+    if (!t) return { texto: t, personaId: null }
+    if (UUID_RE.test(t)) {
+      const p = allPersonas.find(x => x.id === t)
+      return p ? { texto: `${p.nombre} ${p.apellido}`, personaId: p.id } : { texto: t, personaId: null }
+    }
+    const lower = t.toLowerCase()
+    const byName = allPersonas.find(x => {
+      const fmtApellidoNombre = `${x.apellido}, ${x.nombre}`.toLowerCase()
+      const fmtNombreApellido = `${x.nombre} ${x.apellido}`.toLowerCase()
+      const fmtApellidoNombreNoComma = `${x.apellido} ${x.nombre}`.toLowerCase()
+      return lower === fmtApellidoNombre || lower === fmtNombreApellido || lower === fmtApellidoNombreNoComma
+    })
+    return { texto: t, personaId: byName?.id ?? null }
+  }
 
   const estadoDiscLabel: Record<string, string> = {
     aprobado_sin_modificaciones: 'Aprobado sin modificaciones',
@@ -172,17 +197,21 @@ export default async function EventoDetailPage({
     fecha: string
     label: string
     persona: string | null
+    personaId: string | null
     extra?: string
     tipo: 'solicitud' | 'discernimiento' | 'aprobacion' | 'rechazo' | 'publicacion'
   }
 
   const timelineHistorial: EntradaHistorial[] = []
 
+  const ev = evento as Record<string, unknown>
+
   if (evento.fecha_solicitud) {
     timelineHistorial.push({
       fecha: evento.fecha_solicitud,
       label: 'Solicitud enviada',
       persona: solicitadoPor ? `${solicitadoPor.nombre} ${solicitadoPor.apellido}` : null,
+      personaId: (ev.solicitado_por as string | null) ?? null,
       tipo: 'solicitud',
     })
   }
@@ -191,6 +220,7 @@ export default async function EventoDetailPage({
       fecha: evento.disc_confra_fecha,
       label: `Disc. Confraternidad — ${estadoDiscLabel[evento.disc_confra_estado] ?? evento.disc_confra_estado}`,
       persona: discConfraPor ? `${discConfraPor.nombre} ${discConfraPor.apellido}` : null,
+      personaId: (ev.disc_confra_por as string | null) ?? null,
       extra: evento.disc_confra_notas ?? undefined,
       tipo: 'discernimiento',
     })
@@ -200,6 +230,7 @@ export default async function EventoDetailPage({
       fecha: evento.disc_eqt_fecha,
       label: `Disc. Equipo Timón — ${estadoDiscLabel[evento.disc_eqt_estado] ?? evento.disc_eqt_estado}`,
       persona: discEqtPor ? `${discEqtPor.nombre} ${discEqtPor.apellido}` : null,
+      personaId: (ev.disc_eqt_por as string | null) ?? null,
       extra: evento.disc_eqt_notas ?? undefined,
       tipo: 'discernimiento',
     })
@@ -209,6 +240,7 @@ export default async function EventoDetailPage({
       fecha: evento.fecha_aprobacion,
       label: 'Aprobado',
       persona: aprobadoPor ? `${aprobadoPor.nombre} ${aprobadoPor.apellido}` : null,
+      personaId: (ev.aprobado_por as string | null) ?? null,
       tipo: 'aprobacion',
     })
   }
@@ -217,17 +249,17 @@ export default async function EventoDetailPage({
       fecha: evento.fecha_rechazo,
       label: 'Rechazado',
       persona: rechazadoPor ? `${rechazadoPor.nombre} ${rechazadoPor.apellido}` : null,
+      personaId: (ev.rechazado_por as string | null) ?? null,
       extra: evento.motivo_rechazo ?? undefined,
       tipo: 'rechazo',
     })
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if ((evento as any).fecha_publicacion) {
+  if (ev.fecha_publicacion) {
     timelineHistorial.push({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      fecha: (evento as any).fecha_publicacion,
+      fecha: ev.fecha_publicacion as string,
       label: 'Publicado',
       persona: publicadoPor ? `${publicadoPor.nombre} ${publicadoPor.apellido}` : null,
+      personaId: (ev.publicado_por as string | null) ?? null,
       tipo: 'publicacion',
     })
   }
@@ -418,7 +450,7 @@ export default async function EventoDetailPage({
                 <Users className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
                 <div>
                   <p className="text-xs text-muted-foreground">Confraternidad</p>
-                  <Link href={`/organizaciones/${confraternidad.id}`} className="text-foreground hover:text-primary hover:underline">
+                  <Link href={`/organizaciones/${confraternidad.id}`} className="text-primary underline underline-offset-2 hover:opacity-80">
                     {confraternidad.nombre}
                   </Link>
                 </div>
@@ -429,7 +461,7 @@ export default async function EventoDetailPage({
                 <Users className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
                 <div>
                   <p className="text-xs text-muted-foreground">Fraternidad</p>
-                  <Link href={`/organizaciones/${fraternidad.id}`} className="text-foreground hover:text-primary hover:underline">
+                  <Link href={`/organizaciones/${fraternidad.id}`} className="text-primary underline underline-offset-2 hover:opacity-80">
                     {fraternidad.nombre}
                   </Link>
                 </div>
@@ -490,7 +522,7 @@ export default async function EventoDetailPage({
             <div className="border-t border-border pt-4 text-sm">
               <div>
                 <p className="text-xs text-muted-foreground">Casa de Retiro</p>
-                <Link href={`/casas-retiro/${casaRetiro.id}`} className="text-foreground hover:text-primary">
+                <Link href={`/casas-retiro/${casaRetiro.id}`} className="text-primary underline underline-offset-2 hover:opacity-80 font-medium">
                   {casaRetiro.nombre}
                 </Link>
                 {(casaRetiro.ciudad || casaRetiro.provincia) && (
@@ -511,14 +543,40 @@ export default async function EventoDetailPage({
             <div className="space-y-2 border-t border-border pt-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wide">Personas propuestas (Confraternidad)</p>
               <div className="grid gap-2 sm:grid-cols-2 text-sm">
-                <Field label="Coordinador/es" value={evento.coordinadores_propuestos} />
+                {evento.coordinadores_propuestos && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Coordinador/es</p>
+                    <div className="space-y-0.5">
+                      {String(evento.coordinadores_propuestos).split(',').map((v, i) => {
+                        const { texto, personaId } = resolveVal(v)
+                        return personaId ? (
+                          <Link key={i} href={`/personas/${personaId}`} className="block text-primary underline underline-offset-2 hover:opacity-80 font-medium">
+                            {texto}
+                          </Link>
+                        ) : (
+                          <p key={i} className="text-foreground">{texto}</p>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
                 {evento.asesor_propuesto && (
                   <div>
                     <p className="text-xs text-muted-foreground">Asesor</p>
-                    <p className="text-foreground">
-                      {evento.asesor_propuesto}
-                      {evento.asesor_voluntario && <span className="ml-2 text-xs text-muted-foreground">(voluntario)</span>}
-                    </p>
+                    {(() => {
+                      const { texto, personaId } = resolveVal(String(evento.asesor_propuesto))
+                      return personaId ? (
+                        <Link href={`/personas/${personaId}`} className="text-primary underline underline-offset-2 hover:opacity-80 font-medium">
+                          {texto}
+                          {evento.asesor_voluntario && <span className="ml-2 text-xs text-muted-foreground font-normal">(voluntario)</span>}
+                        </Link>
+                      ) : (
+                        <p className="text-foreground">
+                          {texto}
+                          {evento.asesor_voluntario && <span className="ml-2 text-xs text-muted-foreground">(voluntario)</span>}
+                        </p>
+                      )
+                    })()}
                   </div>
                 )}
               </div>
@@ -533,7 +591,7 @@ export default async function EventoDetailPage({
                 {coordinadorAsignado && (
                   <div>
                     <p className="text-xs text-muted-foreground">Coordinador asignado</p>
-                    <Link href={`/personas/${coordinadorAsignado.id}`} className="text-foreground hover:text-primary hover:underline">
+                    <Link href={`/personas/${coordinadorAsignado.id}`} className="text-primary underline underline-offset-2 hover:opacity-80 font-medium">
                       {coordinadorAsignado.nombre} {coordinadorAsignado.apellido}
                     </Link>
                   </div>
@@ -541,7 +599,7 @@ export default async function EventoDetailPage({
                 {asesorAsignado && (
                   <div>
                     <p className="text-xs text-muted-foreground">Asesor asignado</p>
-                    <Link href={`/personas/${asesorAsignado.id}`} className="text-foreground hover:text-primary hover:underline">
+                    <Link href={`/personas/${asesorAsignado.id}`} className="text-primary underline underline-offset-2 hover:opacity-80 font-medium">
                       {asesorAsignado.nombre} {asesorAsignado.apellido}
                     </Link>
                   </div>
@@ -550,34 +608,50 @@ export default async function EventoDetailPage({
             </div>
           )}
 
-          {/* Centralizadores */}
-          {(evento.centralizador_1_nombre || evento.centralizador_2_nombre || evento.centralizador_3_nombre) && (
-            <div className="space-y-3 border-t border-border pt-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-wide">Centralizadores</p>
-              <div className="grid gap-3 sm:grid-cols-3">
-                {[
-                  { nombre: evento.centralizador_1_nombre, email: evento.centralizador_1_email, telefono: evento.centralizador_1_telefono, label: 'Centralizador 1' },
-                  { nombre: evento.centralizador_2_nombre, email: evento.centralizador_2_email, telefono: evento.centralizador_2_telefono, label: 'Centralizador 2' },
-                  { nombre: evento.centralizador_3_nombre, email: evento.centralizador_3_email, telefono: evento.centralizador_3_telefono, label: 'Centralizador 3' },
-                ].filter(c => c.nombre).map((c) => (
-                  <div key={c.label} className="space-y-0.5 text-sm">
-                    <p className="text-xs text-muted-foreground">{c.label}</p>
-                    <p className="text-foreground font-medium">{c.nombre}</p>
-                    {c.email && (
-                      <a href={`mailto:${c.email}`} className="block text-xs text-primary hover:underline truncate">
-                        {c.email}
-                      </a>
-                    )}
-                    {c.telefono && (
-                      <a href={`tel:${c.telefono}`} className="block text-xs text-muted-foreground hover:text-foreground">
-                        {c.telefono}
-                      </a>
-                    )}
+          {/* Centralizadores — always show on published events */}
+          {(() => {
+            const centralizadoresList = [
+              { personaId: (evento as Record<string, unknown>).centralizador_1_persona_id as string | null, nombre: evento.centralizador_1_nombre as string | null, email: evento.centralizador_1_email as string | null, telefono: evento.centralizador_1_telefono as string | null, label: 'Centralizador 1' },
+              { personaId: (evento as Record<string, unknown>).centralizador_2_persona_id as string | null, nombre: evento.centralizador_2_nombre as string | null, email: evento.centralizador_2_email as string | null, telefono: evento.centralizador_2_telefono as string | null, label: 'Centralizador 2' },
+              { personaId: (evento as Record<string, unknown>).centralizador_3_persona_id as string | null, nombre: evento.centralizador_3_nombre as string | null, email: evento.centralizador_3_email as string | null, telefono: evento.centralizador_3_telefono as string | null, label: 'Centralizador 3' },
+            ]
+            const tieneAlguno = centralizadoresList.some(c => c.nombre)
+            const showSection = tieneAlguno || evento.estado === 'publicado' || evento.estado === 'finalizado'
+            if (!showSection) return null
+            return (
+              <div className="space-y-3 border-t border-border pt-4">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Centralizadores</p>
+                {tieneAlguno ? (
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    {centralizadoresList.filter(c => c.nombre).map((c) => (
+                      <div key={c.label} className="space-y-0.5 text-sm">
+                        <p className="text-xs text-muted-foreground">{c.label}</p>
+                        {c.personaId ? (
+                          <Link href={`/personas/${c.personaId}`} className="block font-medium text-primary underline underline-offset-2 hover:opacity-80">
+                            {c.nombre}
+                          </Link>
+                        ) : (
+                          <p className="font-medium text-foreground">{c.nombre}</p>
+                        )}
+                        {c.email && (
+                          <a href={`mailto:${c.email}`} className="block text-xs text-primary hover:underline truncate">
+                            {c.email}
+                          </a>
+                        )}
+                        {c.telefono && (
+                          <a href={`tel:${c.telefono}`} className="block text-xs text-primary hover:underline">
+                            {c.telefono}
+                          </a>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                ))}
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">No definidos aún.</p>
+                )}
               </div>
-            </div>
-          )}
+            )
+          })()}
 
           {/* Discernimiento */}
           <div className="grid gap-2 sm:grid-cols-2 text-sm border-t border-border pt-4">
@@ -618,7 +692,13 @@ export default async function EventoDetailPage({
                     <span className={`font-medium ${entrada.tipo === 'rechazo' ? 'text-destructive' : entrada.tipo === 'publicacion' ? 'text-green-700 dark:text-green-400' : 'text-foreground'}`}>
                       {entrada.label}
                     </span>
-                    {entrada.persona && <span> · {entrada.persona}</span>}
+                    {entrada.persona && (
+                      entrada.personaId ? (
+                        <span> · <Link href={`/personas/${entrada.personaId}`} className="text-primary underline underline-offset-1 hover:opacity-80">{entrada.persona}</Link></span>
+                      ) : (
+                        <span> · {entrada.persona}</span>
+                      )
+                    )}
                     <span> · {formatDateAR(entrada.fecha)}</span>
                     {entrada.extra && (
                       <p className="mt-0.5 pl-1 text-muted-foreground italic">{entrada.extra}</p>
@@ -638,21 +718,40 @@ export default async function EventoDetailPage({
                   valor_anterior: string | null
                   valor_nuevo: string | null
                   fecha: string | null
+                  modificado_por: string | null
                   modificado_por_persona: { nombre: string; apellido: string } | null
-                }>).map((c) => (
-                  <div key={c.id} className="text-xs text-muted-foreground border-l-2 border-border pl-2">
-                    <span className="font-medium text-foreground">{campoLabel[c.campo] ?? c.campo}</span>
-                    {': '}
-                    <span className="line-through opacity-60">{c.valor_anterior ?? '—'}</span>
-                    {' → '}
-                    <span className="text-foreground">{c.valor_nuevo ?? '—'}</span>
-                    {c.modificado_por_persona && (
-                      <span> · {c.modificado_por_persona.nombre} {c.modificado_por_persona.apellido}</span>
-                    )}
-                    <span> · {nivelDiscLabel[c.nivel_disc] ?? c.nivel_disc}</span>
-                    {c.fecha && <span> · {formatDateAR(c.fecha.split('T')[0])}</span>}
-                  </div>
-                ))}
+                }>).map((c) => {
+                  const resolvedNuevo = c.valor_nuevo ? resolveVal(c.valor_nuevo) : null
+                  const resolvedAnterior = c.valor_anterior ? resolveVal(c.valor_anterior) : null
+                  const modPor = c.modificado_por_persona
+                  const modPorId = c.modificado_por
+                  return (
+                    <div key={c.id} className="text-xs text-muted-foreground border-l-2 border-border pl-2">
+                      <span className="font-medium text-foreground">{campoLabel[c.campo] ?? c.campo}</span>
+                      {': '}
+                      <span className="line-through opacity-60">
+                        {resolvedAnterior ? resolvedAnterior.texto : '—'}
+                      </span>
+                      {' → '}
+                      {resolvedNuevo?.personaId ? (
+                        <Link href={`/personas/${resolvedNuevo.personaId}`} className="text-primary underline underline-offset-1 hover:opacity-80">
+                          {resolvedNuevo.texto}
+                        </Link>
+                      ) : (
+                        <span className="text-foreground">{resolvedNuevo ? resolvedNuevo.texto : '—'}</span>
+                      )}
+                      {modPor && (
+                        modPorId ? (
+                          <span> · <Link href={`/personas/${modPorId}`} className="text-primary underline underline-offset-1 hover:opacity-80">{modPor.nombre} {modPor.apellido}</Link></span>
+                        ) : (
+                          <span> · {modPor.nombre} {modPor.apellido}</span>
+                        )
+                      )}
+                      <span> · {nivelDiscLabel[c.nivel_disc] ?? c.nivel_disc}</span>
+                      {c.fecha && <span> · {formatDateAR(c.fecha.split('T')[0])}</span>}
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
@@ -700,12 +799,15 @@ export default async function EventoDetailPage({
               eventoId={id}
               inicial={{
                 casa_retiro_id: (evento as Record<string, unknown>).casa_retiro_id as string | null,
+                centralizador_1_persona_id: (evento as Record<string, unknown>).centralizador_1_persona_id as string | null,
                 centralizador_1_nombre: (evento as Record<string, unknown>).centralizador_1_nombre as string | null,
                 centralizador_1_email: (evento as Record<string, unknown>).centralizador_1_email as string | null,
                 centralizador_1_telefono: (evento as Record<string, unknown>).centralizador_1_telefono as string | null,
+                centralizador_2_persona_id: (evento as Record<string, unknown>).centralizador_2_persona_id as string | null,
                 centralizador_2_nombre: (evento as Record<string, unknown>).centralizador_2_nombre as string | null,
                 centralizador_2_email: (evento as Record<string, unknown>).centralizador_2_email as string | null,
                 centralizador_2_telefono: (evento as Record<string, unknown>).centralizador_2_telefono as string | null,
+                centralizador_3_persona_id: (evento as Record<string, unknown>).centralizador_3_persona_id as string | null,
                 centralizador_3_nombre: (evento as Record<string, unknown>).centralizador_3_nombre as string | null,
                 centralizador_3_email: (evento as Record<string, unknown>).centralizador_3_email as string | null,
                 centralizador_3_telefono: (evento as Record<string, unknown>).centralizador_3_telefono as string | null,
@@ -728,12 +830,15 @@ export default async function EventoDetailPage({
                 casa_retiro_id: (evento as Record<string, unknown>).casa_retiro_id as string | null,
                 coordinador_asignado_id: (evento as Record<string, unknown>).coordinador_asignado_id as string | null,
                 asesor_asignado_id: (evento as Record<string, unknown>).asesor_asignado_id as string | null,
+                centralizador_1_persona_id: (evento as Record<string, unknown>).centralizador_1_persona_id as string | null,
                 centralizador_1_nombre: (evento as Record<string, unknown>).centralizador_1_nombre as string | null,
                 centralizador_1_email: (evento as Record<string, unknown>).centralizador_1_email as string | null,
                 centralizador_1_telefono: (evento as Record<string, unknown>).centralizador_1_telefono as string | null,
+                centralizador_2_persona_id: (evento as Record<string, unknown>).centralizador_2_persona_id as string | null,
                 centralizador_2_nombre: (evento as Record<string, unknown>).centralizador_2_nombre as string | null,
                 centralizador_2_email: (evento as Record<string, unknown>).centralizador_2_email as string | null,
                 centralizador_2_telefono: (evento as Record<string, unknown>).centralizador_2_telefono as string | null,
+                centralizador_3_persona_id: (evento as Record<string, unknown>).centralizador_3_persona_id as string | null,
                 centralizador_3_nombre: (evento as Record<string, unknown>).centralizador_3_nombre as string | null,
                 centralizador_3_email: (evento as Record<string, unknown>).centralizador_3_email as string | null,
                 centralizador_3_telefono: (evento as Record<string, unknown>).centralizador_3_telefono as string | null,
