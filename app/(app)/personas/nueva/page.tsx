@@ -52,10 +52,8 @@ const NIVELES_ESTUDIOS = [
 ]
 
 const TIPOS_PERSONA = [
-  { value: "interesado", label: "Interesado/a" },
-  { value: "inscripto", label: "Inscripto/a" },
-  { value: "convivente", label: "Convivente" },
   { value: "cecista", label: "Cecista" },
+  { value: "no_cecista", label: "No Cecista" },
   { value: "otro", label: "Otro" },
 ]
 
@@ -570,7 +568,7 @@ export default function NewPersonaPage() {
           <CardContent className="space-y-6">
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
-                <Label htmlFor="tipo_persona">Tipo</Label>
+                <Label htmlFor="tipo_persona">Categoría</Label>
                 <select
                   id="tipo_persona"
                   name="tipo_persona"
@@ -583,9 +581,6 @@ export default function NewPersonaPage() {
                     <option key={t.value} value={t.value}>{t.label}</option>
                   ))}
                 </select>
-                {formData.tipo_persona === "cecista" && (
-                  <p className="text-xs text-amber-600">Recordá asignar un Modo de Participación a este cecista.</p>
-                )}
               </div>
               <div className="flex items-end gap-4 md:col-span-2">
                 <div className="flex items-center gap-2">
@@ -672,35 +667,8 @@ export default function NewPersonaPage() {
               </>
             )}
 
-            <div className="flex items-center gap-2">
-              <input
-                id="acepta_comunicaciones"
-                name="acepta_comunicaciones"
-                type="checkbox"
-                checked={formData.acepta_comunicaciones}
-                onChange={handleChange}
-                className="h-4 w-4 rounded border-border"
-              />
-              <Label htmlFor="acepta_comunicaciones">
-                Acepta recibir comunicaciones
-              </Label>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Modo de Participación */}
-        <Card className="border-border">
-          <CardHeader>
-            <CardTitle className="text-foreground">
-              Modo de Participación
-            </CardTitle>
-            <CardDescription>
-              Estado institucional inicial en la comunidad
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="modo_inicial">Modo inicial</Label>
+              <Label htmlFor="modo_inicial">Modo de Participación</Label>
               <select
                 id="modo_inicial"
                 name="modo_inicial"
@@ -773,6 +741,20 @@ export default function NewPersonaPage() {
                 )}
               </div>
             )}
+
+            <div className="flex items-center gap-2">
+              <input
+                id="acepta_comunicaciones"
+                name="acepta_comunicaciones"
+                type="checkbox"
+                checked={formData.acepta_comunicaciones}
+                onChange={handleChange}
+                className="h-4 w-4 rounded border-border"
+              />
+              <Label htmlFor="acepta_comunicaciones">
+                Acepta recibir comunicaciones
+              </Label>
+            </div>
           </CardContent>
         </Card>
 

@@ -127,10 +127,8 @@ const tipoMinisterioLabel: Record<string, string> = {
 }
 
 const TIPOS_PERSONA = [
-  { value: "interesado", label: "Interesado/a" },
-  { value: "inscripto", label: "Inscripto/a" },
-  { value: "convivente", label: "Convivente" },
   { value: "cecista", label: "Cecista" },
+  { value: "no_cecista", label: "No Cecista" },
   { value: "otro", label: "Otro" },
 ]
 
@@ -761,7 +759,7 @@ export function EditPersonaForm({
           <CardContent className="space-y-6">
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
-                <Label htmlFor="tipo_persona">Tipo</Label>
+                <Label htmlFor="tipo_persona">Categoría</Label>
                 <select
                   id="tipo_persona"
                   name="tipo_persona"
@@ -775,9 +773,6 @@ export function EditPersonaForm({
                     <option key={t.value} value={t.value}>{t.label}</option>
                   ))}
                 </select>
-                {basicData.tipo_persona === "cecista" && !modoActual && (
-                  <p className="text-xs text-amber-600">Recordá asignar un Modo de Participación a este cecista.</p>
-                )}
               </div>
               <div className="flex items-end gap-4 md:col-span-2">
                 <div className="flex items-center gap-2">
@@ -881,6 +876,176 @@ export function EditPersonaForm({
                 </Button>
               </div>
             )}
+
+            {/* Modo de Participación */}
+            <div className="border-t border-border pt-4 space-y-4">
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-sm font-medium text-foreground">Modo de Participación:</span>
+                {modoActual ? (
+                  <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
+                    {modoLabels[modoActual.modo] ?? modoActual.modo}
+                  </span>
+                ) : (
+                  <span className="text-sm text-muted-foreground italic">Sin modo asignado</span>
+                )}
+                {modoActual && (
+                  <span className="text-xs text-muted-foreground">desde {modoActual.fecha_inicio}</span>
+                )}
+              </div>
+
+              {modoActual?.modo === "intercesor" && (
+                <form onSubmit={handleBasicSubmit} className="space-y-2">
+                  <Label htmlFor="intercesor_dies_natalis">Intercesor Dies Natalis</Label>
+                  <div className="flex items-center gap-3">
+                    <Input
+                      id="intercesor_dies_natalis"
+                      name="intercesor_dies_natalis"
+                      type="date"
+                      value={basicData.intercesor_dies_natalis}
+                      onChange={handleBasicChange}
+                      disabled={basicLoading}
+                      className="w-48"
+                    />
+                    <Button type="submit" size="sm" variant="outline" disabled={basicLoading}>
+                      {basicLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Guardar fecha"}
+                    </Button>
+                  </div>
+                </form>
+              )}
+
+              <form onSubmit={handleModoSubmit} className="space-y-4">
+                {modoError && (
+                  <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{modoError}</div>
+                )}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="nuevoModo">Cambiar Modo</Label>
+                    <select
+                      id="nuevoModo"
+                      value={nuevoModo}
+                      onChange={e => setNuevoModo(e.target.value)}
+                      disabled={modoLoading}
+                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
+                    >
+                      <option value="">Seleccionar modo...</option>
+                      <option value="colaborador">Colaborador</option>
+                      <option value="servidor">Servidor</option>
+                      <option value="asesor">Asesor</option>
+                      <option value="familiar">Familiar</option>
+                      <option value="orante">Orante</option>
+                      <option value="intercesor">Intercesor</option>
+                    </select>
+                  </div>
+                  {modoActual && (
+                    <div className="space-y-2">
+                      <Label htmlFor="motivoFin">Motivo del cambio</Label>
+                      <Input
+                        id="motivoFin"
+                        value={motivoFin}
+                        onChange={e => setMotivoFin(e.target.value)}
+                        placeholder="Opcional"
+                        disabled={modoLoading}
+                      />
+                    </div>
+                  )}
+                </div>
+                {nuevoModo && (
+                  <div className="space-y-2">
+                    <Label>Adjunto (opcional)</Label>
+                    {modoAdjunto ? (
+                      <div className="flex items-center gap-3 rounded-md border border-border bg-muted px-3 py-2.5 text-sm">
+                        <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <div className="flex-1 min-w-0">
+                          <p className="truncate font-medium text-foreground">{modoAdjunto.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {(modoAdjunto.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setModoAdjunto(null)}
+                          disabled={modoLoading}
+                          className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label
+                        htmlFor="modo_adjunto_edit"
+                        className="flex cursor-pointer flex-col items-center gap-2 rounded-md border border-dashed border-border bg-muted/40 px-4 py-5 text-sm text-muted-foreground transition-colors hover:border-primary hover:bg-muted/70 hover:text-foreground"
+                      >
+                        <Paperclip className="h-5 w-5" />
+                        <span>Hacé clic para seleccionar</span>
+                        <span className="text-xs">PDF, Word o imagen — máx. 10 MB</span>
+                        <input
+                          id="modo_adjunto_edit"
+                          type="file"
+                          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                          className="sr-only"
+                          disabled={modoLoading}
+                          onChange={(e) => setModoAdjunto(e.target.files?.[0] ?? null)}
+                        />
+                      </label>
+                    )}
+                  </div>
+                )}
+                <Button type="submit" variant="outline" disabled={modoLoading || !nuevoModo}>
+                  {modoLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Actualizando...
+                    </>
+                  ) : (
+                    modoActual ? "Cambiar Modo" : "Asignar Modo"
+                  )}
+                </Button>
+              </form>
+
+              {historialModos.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-foreground">Historial de Modos</p>
+                  <div className="rounded-md border border-border overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted">
+                        <tr>
+                          <th className="px-4 py-2 text-left font-medium text-muted-foreground">Modo</th>
+                          <th className="px-4 py-2 text-left font-medium text-muted-foreground">Desde</th>
+                          <th className="px-4 py-2 text-left font-medium text-muted-foreground">Hasta</th>
+                          <th className="px-4 py-2 text-left font-medium text-muted-foreground">Motivo</th>
+                          <th className="px-4 py-2 text-left font-medium text-muted-foreground">Adjunto</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {historialModos.map(m => (
+                          <tr key={m.id}>
+                            <td className="px-4 py-2 text-foreground">{modoLabels[m.modo] ?? m.modo}</td>
+                            <td className="px-4 py-2 text-muted-foreground">{m.fecha_inicio}</td>
+                            <td className="px-4 py-2 text-muted-foreground">{m.fecha_fin ?? "—"}</td>
+                            <td className="px-4 py-2 text-muted-foreground">{m.motivo_fin ?? "—"}</td>
+                            <td className="px-4 py-2">
+                              {m.documento_url ? (
+                                <a
+                                  href={m.documento_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-primary text-xs hover:underline"
+                                >
+                                  <Paperclip className="h-3 w-3" />
+                                  Ver
+                                </a>
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div className="flex items-center gap-2">
               <input
@@ -991,182 +1156,6 @@ export function EditPersonaForm({
               )}
             </Button>
           </form>
-        </CardContent>
-      </Card>
-
-      {/* Section B: Participation mode */}
-      <Card className="border-border">
-        <CardHeader>
-          <CardTitle className="text-foreground">Modo de Participación</CardTitle>
-          <CardDescription>Estado institucional de la persona en la comunidad</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-sm text-muted-foreground">Modo actual:</span>
-            {modoActual ? (
-              <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
-                {modoLabels[modoActual.modo] ?? modoActual.modo}
-              </span>
-            ) : (
-              <span className="text-sm text-muted-foreground italic">Sin modo asignado</span>
-            )}
-            {modoActual && (
-              <span className="text-xs text-muted-foreground">desde {modoActual.fecha_inicio}</span>
-            )}
-          </div>
-
-          {modoActual?.modo === "intercesor" && (
-            <form onSubmit={handleBasicSubmit} className="space-y-2">
-              <Label htmlFor="intercesor_dies_natalis">Intercesor Dies Natalis</Label>
-              <div className="flex items-center gap-3">
-                <Input
-                  id="intercesor_dies_natalis"
-                  name="intercesor_dies_natalis"
-                  type="date"
-                  value={basicData.intercesor_dies_natalis}
-                  onChange={handleBasicChange}
-                  disabled={basicLoading}
-                  className="w-48"
-                />
-                <Button type="submit" size="sm" variant="outline" disabled={basicLoading}>
-                  {basicLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Guardar fecha"}
-                </Button>
-              </div>
-            </form>
-          )}
-
-          <form onSubmit={handleModoSubmit} className="space-y-4">
-            {modoError && (
-              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{modoError}</div>
-            )}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="nuevoModo">Cambiar Modo</Label>
-                <select
-                  id="nuevoModo"
-                  value={nuevoModo}
-                  onChange={e => setNuevoModo(e.target.value)}
-                  disabled={modoLoading}
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-                >
-                  <option value="">Seleccionar modo...</option>
-                  <option value="colaborador">Colaborador</option>
-                  <option value="servidor">Servidor</option>
-                  <option value="asesor">Asesor</option>
-                  <option value="familiar">Familiar</option>
-                  <option value="orante">Orante</option>
-                  <option value="intercesor">Intercesor</option>
-                </select>
-              </div>
-              {modoActual && (
-                <div className="space-y-2">
-                  <Label htmlFor="motivoFin">Motivo del cambio</Label>
-                  <Input
-                    id="motivoFin"
-                    value={motivoFin}
-                    onChange={e => setMotivoFin(e.target.value)}
-                    placeholder="Opcional"
-                    disabled={modoLoading}
-                  />
-                </div>
-              )}
-            </div>
-            {nuevoModo && (
-              <div className="space-y-2">
-                <Label>Adjunto (opcional)</Label>
-                {modoAdjunto ? (
-                  <div className="flex items-center gap-3 rounded-md border border-border bg-muted px-3 py-2.5 text-sm">
-                    <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <div className="flex-1 min-w-0">
-                      <p className="truncate font-medium text-foreground">{modoAdjunto.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {(modoAdjunto.size / 1024 / 1024).toFixed(2)} MB
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setModoAdjunto(null)}
-                      disabled={modoLoading}
-                      className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <label
-                    htmlFor="modo_adjunto_edit"
-                    className="flex cursor-pointer flex-col items-center gap-2 rounded-md border border-dashed border-border bg-muted/40 px-4 py-5 text-sm text-muted-foreground transition-colors hover:border-primary hover:bg-muted/70 hover:text-foreground"
-                  >
-                    <Paperclip className="h-5 w-5" />
-                    <span>Hacé clic para seleccionar</span>
-                    <span className="text-xs">PDF, Word o imagen — máx. 10 MB</span>
-                    <input
-                      id="modo_adjunto_edit"
-                      type="file"
-                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                      className="sr-only"
-                      disabled={modoLoading}
-                      onChange={(e) => setModoAdjunto(e.target.files?.[0] ?? null)}
-                    />
-                  </label>
-                )}
-              </div>
-            )}
-            <Button type="submit" variant="outline" disabled={modoLoading || !nuevoModo}>
-              {modoLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Actualizando...
-                </>
-              ) : (
-                modoActual ? "Cambiar Modo" : "Asignar Modo"
-              )}
-            </Button>
-          </form>
-
-          {historialModos.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-foreground">Historial</p>
-              <div className="rounded-md border border-border overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted">
-                    <tr>
-                      <th className="px-4 py-2 text-left font-medium text-muted-foreground">Modo</th>
-                      <th className="px-4 py-2 text-left font-medium text-muted-foreground">Desde</th>
-                      <th className="px-4 py-2 text-left font-medium text-muted-foreground">Hasta</th>
-                      <th className="px-4 py-2 text-left font-medium text-muted-foreground">Motivo</th>
-                      <th className="px-4 py-2 text-left font-medium text-muted-foreground">Adjunto</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {historialModos.map(m => (
-                      <tr key={m.id}>
-                        <td className="px-4 py-2 text-foreground">{modoLabels[m.modo] ?? m.modo}</td>
-                        <td className="px-4 py-2 text-muted-foreground">{m.fecha_inicio}</td>
-                        <td className="px-4 py-2 text-muted-foreground">{m.fecha_fin ?? "—"}</td>
-                        <td className="px-4 py-2 text-muted-foreground">{m.motivo_fin ?? "—"}</td>
-                        <td className="px-4 py-2">
-                          {m.documento_url ? (
-                            <a
-                              href={m.documento_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-primary text-xs hover:underline"
-                            >
-                              <Paperclip className="h-3 w-3" />
-                              Ver
-                            </a>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
 
