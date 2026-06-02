@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getUserContext, canPerform } from '@/lib/auth/context'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Edit2, Calendar, MapPin, Users } from 'lucide-react'
+import { ArrowLeft, Edit2, Calendar, MapPin, Users, Link2 as Link2Icon } from 'lucide-react'
 import DiscernimientoPanel from './_components/approval-panel'
 import DatosNoticiasPannel from './_components/datos-noticias-panel'
 import AprobacionFinalPanel from './_components/aprobacion-final-panel'
@@ -14,6 +14,7 @@ import SuspenderEventoButton from './_components/suspender-evento-button'
 import SolicitarSuspensionPanel from './_components/solicitar-suspension-panel'
 import { PublicarButton } from './_components/publicar-button'
 import FlyerUploadPanel from './_components/flyer-upload-panel'
+import LinkPagoPanel from './_components/link-pago-panel'
 import { formatDateAR } from '@/lib/utils'
 
 const estadoClases: Record<string, string> = {
@@ -86,7 +87,7 @@ export default async function EventoDetailPage({
       centralizador_1_persona_id, centralizador_1_nombre, centralizador_1_email, centralizador_1_telefono,
       centralizador_2_persona_id, centralizador_2_nombre, centralizador_2_email, centralizador_2_telefono,
       centralizador_3_persona_id, centralizador_3_nombre, centralizador_3_email, centralizador_3_telefono,
-      flyer_horizontal_url, flyer_cuadrado_url,
+      flyer_horizontal_url, flyer_cuadrado_url, link_pago_mercadopago,
       notas_noticias, notas_aprobacion_final,
       solicitud_suspension_notas, solicitud_suspension_fecha,
       solicitud_suspension_por_persona:personas!solicitud_suspension_por(id, nombre, apellido),
@@ -540,6 +541,22 @@ export default async function EventoDetailPage({
             </div>
           )}
 
+          {/* Link de pago Mercado Pago */}
+          {(ev.link_pago_mercadopago as string | null) && (
+            <div className="border-t border-border pt-4">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Preinscripción</p>
+              <a
+                href={ev.link_pago_mercadopago as string}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-md bg-[#009EE3] hover:bg-[#0089C6] text-white text-sm font-medium px-4 py-2 transition-colors"
+              >
+                <Link2Icon className="h-4 w-4" />
+                Pagar con Mercado Pago
+              </a>
+            </div>
+          )}
+
           {/* Personas propuestas — visible cuando la confra ya discernió */}
           {evento.disc_confra_estado && (evento.coordinadores_propuestos || evento.asesor_propuesto) && (
             <div className="space-y-2 border-t border-border pt-4">
@@ -869,6 +886,14 @@ export default async function EventoDetailPage({
       )}
 
       </div>
+
+      {/* Link de pago — visible para quienes pueden editar el evento */}
+      {canEdit && (
+        <LinkPagoPanel
+          eventoId={id}
+          linkPagoActual={(ev.link_pago_mercadopago as string | null) ?? null}
+        />
+      )}
 
       {/* Flyers — admin only */}
       {ctx?.is_admin && (

@@ -50,6 +50,7 @@ export default function EditarEventoForm({
     modalidad: "presencial",
     estado: "borrador",
     descripcion: "",
+    link_pago_mercadopago: "",
     ciudad: "",
     codigo_postal: "",
     diocesis: "",
@@ -64,7 +65,7 @@ export default function EditarEventoForm({
       supabase
         .from("eventos")
         .select(
-          "id, nombre, tipo, fecha_solicitud, fecha_inicio, fecha_fin, organizacion_id, casa_retiro_id, cupo_maximo, precio, audiencia, modalidad, estado, descripcion, ciudad, codigo_postal, diocesis, provincia_evento, pais_evento, flyer_horizontal_url, flyer_cuadrado_url",
+          "id, nombre, tipo, fecha_solicitud, fecha_inicio, fecha_fin, organizacion_id, casa_retiro_id, cupo_maximo, precio, audiencia, modalidad, estado, descripcion, link_pago_mercadopago, ciudad, codigo_postal, diocesis, provincia_evento, pais_evento, flyer_horizontal_url, flyer_cuadrado_url",
         )
         .eq("id", id)
         .single(),
@@ -111,6 +112,7 @@ export default function EditarEventoForm({
           modalidad: evento.modalidad ?? "presencial",
           estado: evento.estado ?? "borrador",
           descripcion: evento.descripcion ?? "",
+          link_pago_mercadopago: (evento as Record<string, unknown>).link_pago_mercadopago as string ?? "",
           ciudad: evento.ciudad ?? "",
           codigo_postal: evento.codigo_postal ?? "",
           diocesis: evento.diocesis ?? "",
@@ -186,6 +188,7 @@ export default function EditarEventoForm({
           : null,
         precio: formData.precio ? parseFloat(formData.precio) : null,
         descripcion: formData.descripcion || null,
+        link_pago_mercadopago: formData.link_pago_mercadopago.trim() || null,
         ciudad: formData.ciudad || null,
         codigo_postal: formData.codigo_postal || null,
         diocesis: formData.diocesis || null,
@@ -606,6 +609,22 @@ export default function EditarEventoForm({
                 onChange={handleChange}
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm min-h-20"
               />
+            </div>
+
+            {/* Link de pago Mercado Pago */}
+            <div className="space-y-2">
+              <Label htmlFor="link_pago_mercadopago">Link de Pago Mercado Pago</Label>
+              <Input
+                id="link_pago_mercadopago"
+                name="link_pago_mercadopago"
+                type="url"
+                placeholder="https://mpago.la/..."
+                value={formData.link_pago_mercadopago}
+                onChange={handleChange}
+              />
+              <p className="text-xs text-muted-foreground">
+                Link para que los participantes realicen la preinscripción. Se mostrará en la página del evento.
+              </p>
             </div>
 
             {/* Ubicación */}
