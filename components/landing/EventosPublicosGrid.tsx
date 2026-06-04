@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { CalendarDays, MapPin, Users } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -63,7 +64,7 @@ export function EventosPublicosGrid({ eventos }: Props) {
           return (
             <Card key={evento.id} className="flex flex-col overflow-hidden">
               {(flyerH || flyerC) && (
-                <div className="relative">
+                <Link href={`/e/${evento.id}`} className="block relative hover:opacity-95 transition-opacity">
                   {flyerC && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={flyerC} alt="" className={`w-full aspect-square object-cover${flyerH ? ' sm:hidden' : ''}`} />
@@ -72,7 +73,7 @@ export function EventosPublicosGrid({ eventos }: Props) {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={flyerH} alt="" className={`w-full aspect-video object-cover${flyerC ? ' hidden sm:block' : ''}`} />
                   )}
-                </div>
+                </Link>
               )}
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-2">
@@ -112,13 +113,16 @@ export function EventosPublicosGrid({ eventos }: Props) {
                   <p className="mt-1 text-xs text-muted-foreground/70">{org.nombre}</p>
                 )}
               </CardContent>
-              <CardFooter className="mt-auto pt-3">
+              <CardFooter className="mt-auto pt-3 flex gap-2">
                 <Button
                   size="sm"
-                  className="w-full"
+                  className="flex-1"
                   onClick={() => setModalEvento({ id: evento.id, nombre: evento.nombre })}
                 >
                   Quiero participar
+                </Button>
+                <Button size="sm" variant="outline" asChild>
+                  <Link href={`/e/${evento.id}`}>Ver más</Link>
                 </Button>
               </CardFooter>
             </Card>
