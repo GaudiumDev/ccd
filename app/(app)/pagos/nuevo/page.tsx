@@ -43,7 +43,7 @@ export default function NewPagoPage() {
         persona:personas!persona_id(nombre, apellido),
         evento:eventos!evento_id(nombre, fecha_inicio)
       `)
-      .in('estado_inscripcion', ['pendiente', 'confirmado'])
+      .in('estado_participacion', ['interesado', 'inscripto'])
       .order('fecha_inscripcion', { ascending: false })
       .then(({ data }) => {
         if (data) setParticipantes(data as ParticipanteOption[])
@@ -70,6 +70,14 @@ export default function NewPagoPage() {
 
       const { error: pagoError } = await supabase.from('pagos').insert(insertData)
       if (pagoError) throw pagoError
+
+      if (formData.estado_pago === 'confirmado') {
+        await supabase
+          .from('evento_participantes')
+          .update({ estado_participacion: 'inscripto' })
+          .eq('id', formData.evento_participante_id)
+          .eq('estado_participacion', 'interesado')
+      }
 
       router.push('/pagos')
     } catch (err: unknown) {

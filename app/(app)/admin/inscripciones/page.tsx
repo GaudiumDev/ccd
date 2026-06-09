@@ -7,17 +7,31 @@ import { createClient } from "@/lib/supabase/server"
 import { RegistrationActions } from "./registration-actions"
 
 const estadoClases: Record<string, string> = {
-  pendiente: "bg-yellow-100 text-yellow-800",
-  confirmado: "bg-green-100 text-green-800",
+  interesado: "bg-yellow-100 text-yellow-800",
+  inscripto: "bg-green-100 text-green-800",
+  en_curso: "bg-blue-100 text-blue-800",
+  completado: "bg-gray-100 text-gray-700",
   cancelado: "bg-red-100 text-red-800",
-  lista_espera: "bg-blue-100 text-blue-800",
+  lista_espera: "bg-purple-100 text-purple-800",
 }
 
 const estadoLabels: Record<string, string> = {
-  pendiente: "Pendiente",
-  confirmado: "Confirmado",
+  interesado: "Interesado",
+  inscripto: "Inscripto",
+  en_curso: "En curso",
+  completado: "Completado",
   cancelado: "Cancelado",
   lista_espera: "Lista de Espera",
+}
+
+const tipoClases: Record<string, string> = {
+  cecista: "bg-indigo-100 text-indigo-800",
+  no_cecista: "bg-orange-100 text-orange-800",
+}
+
+const tipoLabels: Record<string, string> = {
+  cecista: "Cecista",
+  no_cecista: "No cecista",
 }
 
 async function getInscripciones() {
@@ -25,8 +39,8 @@ async function getInscripciones() {
   const { data } = await supabase
     .from("evento_participantes")
     .select(`
-      id, estado_inscripcion, rol_en_evento, fecha_inscripcion, notas,
-      persona:personas!persona_id(nombre, apellido, email, telefono),
+      id, estado_participacion, tipo_participante, rol_en_evento, fecha_inscripcion, notas,
+      persona:personas!persona_id(id, nombre, apellido, email, telefono),
       evento:eventos!evento_id(nombre, fecha_inicio)
     `)
     .order("fecha_inscripcion", { ascending: false })
@@ -57,9 +71,14 @@ export default async function AdminRegistrationsPage() {
                           ? `${insc.persona.apellido}, ${insc.persona.nombre}`
                           : "—"}
                       </h3>
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${estadoClases[insc.estado_inscripcion] ?? ""}`}>
-                        {estadoLabels[insc.estado_inscripcion] ?? insc.estado_inscripcion}
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${estadoClases[insc.estado_participacion] ?? ""}`}>
+                        {estadoLabels[insc.estado_participacion] ?? insc.estado_participacion}
                       </span>
+                      {insc.tipo_participante && (
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${tipoClases[insc.tipo_participante] ?? ""}`}>
+                          {tipoLabels[insc.tipo_participante] ?? insc.tipo_participante}
+                        </span>
+                      )}
                     </div>
 
                     <div className="space-y-1 text-sm text-muted-foreground">
@@ -90,7 +109,9 @@ export default async function AdminRegistrationsPage() {
 
                   <RegistrationActions
                     participanteId={insc.id}
-                    currentStatus={insc.estado_inscripcion}
+                    personaId={insc.persona?.id ?? ""}
+                    currentStatus={insc.estado_participacion}
+                    tipoParticipante={insc.tipo_participante}
                   />
                 </div>
               </CardContent>

@@ -25,7 +25,8 @@ export default function NewInscripcionPage() {
     persona_id: '',
     evento_id: '',
     rol_en_evento: 'convivente',
-    estado_inscripcion: 'pendiente',
+    estado_participacion: 'interesado',
+    tipo_participante: 'no_cecista',
     notas: '',
   })
 
@@ -60,7 +61,8 @@ export default function NewInscripcionPage() {
         persona_id: formData.persona_id,
         evento_id: formData.evento_id,
         rol_en_evento: formData.rol_en_evento,
-        estado_inscripcion: formData.estado_inscripcion,
+        estado_participacion: formData.estado_participacion,
+        tipo_participante: formData.tipo_participante,
       }
       if (formData.notas) insertData.notas = formData.notas
 
@@ -164,20 +166,35 @@ export default function NewInscripcionPage() {
                 </select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="estado_inscripcion">Estado</Label>
+                <Label htmlFor="estado_participacion">Estado</Label>
                 <select
-                  id="estado_inscripcion"
-                  name="estado_inscripcion"
-                  value={formData.estado_inscripcion}
+                  id="estado_participacion"
+                  name="estado_participacion"
+                  value={formData.estado_participacion}
                   onChange={handleChange}
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
                 >
-                  <option value="pendiente">Pendiente</option>
-                  <option value="confirmado">Confirmado</option>
-                  <option value="cancelado">Cancelado</option>
+                  <option value="interesado">Interesado</option>
+                  <option value="inscripto">Inscripto</option>
                   <option value="lista_espera">Lista de Espera</option>
+                  <option value="cancelado">Cancelado</option>
                 </select>
               </div>
+            </div>
+
+            {/* Tipo de participante */}
+            <div className="space-y-2">
+              <Label htmlFor="tipo_participante">Tipo de participante</Label>
+              <select
+                id="tipo_participante"
+                name="tipo_participante"
+                value={formData.tipo_participante}
+                onChange={handleChange}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
+              >
+                <option value="no_cecista">No cecista (primera vez)</option>
+                <option value="cecista">Cecista</option>
+              </select>
             </div>
 
             {/* Notas */}

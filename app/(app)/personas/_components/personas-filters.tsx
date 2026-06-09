@@ -63,10 +63,8 @@ export default function PersonasFilters({ ministerios, organizaciones, defaults 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
         <select name="tipo_persona" defaultValue={defaults.tipo_persona} className={selectClass}>
           <option value="">Tipo de persona</option>
-          <option value="interesado">Interesado</option>
-          <option value="inscripto">Inscripto</option>
-          <option value="convivente">Convivente</option>
           <option value="cecista">Cecista</option>
+          <option value="no_cecista">No cecista</option>
           <option value="otro">Otro</option>
         </select>
 

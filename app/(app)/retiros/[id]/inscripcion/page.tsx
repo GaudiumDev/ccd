@@ -88,7 +88,7 @@ export default function InscripcionRetiroPage() {
         evento_id: eventoId,
         persona_id: personaId,
         rol_en_evento: "convivente",
-        estado_inscripcion: "pendiente",
+        estado_participacion: "interesado",
         notas: notas || null,
       })
 

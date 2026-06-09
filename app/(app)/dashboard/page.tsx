@@ -422,8 +422,7 @@ export default async function DashboardPage() {
         "id, fecha_inscripcion, persona:personas!inner(id, nombre, apellido, email, telefono, tipo_persona), evento:eventos!inner(id, nombre, fecha_inicio, organizacion_id)"
       )
       .eq("rol_en_evento", "convivente")
-      .eq("estado_inscripcion", "pendiente")
-      .eq("personas.tipo_persona", "interesado")
+      .eq("estado_participacion", "interesado")
       .order("fecha_inscripcion", { ascending: false })
       .limit(10)
     if (!ctx.is_admin && primaryOrgId) {
@@ -1147,7 +1146,7 @@ export default async function DashboardPage() {
                 )
               })}
             </div>
-            <Link href="/personas?tipo_persona=interesado" className="block mt-4">
+            <Link href="/admin/inscripciones" className="block mt-4">
               <Button variant="outline" className="w-full bg-transparent">
                 Ver todos los interesados
                 <ArrowRight className="h-4 w-4 ml-2" />

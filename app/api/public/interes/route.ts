@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   const insertData: Record<string, unknown> = {
     nombre: nombre.trim(),
     apellido: apellido.trim(),
-    tipo_persona: 'interesado',
+    tipo_persona: 'no_cecista',
     acepta_comunicaciones: true,
     fecha_alta: today,
   }
@@ -65,7 +65,8 @@ export async function POST(request: Request) {
       evento_id,
       persona_id: persona.id,
       rol_en_evento: 'convivente',
-      estado_inscripcion: 'pendiente',
+      estado_participacion: 'interesado',
+      tipo_participante: 'no_cecista',
       notas: notas?.trim() || null,
     })
 
