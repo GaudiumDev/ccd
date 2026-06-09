@@ -292,10 +292,10 @@ export default async function PersonaDetailPage({
         <CardContent>
           <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
             <Field
-              label="Tipo"
+              label="Categoría"
               value={
                 persona.tipo_persona
-                  ? ({ interesado: "Interesado/a", inscripto: "Inscripto/a", convivente: "Convivente", cecista: "Cecista", otro: "Otro" }[persona.tipo_persona] ?? persona.tipo_persona)
+                  ? ({ cecista: "Cecista", no_cecista: "No Cecista", otro: "Otro", interesado: "Interesado/a", inscripto: "Inscripto/a", convivente: "Convivente" }[persona.tipo_persona] ?? persona.tipo_persona)
                   : null
               }
             />
@@ -346,72 +346,64 @@ export default async function PersonaDetailPage({
               />
             )}
           </dl>
-        </CardContent>
-      </Card>
-
-      {/* Modo de Participación */}
-      <Card className="border-border bg-card">
-        <CardHeader>
-          <CardTitle className="text-sm font-semibold text-foreground uppercase tracking-wide">
-            Modo de Participación
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {(modos ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground">Sin historial de modos registrado.</p>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Modo</th>
-                  <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Desde</th>
-                  <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Hasta</th>
-                  <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Estado</th>
-                  <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Notas</th>
-                  <th className="text-left py-2 font-medium text-muted-foreground">Adjunto</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(modos ?? []).map((m: any, i) => (
-                  <tr
-                    key={i}
-                    className={`border-b border-border/50 last:border-0 ${
-                      !m.fecha_fin ? "bg-green-50 dark:bg-green-900/10" : ""
-                    }`}
-                  >
-                    <td className="py-2 pr-4 text-foreground capitalize">{m.modo}</td>
-                    <td className="py-2 pr-4 text-muted-foreground">{formatDate(m.fecha_inicio)}</td>
-                    <td className="py-2 pr-4 text-muted-foreground">
-                      {m.fecha_fin ? (
-                        formatDate(m.fecha_fin)
-                      ) : (
-                        <span className="text-green-700 dark:text-green-400 font-medium">actual</span>
-                      )}
-                    </td>
-                    <td className="py-2 pr-4 text-muted-foreground capitalize">{m.estado ?? "—"}</td>
-                    <td className="py-2 pr-4 text-muted-foreground max-w-50">
-                      {m.notas ? (
-                        <span className="whitespace-pre-wrap">{m.notas}</span>
-                      ) : "—"}
-                    </td>
-                    <td className="py-2">
-                      {m.documento_url ? (
-                        <a
-                          href={m.documento_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-primary hover:underline"
-                        >
-                          <Paperclip className="h-3 w-3" />
-                          Ver
-                        </a>
-                      ) : "—"}
-                    </td>
+          <div className="border-t border-border mt-4 pt-4 space-y-2">
+            <p className="text-sm font-medium text-foreground">Modo de Participación</p>
+            {(modos ?? []).length === 0 ? (
+              <p className="text-sm text-muted-foreground">Sin historial de modos registrado.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Modo</th>
+                    <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Desde</th>
+                    <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Hasta</th>
+                    <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Estado</th>
+                    <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Notas</th>
+                    <th className="text-left py-2 font-medium text-muted-foreground">Adjunto</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+                </thead>
+                <tbody>
+                  {(modos ?? []).map((m: any, i) => (
+                    <tr
+                      key={i}
+                      className={`border-b border-border/50 last:border-0 ${
+                        !m.fecha_fin ? "bg-green-50 dark:bg-green-900/10" : ""
+                      }`}
+                    >
+                      <td className="py-2 pr-4 text-foreground capitalize">{m.modo}</td>
+                      <td className="py-2 pr-4 text-muted-foreground">{formatDate(m.fecha_inicio)}</td>
+                      <td className="py-2 pr-4 text-muted-foreground">
+                        {m.fecha_fin ? (
+                          formatDate(m.fecha_fin)
+                        ) : (
+                          <span className="text-green-700 dark:text-green-400 font-medium">actual</span>
+                        )}
+                      </td>
+                      <td className="py-2 pr-4 text-muted-foreground capitalize">{m.estado ?? "—"}</td>
+                      <td className="py-2 pr-4 text-muted-foreground max-w-50">
+                        {m.notas ? (
+                          <span className="whitespace-pre-wrap">{m.notas}</span>
+                        ) : "—"}
+                      </td>
+                      <td className="py-2">
+                        {m.documento_url ? (
+                          <a
+                            href={m.documento_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-primary hover:underline"
+                          >
+                            <Paperclip className="h-3 w-3" />
+                            Ver
+                          </a>
+                        ) : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </CardContent>
       </Card>
 

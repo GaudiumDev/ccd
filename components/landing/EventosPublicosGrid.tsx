@@ -113,16 +113,9 @@ export function EventosPublicosGrid({ eventos }: Props) {
                   <p className="mt-1 text-xs text-muted-foreground/70">{org.nombre}</p>
                 )}
               </CardContent>
-              <CardFooter className="mt-auto pt-3 flex gap-2">
-                <Button
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => setModalEvento({ id: evento.id, nombre: evento.nombre })}
-                >
-                  Quiero participar
-                </Button>
-                <Button size="sm" variant="outline" asChild>
-                  <Link href={`/e/${evento.id}`}>Ver más</Link>
+              <CardFooter className="mt-auto pt-3">
+                <Button size="sm" className="w-full" asChild>
+                  <Link href={`/e/${evento.id}`}>Más información</Link>
                 </Button>
               </CardFooter>
             </Card>
