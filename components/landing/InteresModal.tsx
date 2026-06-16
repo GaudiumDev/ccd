@@ -30,6 +30,7 @@ export function InteresModal({ eventoId, eventoNombre, open, onOpenChange }: Pro
     direccion: '',
     localidad: '',
     provincia: '',
+    pais: 'Argentina',
   })
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -67,7 +68,7 @@ export function InteresModal({ eventoId, eventoNombre, open, onOpenChange }: Pro
     if (!open) {
       setSuccess(false)
       setError(null)
-      setForm({ nombre: '', apellido: '', email: '', telefono: '', direccion: '', localidad: '', provincia: '' })
+      setForm({ nombre: '', apellido: '', email: '', telefono: '', direccion: '', localidad: '', provincia: '', pais: 'Argentina' })
     }
     onOpenChange(open)
   }
@@ -93,9 +94,9 @@ export function InteresModal({ eventoId, eventoNombre, open, onOpenChange }: Pro
             <DialogHeader>
               <DialogTitle>Quiero participar</DialogTitle>
               <DialogDescription>
-                Completá tus datos para manifestar tu interés en{' '}
+                Te invitamos a completar tus datos para recibir más información sobre{' '}
                 <strong className="text-foreground">{eventoNombre}</strong>.
-                Nos comunicaremos a la brevedad.
+                Dentro de las próximas 48 horas, nos estaremos comunicando. ¡Bendiciones!
               </DialogDescription>
             </DialogHeader>
 
@@ -171,18 +172,19 @@ export function InteresModal({ eventoId, eventoNombre, open, onOpenChange }: Pro
                 />
               </div>
 
+              <div className="grid gap-1.5">
+                <Label htmlFor="localidad">Localidad</Label>
+                <Input
+                  id="localidad"
+                  name="localidad"
+                  value={form.localidad}
+                  onChange={handleChange}
+                  autoComplete="address-level2"
+                  disabled={loading}
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
-                <div className="grid gap-1.5">
-                  <Label htmlFor="localidad">Localidad</Label>
-                  <Input
-                    id="localidad"
-                    name="localidad"
-                    value={form.localidad}
-                    onChange={handleChange}
-                    autoComplete="address-level2"
-                    disabled={loading}
-                  />
-                </div>
                 <div className="grid gap-1.5">
                   <Label htmlFor="provincia">Provincia</Label>
                   <Input
@@ -191,6 +193,17 @@ export function InteresModal({ eventoId, eventoNombre, open, onOpenChange }: Pro
                     value={form.provincia}
                     onChange={handleChange}
                     autoComplete="address-level1"
+                    disabled={loading}
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="pais">País</Label>
+                  <Input
+                    id="pais"
+                    name="pais"
+                    value={form.pais}
+                    onChange={handleChange}
+                    autoComplete="country-name"
                     disabled={loading}
                   />
                 </div>

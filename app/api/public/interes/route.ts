@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 export async function POST(request: Request) {
   const body = await request.json()
 
-  const { nombre, apellido, evento_id, email, telefono, direccion, localidad, provincia, notas } = body
+  const { nombre, apellido, evento_id, email, telefono, direccion, localidad, provincia, pais, notas } = body
 
   if (!nombre || !apellido || !evento_id) {
     return NextResponse.json({ error: 'Nombre, apellido y evento son obligatorios.' }, { status: 400 })
@@ -42,6 +42,7 @@ export async function POST(request: Request) {
   if (direccion) insertData.direccion = direccion.trim()
   if (localidad) insertData.localidad = localidad.trim()
   if (provincia) insertData.provincia = provincia.trim()
+  if (pais) insertData.pais = pais.trim()
 
   const { data: persona, error: personaError } = await supabaseAdmin
     .from('personas')
