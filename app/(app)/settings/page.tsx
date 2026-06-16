@@ -2,14 +2,14 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
-import { Settings, Lock, Loader2, Eye, EyeOff, User } from 'lucide-react'
+import { Settings, Lock, Loader2, Eye, EyeOff, User, Home, Check, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { translateSupabaseError } from '@/lib/errors/supabase'
@@ -55,6 +55,30 @@ const TIPOS_PERSONA_LABEL: Record<string, string> = {
   otro: 'Otro',
 }
 
+// Tipos de dedicación (no excluyentes, cada una con año de inicio).
+// Lista ampliable — ver scripts/039_cecista_perfil.sql.
+const DEDICACION_TIPOS = [
+  { value: 'dedicado', label: 'Dedicado/a' },
+  { value: 'viviendo_como_dedicado', label: 'Viviendo como dedicado/a' },
+]
+
+// Votos del cecista (mockup Pantalla Cecistas).
+const VOTO_TIPOS = [
+  { value: 'tender_union_dios', label: 'Tender a la unión con Dios' },
+  { value: 'caridad_fraterna', label: 'Caridad fraterna' },
+  { value: 'irradiacion', label: 'Irradiación' },
+  { value: 'castidad', label: 'Castidad' },
+  { value: 'pobreza', label: 'Pobreza' },
+  { value: 'obediencia', label: 'Obediencia' },
+  { value: 'tender_union_dios_matrimonios', label: 'Tender a la unión con Dios (matrimonios)' },
+  { value: 'otros_familiares', label: 'Solo familiares — otros votos' },
+]
+
+type DedicacionState = { checked: boolean; anio: string }
+type VotoState = { anio: string; perpetuo: boolean; temporal: string }
+type CasaComunitaria = { id: string; nombre: string; codigo: string | null; tipo: string | null }
+type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
+
 type Persona = {
   id: string
   nombre: string
@@ -81,6 +105,7 @@ type Persona = {
   notas: string | null
   tipo_persona: string | null
   foto_url: string | null
+  casa_comunitaria_id: string | null
 }
 
 type EditForm = {
@@ -109,6 +134,29 @@ type EditForm = {
 }
 
 type PersonaOpcion = { id: string; nombre: string; apellido: string }
+
+function SaveIndicator({ status }: { status: SaveStatus }) {
+  if (status === 'idle') return null
+  if (status === 'saving') {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Guardando…
+      </span>
+    )
+  }
+  if (status === 'saved') {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs text-green-600">
+        <Check className="h-3.5 w-3.5" /> Guardado
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs text-destructive">
+      <AlertCircle className="h-3.5 w-3.5" /> Error al guardar
+    </span>
+  )
+}
 
 export default function SettingsPage() {
   const searchParams = useSearchParams()
@@ -139,7 +187,17 @@ export default function SettingsPage() {
   })
   const [editLoading, setEditLoading] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
-  const [editSuccess, setEditSuccess] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
+
+  // Secciones cecista
+  const [casas, setCasas] = useState<CasaComunitaria[]>([])
+  const [casaId, setCasaId] = useState('')
+  const [dedicaciones, setDedicaciones] = useState<Record<string, DedicacionState>>({})
+  const [votos, setVotos] = useState<Record<string, VotoState>>({})
+
+  // Autoguardado: timers de debounce por clave y flag de hidratación inicial
+  const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const hydratedRef = useRef(false)
 
   const handlePasswordChange = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -207,7 +265,7 @@ export default function SettingsPage() {
 
       const { data } = await supabase
         .from('personas')
-        .select('id, nombre, apellido, email, email_ccd, telefono, fecha_nacimiento, tipo_documento, documento, direccion, direccion_nro, codigo_postal, localidad, provincia, pais, diocesis, estado_eclesial, parroquia, estado_vida, nivel_estudios, anio_ingreso, acompanante_id, notas, tipo_persona, foto_url')
+        .select('id, nombre, apellido, email, email_ccd, telefono, fecha_nacimiento, tipo_documento, documento, direccion, direccion_nro, codigo_postal, localidad, provincia, pais, diocesis, estado_eclesial, parroquia, estado_vida, nivel_estudios, anio_ingreso, acompanante_id, notas, tipo_persona, foto_url, casa_comunitaria_id')
         .eq('auth_user_id', user.id)
         .single()
 
@@ -246,6 +304,43 @@ export default function SettingsPage() {
           .maybeSingle()
 
         setModoActual(modo?.modo ?? null)
+
+        // Secciones cecista: casas disponibles, dedicaciones y votos
+        setCasaId(data.casa_comunitaria_id ?? '')
+
+        const { data: casasData } = await supabase
+          .from('casas_comunitarias')
+          .select('id, nombre, codigo, tipo')
+          .eq('estado', 'activa')
+          .is('fecha_baja', null)
+          .order('nombre')
+        setCasas(casasData ?? [])
+
+        const { data: dedData } = await supabase
+          .from('persona_dedicaciones')
+          .select('tipo, anio_inicio')
+          .eq('persona_id', data.id)
+        const dedMap: Record<string, DedicacionState> = {}
+        for (const t of DEDICACION_TIPOS) dedMap[t.value] = { checked: false, anio: '' }
+        for (const d of dedData ?? []) {
+          dedMap[d.tipo] = { checked: true, anio: d.anio_inicio != null ? String(d.anio_inicio) : '' }
+        }
+        setDedicaciones(dedMap)
+
+        const { data: votosData } = await supabase
+          .from('persona_votos')
+          .select('tipo_voto, anio, perpetuo, temporal_cant_anios')
+          .eq('persona_id', data.id)
+        const votoMap: Record<string, VotoState> = {}
+        for (const t of VOTO_TIPOS) votoMap[t.value] = { anio: '', perpetuo: false, temporal: '' }
+        for (const v of votosData ?? []) {
+          votoMap[v.tipo_voto] = {
+            anio: v.anio != null ? String(v.anio) : '',
+            perpetuo: !!v.perpetuo,
+            temporal: v.temporal_cant_anios != null ? String(v.temporal_cant_anios) : '',
+          }
+        }
+        setVotos(votoMap)
       }
 
       // Cargar personas para el select de acompañante
@@ -262,69 +357,189 @@ export default function SettingsPage() {
     loadPersona()
   }, [])
 
+  // Autoguardado de datos básicos: dispara un guardado debounced ante cambios
+  // del formulario, una vez hidratado el perfil inicial.
+  useEffect(() => {
+    if (!hydratedRef.current || !persona) return
+    debounceSave('perfil', () => { void saveProfile(false) }, 900)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editForm])
+
+  // Marca el perfil como hidratado DESPUÉS del efecto de autoguardado, de modo
+  // que la carga inicial (que también muta editForm) no dispare un guardado.
+  useEffect(() => {
+    if (persona) hydratedRef.current = true
+  }, [persona])
+
   function applyFontSize(size: FontSize) {
     setFontSize(size)
     localStorage.setItem('font-size-preference', size)
     document.documentElement.style.setProperty('--font-scale', String(FONT_SCALES[size]))
   }
 
-  async function handleSaveProfile(e: React.SyntheticEvent<HTMLFormElement>) {
-    e.preventDefault()
-    if (!persona) return
+  // Debounce genérico por clave (autoguardado).
+  function debounceSave(key: string, fn: () => void, ms = 800) {
+    if (saveTimers.current[key]) clearTimeout(saveTimers.current[key])
+    saveTimers.current[key] = setTimeout(fn, ms)
+  }
+
+  // Envuelve un guardado a Supabase y refleja el estado en el indicador.
+  async function runSave(fn: () => PromiseLike<{ error: { message: string } | null }>) {
     setEditError(null)
-    setEditSuccess(false)
-    setEditLoading(true)
-
-    const supabase = createClient()
-    const { error } = await supabase
-      .from('personas')
-      .update({
-        nombre: editForm.nombre,
-        apellido: editForm.apellido,
-        email: editForm.email || null,
-        email_ccd: editForm.email_ccd || null,
-        telefono: editForm.telefono || null,
-        fecha_nacimiento: editForm.fecha_nacimiento || null,
-        tipo_documento: editForm.tipo_documento || null,
-        documento: editForm.documento || null,
-        direccion: editForm.direccion || null,
-        direccion_nro: editForm.direccion_nro || null,
-        codigo_postal: editForm.codigo_postal || null,
-        localidad: editForm.localidad || null,
-        provincia: editForm.provincia || null,
-        pais: editForm.pais || null,
-        diocesis: editForm.diocesis || null,
-        estado_eclesial: editForm.estado_eclesial || 'laico',
-        parroquia: editForm.parroquia || null,
-        estado_vida: editForm.estado_vida || null,
-        nivel_estudios: editForm.nivel_estudios || null,
-        anio_ingreso: editForm.anio_ingreso ? Number(editForm.anio_ingreso) : null,
-        acompanante_id: editForm.acompanante_id || null,
-        notas: editForm.notas || null,
-      })
-      .eq('id', persona.id)
-
-    setEditLoading(false)
-
+    setSaveStatus('saving')
+    const { error } = await fn()
     if (error) {
-      setEditError(translateSupabaseError(error))
-    } else {
-      setPersona({
-        ...persona,
-        nombre: editForm.nombre,
-        apellido: editForm.apellido,
-        email: editForm.email || null,
-        email_ccd: editForm.email_ccd || null,
-        telefono: editForm.telefono || null,
-        tipo_persona: persona.tipo_persona,
-      })
-      setEditSuccess(true)
-      setTimeout(() => setEditSuccess(false), 3000)
+      setSaveStatus('error')
+      setEditError(translateSupabaseError(error.message))
+      return
     }
+    setSaveStatus('saved')
+    window.setTimeout(() => setSaveStatus(s => (s === 'saved' ? 'idle' : s)), 2000)
+  }
+
+  async function saveProfile(manual: boolean) {
+    if (!persona) return
+    if (manual) setEditLoading(true)
+    await runSave(() =>
+      createClient()
+        .from('personas')
+        .update({
+          nombre: editForm.nombre,
+          apellido: editForm.apellido,
+          email: editForm.email || null,
+          email_ccd: editForm.email_ccd || null,
+          telefono: editForm.telefono || null,
+          fecha_nacimiento: editForm.fecha_nacimiento || null,
+          tipo_documento: editForm.tipo_documento || null,
+          documento: editForm.documento || null,
+          direccion: editForm.direccion || null,
+          direccion_nro: editForm.direccion_nro || null,
+          codigo_postal: editForm.codigo_postal || null,
+          localidad: editForm.localidad || null,
+          provincia: editForm.provincia || null,
+          pais: editForm.pais || null,
+          diocesis: editForm.diocesis || null,
+          estado_eclesial: editForm.estado_eclesial || 'laico',
+          parroquia: editForm.parroquia || null,
+          estado_vida: editForm.estado_vida || null,
+          nivel_estudios: editForm.nivel_estudios || null,
+          anio_ingreso: editForm.anio_ingreso ? Number(editForm.anio_ingreso) : null,
+          acompanante_id: editForm.acompanante_id || null,
+          notas: editForm.notas || null,
+        })
+        .eq('id', persona.id)
+    )
+    setPersona(prev =>
+      prev
+        ? {
+            ...prev,
+            nombre: editForm.nombre,
+            apellido: editForm.apellido,
+            email: editForm.email || null,
+            email_ccd: editForm.email_ccd || null,
+            telefono: editForm.telefono || null,
+          }
+        : prev
+    )
+    if (manual) setEditLoading(false)
+  }
+
+  function handleSaveProfile(e: React.SyntheticEvent<HTMLFormElement>) {
+    e.preventDefault()
+    void saveProfile(true)
   }
 
   function field(key: keyof EditForm, value: string) {
     setEditForm(prev => ({ ...prev, [key]: value }))
+  }
+
+  // ── Casa Comunitaria (relación 1→1) ──
+  function persistCasa(value: string) {
+    setCasaId(value)
+    if (!persona) return
+    void runSave(() =>
+      createClient()
+        .from('personas')
+        .update({ casa_comunitaria_id: value || null })
+        .eq('id', persona.id)
+    )
+  }
+
+  // ── Dedicaciones (no excluyentes, año de inicio) ──
+  function toggleDedicacion(tipo: string, checked: boolean) {
+    const anio = dedicaciones[tipo]?.anio ?? ''
+    setDedicaciones(prev => ({ ...prev, [tipo]: { checked, anio } }))
+    if (!persona) return
+    if (checked) {
+      void runSave(() =>
+        createClient()
+          .from('persona_dedicaciones')
+          .upsert(
+            { persona_id: persona.id, tipo, anio_inicio: anio ? Number(anio) : null },
+            { onConflict: 'persona_id,tipo' }
+          )
+      )
+    } else {
+      void runSave(() =>
+        createClient()
+          .from('persona_dedicaciones')
+          .delete()
+          .eq('persona_id', persona.id)
+          .eq('tipo', tipo)
+      )
+    }
+  }
+
+  function setDedicacionAnio(tipo: string, anio: string) {
+    setDedicaciones(prev => ({ ...prev, [tipo]: { checked: prev[tipo]?.checked ?? false, anio } }))
+    if (!persona || !dedicaciones[tipo]?.checked) return
+    debounceSave(`ded-${tipo}`, () => {
+      void runSave(() =>
+        createClient()
+          .from('persona_dedicaciones')
+          .upsert(
+            { persona_id: persona.id, tipo, anio_inicio: anio ? Number(anio) : null },
+            { onConflict: 'persona_id,tipo' }
+          )
+      )
+    })
+  }
+
+  // ── Votos (temporales o perpetuos) ──
+  function persistVoto(tipo: string, row: VotoState) {
+    if (!persona) return
+    const isEmpty = !row.anio && !row.perpetuo && !row.temporal
+    if (isEmpty) {
+      void runSave(() =>
+        createClient()
+          .from('persona_votos')
+          .delete()
+          .eq('persona_id', persona.id)
+          .eq('tipo_voto', tipo)
+      )
+      return
+    }
+    void runSave(() =>
+      createClient()
+        .from('persona_votos')
+        .upsert(
+          {
+            persona_id: persona.id,
+            tipo_voto: tipo,
+            anio: row.anio ? Number(row.anio) : null,
+            perpetuo: row.perpetuo,
+            temporal_cant_anios: row.perpetuo ? null : row.temporal ? Number(row.temporal) : null,
+          },
+          { onConflict: 'persona_id,tipo_voto' }
+        )
+    )
+  }
+
+  function changeVoto(tipo: string, patch: Partial<VotoState>, immediate: boolean) {
+    const row: VotoState = { ...(votos[tipo] ?? { anio: '', perpetuo: false, temporal: '' }), ...patch }
+    setVotos(prev => ({ ...prev, [tipo]: row }))
+    if (immediate) persistVoto(tipo, row)
+    else debounceSave(`voto-${tipo}`, () => persistVoto(tipo, row))
   }
 
   const selectClass = 'w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm'
@@ -465,11 +680,16 @@ export default function SettingsPage() {
               <form onSubmit={handleSaveProfile}>
                 <Card className="border-border bg-card">
                   <CardHeader>
-                    <CardTitle className="text-foreground flex items-center gap-2">
-                      <User className="h-5 w-5 text-primary" />
-                      Datos Personales
-                    </CardTitle>
-                    <CardDescription>Actualizá tu información personal</CardDescription>
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <CardTitle className="text-foreground flex items-center gap-2">
+                          <User className="h-5 w-5 text-primary" />
+                          Datos Personales
+                        </CardTitle>
+                        <CardDescription>Actualizá tu información — se guarda automáticamente</CardDescription>
+                      </div>
+                      <SaveIndicator status={saveStatus} />
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-6">
 
@@ -642,21 +862,138 @@ export default function SettingsPage() {
                         {editError}
                       </div>
                     )}
-                    {editSuccess && (
-                      <div className="rounded-md bg-green-50 text-green-700 text-sm px-4 py-3">
-                        Perfil actualizado correctamente.
-                      </div>
-                    )}
 
-                    <div className="flex justify-end pt-2">
-                      <Button type="submit" disabled={editLoading}>
+                    <div className="flex items-center justify-end gap-3 pt-2">
+                      <SaveIndicator status={saveStatus} />
+                      <Button type="submit" variant="outline" className="bg-transparent" disabled={editLoading}>
                         {editLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                        Guardar Datos
+                        Guardar ahora
                       </Button>
                     </div>
                   </CardContent>
                 </Card>
               </form>
+
+              {/* Secciones específicas de Cecistas */}
+              {persona.tipo_persona === 'cecista' && (
+                <>
+                  {/* Casa Comunitaria */}
+                  <Card className="border-border bg-card">
+                    <CardHeader>
+                      <CardTitle className="text-foreground flex items-center gap-2">
+                        <Home className="h-5 w-5 text-primary" />
+                        Casa Comunitaria
+                      </CardTitle>
+                      <CardDescription>Casa comunitaria que integrás (una sola).</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 max-w-md">
+                        <Label htmlFor="p-casa">Casa Comunitaria</Label>
+                        <select
+                          id="p-casa"
+                          value={casaId}
+                          onChange={e => persistCasa(e.target.value)}
+                          className={selectClass}
+                        >
+                          <option value="">Sin casa comunitaria</option>
+                          {casas.map(c => (
+                            <option key={c.id} value={c.id}>
+                              {c.codigo ? `${c.codigo} — ` : ''}{c.nombre}
+                            </option>
+                          ))}
+                        </select>
+                        {casas.length === 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            Todavía no hay casas comunitarias cargadas. Pedile a un administrador que las dé de alta.
+                          </p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Dedicaciones */}
+                  <Card className="border-border bg-card">
+                    <CardHeader>
+                      <CardTitle className="text-foreground">Dedicación</CardTitle>
+                      <CardDescription>Marcá las que correspondan e indicá el año de inicio.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {DEDICACION_TIPOS.map(t => {
+                        const ded = dedicaciones[t.value] ?? { checked: false, anio: '' }
+                        return (
+                          <div key={t.value} className="flex items-center gap-3">
+                            <input
+                              id={`ded-${t.value}`}
+                              type="checkbox"
+                              checked={ded.checked}
+                              onChange={e => toggleDedicacion(t.value, e.target.checked)}
+                              className="h-4 w-4 rounded border-border"
+                            />
+                            <Label htmlFor={`ded-${t.value}`} className="flex-1">{t.label}</Label>
+                            <Input
+                              type="number"
+                              min="1950"
+                              max={new Date().getFullYear()}
+                              placeholder="Año inicio"
+                              value={ded.anio}
+                              onChange={e => setDedicacionAnio(t.value, e.target.value)}
+                              disabled={!ded.checked}
+                              className="w-32"
+                            />
+                          </div>
+                        )
+                      })}
+                    </CardContent>
+                  </Card>
+
+                  {/* Votos */}
+                  <Card className="border-border bg-card">
+                    <CardHeader>
+                      <CardTitle className="text-foreground">Votos</CardTitle>
+                      <CardDescription>
+                        Indicá el año del voto. Si es perpetuo marcalo; si es temporal, la cantidad de años.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {VOTO_TIPOS.map(t => {
+                        const v = votos[t.value] ?? { anio: '', perpetuo: false, temporal: '' }
+                        return (
+                          <div key={t.value} className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] items-center gap-3 border-b border-border/60 pb-3 last:border-0 last:pb-0">
+                            <Label className="text-sm">{t.label}</Label>
+                            <Input
+                              type="number"
+                              min="1950"
+                              max={new Date().getFullYear()}
+                              placeholder="Año"
+                              value={v.anio}
+                              onChange={e => changeVoto(t.value, { anio: e.target.value }, false)}
+                              className="w-24"
+                            />
+                            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <input
+                                type="checkbox"
+                                checked={v.perpetuo}
+                                onChange={e => changeVoto(t.value, { perpetuo: e.target.checked, ...(e.target.checked ? { temporal: '' } : {}) }, true)}
+                                className="h-4 w-4 rounded border-border"
+                              />
+                              Perpetuo
+                            </label>
+                            <Input
+                              type="number"
+                              min="1"
+                              placeholder="Años (temp.)"
+                              value={v.temporal}
+                              onChange={e => changeVoto(t.value, { temporal: e.target.value }, false)}
+                              disabled={v.perpetuo}
+                              className="w-28"
+                            />
+                          </div>
+                        )
+                      })}
+                    </CardContent>
+                  </Card>
+                </>
+              )}
             </>
           )}
         </div>

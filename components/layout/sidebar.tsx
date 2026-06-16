@@ -115,6 +115,15 @@ function buildNavItems(p: SidebarPermissions): NavItem[] {
           : []),
       ],
     },
+    ...(p.canCreateOrganization
+      ? [
+          {
+            icon: <Home className="h-5 w-5" />,
+            label: "Casas Comunitarias",
+            href: "/casas-comunitarias",
+          },
+        ]
+      : []),
     ...(p.canViewRoles
       ? [
           {

@@ -92,6 +92,7 @@ export default async function DashboardPage() {
   // persona_id, caer a la primera org de sus roles/ministerios.
   let primaryOrgId: string | null = ctx.org_ids[0] ?? null
   let personaNombre: string | null = null
+  let isCecista = false
   if (ctx.persona_id) {
     const [poResult, personaResult] = await Promise.all([
       supabase
@@ -103,7 +104,7 @@ export default async function DashboardPage() {
         .single(),
       supabase
         .from("personas")
-        .select("nombre, apellido")
+        .select("nombre, apellido, tipo_persona")
         .eq("id", ctx.persona_id)
         .single(),
     ])
@@ -111,6 +112,7 @@ export default async function DashboardPage() {
     if (personaResult.data) {
       const { nombre, apellido } = personaResult.data
       personaNombre = [nombre, apellido].filter(Boolean).join(" ") || null
+      isCecista = personaResult.data.tipo_persona === "cecista"
     }
   }
 
@@ -479,6 +481,29 @@ export default async function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* CTA Cecista: actualizar datos personales */}
+      {isCecista && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="flex flex-col gap-3 py-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <User className="h-6 w-6 text-primary shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-foreground">Mantené tus datos al día</p>
+                <p className="text-sm text-muted-foreground">
+                  Actualizá tu información personal, casa comunitaria, dedicación y votos. Se guarda automáticamente.
+                </p>
+              </div>
+            </div>
+            <Link href="/settings?tab=perfil" className="shrink-0">
+              <Button className="gap-2">
+                <User className="h-4 w-4" />
+                Actualizar mis datos personales
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -1217,7 +1242,7 @@ export default async function DashboardPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-foreground">
             <Clock className="h-5 w-5 text-primary" />
-            Próximos Eventos
+            {isCecista ? "Eventos en mi Confraternidad / Fraternidad" : "Próximos Eventos"}
           </CardTitle>
           <CardDescription>
             Eventos programados en los próximos días
