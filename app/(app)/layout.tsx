@@ -18,6 +18,8 @@ export default async function AppLayout({
     canViewRoles:          canPerform(ctx, 'roles.view') || canPerform(ctx, 'roles.assign'),
     canAssignRoles:        canPerform(ctx, 'roles.assign'),
     canViewPublicados:     canPerform(ctx, 'view.eventos_publicados'),
+    canSuspendEvent:       canPerform(ctx, 'event.suspend'),
+    canRequestSuspend:     canPerform(ctx, 'event.request_suspend'),
     isAdmin:               ctx.is_admin,
   }
 

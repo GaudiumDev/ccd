@@ -293,11 +293,11 @@ export default async function EventoDetailPage({
     !ESTADOS_TERMINALES.includes(evento.estado) &&
     evento.estado !== 'pendiente_aprobacion_final'
 
-  // Solicitar suspensión: confra/solicitante sin permiso de suspender directo
+  // Solicitar suspensión: quien tenga el permiso (asignable) y no pueda suspender directo
   const canSolicitarSuspension = ctx &&
     !canPerform(ctx, 'event.suspend') &&
     !ESTADOS_TERMINALES.includes(evento.estado) &&
-    (esSolicitante || canPerform(ctx, 'event.approve_confra', evento.organizacion_id ?? null))
+    canPerform(ctx, 'event.request_suspend', evento.organizacion_id ?? null)
 
   // Build discernimiento niveles for the panel
   type NivelDiscernimiento = {

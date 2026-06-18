@@ -24,6 +24,8 @@ import {
   Tag,
   Settings,
   Globe,
+  OctagonX,
+  AlertTriangle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
@@ -35,6 +37,8 @@ export interface SidebarPermissions {
   canViewRoles: boolean
   canAssignRoles: boolean
   canViewPublicados: boolean
+  canSuspendEvent: boolean
+  canRequestSuspend: boolean
   isAdmin: boolean
 }
 
@@ -192,6 +196,24 @@ function buildNavItems(p: SidebarPermissions): NavItem[] {
                 icon: <Globe className="h-4 w-4" />,
                 label: "Eventos Publicados",
                 href: "/eventos/publicados",
+              },
+            ]
+          : []),
+        ...(p.canSuspendEvent
+          ? [
+              {
+                icon: <OctagonX className="h-4 w-4" />,
+                label: "Suspender Evento",
+                href: "/eventos/suspender",
+              },
+            ]
+          : []),
+        ...(p.canRequestSuspend
+          ? [
+              {
+                icon: <AlertTriangle className="h-4 w-4" />,
+                label: "Solicitar Suspensión",
+                href: "/eventos/solicitar-suspension",
               },
             ]
           : []),

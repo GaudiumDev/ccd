@@ -24,10 +24,7 @@ async function getEventoAndCheckPermission(id: string) {
     }
   }
 
-  const esSolicitante = ctx.persona_id && ctx.persona_id === evento.solicitado_por
-  const puedeConfra = canPerform(ctx, 'event.approve_confra', evento.organizacion_id ?? null)
-
-  if (!esSolicitante && !puedeConfra) {
+  if (!canPerform(ctx, 'event.request_suspend', evento.organizacion_id ?? null)) {
     return { error: 'No tenés permiso para solicitar la suspensión de este evento', status: 403, ctx: null, supabase: null, evento: null }
   }
 

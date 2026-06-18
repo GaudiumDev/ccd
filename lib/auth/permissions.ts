@@ -22,6 +22,7 @@ export type Permission =
   | 'event.approve_eqt'  // aprobar en discernimiento equipo timón (admin_general)
   | 'event.publish'       // publicar eventos aprobados (aprobado → publicado)
   | 'event.suspend'       // suspender eventos en cualquier instancia — solo Equipo Timón
+  | 'event.request_suspend' // solicitar la suspensión de un evento (enlaces/responsables/delegados) — asignable
   | 'event.update'
   | 'event.manage_participants'
   | 'organization.create' // solo admin
@@ -56,6 +57,7 @@ export const rolePermissions: Record<SystemRole, Permission[]> = {
     'event.approve_eqt',
     'event.publish',
     'event.suspend',
+    'event.request_suspend',
     'event.update',
     'event.manage_participants',
     'organization.create',
