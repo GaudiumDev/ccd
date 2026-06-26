@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { DollarSign, Plus, Edit2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
+import { getUserContext, canPerform } from '@/lib/auth/context'
+import { VerificacionPendientes, type PagoPendiente } from '@/components/pagos/VerificacionPendientes'
 
 const estadoClases: Record<string, string> = {
   pendiente: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400',
@@ -15,7 +17,7 @@ const estadoClases: Record<string, string> = {
 }
 
 export default async function PagosPage() {
-  const supabase = await createClient()
+  const [supabase, ctx] = await Promise.all([createClient(), getUserContext()])
 
   const { data: pagos } = await supabase
     .from('pagos')
@@ -27,6 +29,57 @@ export default async function PagosPage() {
       )
     `)
     .order('fecha_pago', { ascending: false })
+
+  // Pendientes de verificación: transferencias con comprobante, scopeadas a la org del usuario.
+  const puedeVerificar = !!ctx && canPerform(ctx, 'payment.verify')
+  let pagosPendientes: PagoPendiente[] = []
+
+  if (puedeVerificar && ctx) {
+    const { data: pendientes } = await supabase
+      .from('pagos')
+      .select(`
+        id, monto, fecha_pago, comprobante_url,
+        participante:evento_participantes!evento_participante_id(
+          persona:personas!persona_id(nombre, apellido),
+          evento:eventos!evento_id(nombre, organizacion_id, fraternidad_id)
+        )
+      `)
+      .eq('medio_pago', 'transferencia')
+      .eq('estado_pago', 'pendiente')
+      .not('comprobante_url', 'is', null)
+      .order('fecha_pago', { ascending: true })
+
+    const visibles = (pendientes ?? []).filter((p: any) => {
+      if (ctx.is_admin) return true
+      const ev = p.participante?.evento
+      return (
+        (ev?.organizacion_id && ctx.org_ids.includes(ev.organizacion_id)) ||
+        (ev?.fraternidad_id && ctx.org_ids.includes(ev.fraternidad_id))
+      )
+    })
+
+    pagosPendientes = await Promise.all(
+      visibles.map(async (p: any) => {
+        let signedUrl: string | null = null
+        if (p.comprobante_url) {
+          const { data } = await supabase.storage
+            .from('pagos-comprobantes')
+            .createSignedUrl(p.comprobante_url, 3600)
+          signedUrl = data?.signedUrl ?? null
+        }
+        return {
+          id: p.id,
+          monto: Number(p.monto),
+          fecha_pago: p.fecha_pago,
+          comprobante_signed_url: signedUrl,
+          persona: p.participante?.persona
+            ? `${p.participante.persona.apellido}, ${p.participante.persona.nombre}`
+            : '—',
+          evento: p.participante?.evento?.nombre ?? '—',
+        }
+      })
+    )
+  }
 
   const totalConfirmado = (pagos ?? [])
     .filter(p => p.estado_pago === 'confirmado')
@@ -62,6 +115,8 @@ export default async function PagosPage() {
           </CardHeader>
         </Card>
       </div>
+
+      {puedeVerificar && <VerificacionPendientes pagos={pagosPendientes} />}
 
       <Card className="border-border bg-card">
         <CardHeader className="flex flex-row items-center justify-between">

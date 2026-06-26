@@ -26,6 +26,7 @@ import {
   Globe,
   OctagonX,
   AlertTriangle,
+  DollarSign,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
@@ -39,6 +40,7 @@ export interface SidebarPermissions {
   canViewPublicados: boolean
   canSuspendEvent: boolean
   canRequestSuspend: boolean
+  canVerifyPayments: boolean
   isAdmin: boolean
 }
 
@@ -219,6 +221,15 @@ function buildNavItems(p: SidebarPermissions): NavItem[] {
           : []),
       ],
     },
+    ...(p.canVerifyPayments
+      ? [
+          {
+            icon: <DollarSign className="h-5 w-5" />,
+            label: "Pagos",
+            href: "/pagos",
+          },
+        ]
+      : []),
   ]
 }
 

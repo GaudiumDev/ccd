@@ -63,6 +63,11 @@ export default function EditarOrganizacionPage() {
     notas: "",
     telefono_1: "",
     telefono_2: "",
+    pago_alias: "",
+    pago_cbu: "",
+    pago_titular: "",
+    pago_banco: "",
+    pago_instrucciones: "",
   })
 
   useEffect(() => {
@@ -72,7 +77,7 @@ export default function EditarOrganizacionPage() {
       supabase
         .from("organizaciones")
         .select(
-          "id, nombre, tipo, codigo, parent_id, estado, mail_org, sede_fisica, direccion_calle, direccion_nro, ciudad, cp, diocesis, localidad, provincia, pais, notas, telefono_1, telefono_2",
+          "id, nombre, tipo, codigo, parent_id, estado, mail_org, sede_fisica, direccion_calle, direccion_nro, ciudad, cp, diocesis, localidad, provincia, pais, notas, telefono_1, telefono_2, pago_alias, pago_cbu, pago_titular, pago_banco, pago_instrucciones",
         )
         .eq("id", id)
         .single(),
@@ -127,6 +132,11 @@ export default function EditarOrganizacionPage() {
           notas: org.notas ?? "",
           telefono_1: org.telefono_1 ?? "",
           telefono_2: org.telefono_2 ?? "",
+          pago_alias: org.pago_alias ?? "",
+          pago_cbu: org.pago_cbu ?? "",
+          pago_titular: org.pago_titular ?? "",
+          pago_banco: org.pago_banco ?? "",
+          pago_instrucciones: org.pago_instrucciones ?? "",
         })
         if (parents) setOrgsParent(parents as OrgOption[])
         if (dependientes) setOrgsDependientes(dependientes as OrgDependiente[])
@@ -454,6 +464,71 @@ export default function EditarOrganizacionPage() {
                 onChange={handleChange}
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm min-h-20"
               />
+            </div>
+
+            {/* Datos para transferencias */}
+            <div className="space-y-4 rounded-md border border-border p-4">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Datos para transferencias</p>
+                <p className="text-xs text-muted-foreground">
+                  Se muestran a los interesados para que paguen la seña de inscripción de los eventos de esta confraternidad / fraternidad.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="pago_alias">Alias</Label>
+                  <Input
+                    id="pago_alias"
+                    name="pago_alias"
+                    placeholder="convivencia.sanjose"
+                    value={formData.pago_alias}
+                    onChange={handleChange}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="pago_cbu">CBU / CVU</Label>
+                  <Input
+                    id="pago_cbu"
+                    name="pago_cbu"
+                    placeholder="0000003100000000000000"
+                    value={formData.pago_cbu}
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="pago_titular">Titular</Label>
+                  <Input
+                    id="pago_titular"
+                    name="pago_titular"
+                    placeholder="Asociación Civil ..."
+                    value={formData.pago_titular}
+                    onChange={handleChange}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="pago_banco">Banco</Label>
+                  <Input
+                    id="pago_banco"
+                    name="pago_banco"
+                    placeholder="Banco Nación"
+                    value={formData.pago_banco}
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="pago_instrucciones">Instrucciones adicionales</Label>
+                <textarea
+                  id="pago_instrucciones"
+                  name="pago_instrucciones"
+                  placeholder="Ej: enviar el comprobante por WhatsApp al ..."
+                  value={formData.pago_instrucciones}
+                  onChange={handleChange}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm min-h-20"
+                />
+              </div>
             </div>
 
             {/* Buttons */}

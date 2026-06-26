@@ -1,7 +1,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft, CalendarDays, MapPin, Users, Phone, Mail, Link2 as Link2Icon, Building2, UserCheck, BookOpen } from 'lucide-react'
+import { ArrowLeft, CalendarDays, MapPin, Users, Phone, Mail, Link2 as Link2Icon, Building2, UserCheck, BookOpen, Wallet } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { createClient } from '@/lib/supabase/server'
 import { InteresModalWrapper } from '@/components/landing/InteresModalWrapper'
@@ -45,14 +45,14 @@ export default async function PublicEventDetailPage({
         id, nombre, tipo, estado, fecha_inicio, fecha_fin,
         modalidad, descripcion, notas, cupo_maximo, audiencia,
         ciudad, codigo_postal, diocesis, provincia_evento, pais_evento,
-        es_apv, link_pago_mercadopago,
+        es_apv, link_pago_mercadopago, precio,
         flyer_horizontal_url, flyer_cuadrado_url,
         asesor_voluntario,
         centralizador_1_persona_id, centralizador_1_nombre, centralizador_1_email, centralizador_1_telefono,
         centralizador_2_persona_id, centralizador_2_nombre, centralizador_2_email, centralizador_2_telefono,
         centralizador_3_persona_id, centralizador_3_nombre, centralizador_3_email, centralizador_3_telefono,
-        organizacion:organizaciones!organizacion_id(id, nombre),
-        fraternidad:organizaciones!fraternidad_id(id, nombre),
+        organizacion:organizaciones!organizacion_id(id, nombre, pago_alias, pago_cbu, pago_titular, pago_banco, pago_instrucciones),
+        fraternidad:organizaciones!fraternidad_id(id, nombre, pago_alias, pago_cbu, pago_titular, pago_banco, pago_instrucciones),
         casa_retiro:casas_retiro!casa_retiro_id(id, nombre, ciudad, provincia, link_maps),
         coordinador_asignado:personas!coordinador_asignado_id(id, nombre, apellido),
         asesor_asignado:personas!asesor_asignado_id(id, nombre, apellido)
@@ -69,15 +69,38 @@ export default async function PublicEventDetailPage({
 
   if (!evento) notFound()
 
+  type OrgConPago = {
+    id: string
+    nombre: string
+    pago_alias?: string | null
+    pago_cbu?: string | null
+    pago_titular?: string | null
+    pago_banco?: string | null
+    pago_instrucciones?: string | null
+  }
+
   const ev = evento as Record<string, unknown>
-  const org = evento.organizacion as { id: string; nombre: string } | null
-  const fraternidad = evento.fraternidad as { id: string; nombre: string } | null
+  const org = evento.organizacion as OrgConPago | null
+  const fraternidad = evento.fraternidad as OrgConPago | null
   const casaRetiro = evento.casa_retiro as { id: string; nombre: string; ciudad?: string | null; provincia?: string | null; link_maps?: string | null } | null
   const coordinadorAsignado = ev.coordinador_asignado as { id: string; nombre: string; apellido: string } | null
   const asesorAsignado = ev.asesor_asignado as { id: string; nombre: string; apellido: string } | null
   const flyerH = ev.flyer_horizontal_url as string | null
   const flyerC = ev.flyer_cuadrado_url as string | null
   const linkPago = ev.link_pago_mercadopago as string | null
+  const montoInscripcion = ev.precio != null ? Number(ev.precio) : null
+
+  // Datos de cobro: preferir los de la fraternidad si tiene alias; si no, los de la confraternidad.
+  const orgPago = fraternidad?.pago_alias ? fraternidad : org
+  const datosPago = orgPago?.pago_alias
+    ? {
+        alias: orgPago.pago_alias as string,
+        cbu: orgPago.pago_cbu ?? null,
+        titular: orgPago.pago_titular ?? null,
+        banco: orgPago.pago_banco ?? null,
+        instrucciones: orgPago.pago_instrucciones ?? null,
+      }
+    : null
 
   const centralizadores = [
     { nombre: ev.centralizador_1_nombre as string | null, email: ev.centralizador_1_email as string | null, telefono: ev.centralizador_1_telefono as string | null },
@@ -226,6 +249,20 @@ export default async function PublicEventDetailPage({
                 </div>
               </div>
             )}
+
+            {/* Precio de inscripción */}
+            {montoInscripcion != null && montoInscripcion > 0 && (
+              <div className="flex items-start gap-3">
+                <Wallet className="h-5 w-5 shrink-0 mt-0.5 text-[#F08020]" aria-hidden="true" />
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Precio</p>
+                  <p className="text-sm font-medium text-foreground">${montoInscripcion.toLocaleString('es-AR')}</p>
+                  {datosPago && (
+                    <p className="text-xs text-muted-foreground/70 mt-0.5">Se abona por transferencia al inscribirte</p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Fechas de ejecución (si hay múltiples períodos) */}
@@ -325,7 +362,12 @@ export default async function PublicEventDetailPage({
 
           {/* CTA */}
           <div className="border-t border-border pt-6 flex flex-col sm:flex-row gap-3 items-start">
-            <InteresModalWrapper eventoId={evento.id} eventoNombre={evento.nombre} />
+            <InteresModalWrapper
+              eventoId={evento.id}
+              eventoNombre={evento.nombre}
+              montoInscripcion={montoInscripcion}
+              datosPago={datosPago}
+            />
             {linkPago && (
               <a href={linkPago} target="_blank" rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 rounded-md bg-[#009EE3] hover:bg-[#0089C6] text-white text-sm font-medium px-4 py-2 transition-colors">

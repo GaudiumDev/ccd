@@ -25,6 +25,7 @@ export type Permission =
   | 'event.request_suspend' // solicitar la suspensión de un evento (enlaces/responsables/delegados) — asignable
   | 'event.update'
   | 'event.manage_participants'
+  | 'payment.verify'       // verificar/aprobar/rechazar pagos por transferencia — scopeado a la org del evento
   | 'organization.create' // solo admin
   | 'organization.update'
   | 'ministry.assign'
@@ -60,6 +61,7 @@ export const rolePermissions: Record<SystemRole, Permission[]> = {
     'event.request_suspend',
     'event.update',
     'event.manage_participants',
+    'payment.verify',
     'organization.create',
     'organization.update',
     'ministry.assign',
@@ -78,6 +80,7 @@ export const rolePermissions: Record<SystemRole, Permission[]> = {
     'event.approve_confra',
     'event.update',
     'event.manage_participants',
+    'payment.verify',
     'organization.update',
     'ministry.assign',
     'roles.view',
@@ -94,6 +97,7 @@ export const rolePermissions: Record<SystemRole, Permission[]> = {
     'event.approve_confra',
     'event.update',
     'event.manage_participants',
+    'payment.verify',
     'roles.view',
     'view.all',
     'view.personas',

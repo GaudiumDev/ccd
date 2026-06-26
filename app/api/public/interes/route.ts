@@ -60,7 +60,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Error al registrar. Intentá de nuevo.' }, { status: 400 })
   }
 
-  const { error: partError } = await supabaseAdmin
+  const { data: participante, error: partError } = await supabaseAdmin
     .from('evento_participantes')
     .insert({
       evento_id,
@@ -70,10 +70,12 @@ export async function POST(request: Request) {
       tipo_participante: 'no_cecista',
       notas: notas?.trim() || null,
     })
+    .select('id')
+    .single()
 
-  if (partError) {
+  if (partError || !participante) {
     return NextResponse.json({ error: 'Error al registrar el interés. Intentá de nuevo.' }, { status: 400 })
   }
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, evento_participante_id: participante.id })
 }

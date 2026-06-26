@@ -44,6 +44,11 @@ export async function PATCH(
     ciudad: body.ciudad || null,
     cp: body.cp || null,
     diocesis: body.diocesis || null,
+    pago_alias: body.pago_alias || null,
+    pago_cbu: body.pago_cbu || null,
+    pago_titular: body.pago_titular || null,
+    pago_banco: body.pago_banco || null,
+    pago_instrucciones: body.pago_instrucciones || null,
   }
 
   // Soft delete if state changed to inactiva

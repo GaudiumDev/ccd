@@ -126,6 +126,7 @@ export default async function DashboardPage() {
   const canCreateOrg = canPerform(ctx, "organization.create")
   const canCreateEvent = canPerform(ctx, "event.create")
   const canManageParticipants = canPerform(ctx, "event.manage_participants")
+  const canVerifyPayments = canPerform(ctx, "payment.verify")
   const hasPersonaId = ctx.persona_id !== null
 
   // ── Queries paralelas ────────────────────────────────────────────────────────
@@ -434,6 +435,32 @@ export default async function DashboardPage() {
     nuevosInteresados = interesadosData ?? []
   }
 
+  // Pagos por transferencia pendientes de verificación — scopeados a la org del usuario
+  let pagosPendientes: any[] | null = null
+  let pagosPendientesCount = 0
+  if (canVerifyPayments) {
+    const { data: pagosData } = await supabase
+      .from("pagos")
+      .select(
+        "id, monto, fecha_pago, participante:evento_participantes!evento_participante_id(persona:personas!persona_id(nombre, apellido), evento:eventos!evento_id(nombre, organizacion_id, fraternidad_id))"
+      )
+      .eq("medio_pago", "transferencia")
+      .eq("estado_pago", "pendiente")
+      .not("comprobante_url", "is", null)
+      .order("fecha_pago", { ascending: true })
+      .limit(100)
+    const visibles = (pagosData ?? []).filter((p: any) => {
+      if (ctx.is_admin) return true
+      const ev = p.participante?.evento
+      return (
+        (ev?.organizacion_id && ctx.org_ids.includes(ev.organizacion_id)) ||
+        (ev?.fraternidad_id && ctx.org_ids.includes(ev.fraternidad_id))
+      )
+    })
+    pagosPendientesCount = visibles.length
+    pagosPendientes = visibles.slice(0, 5)
+  }
+
   const proximosEventos = (proximosEventosResult as any).data as any[] | null
   const misEventos = (misEventosResult as any).data as any[] | null
   const discernimientoConfra = (discernimientoContraResult as any).data as
@@ -610,6 +637,25 @@ export default async function DashboardPage() {
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 Eventos por aprobar
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {canVerifyPayments && (
+          <Card className="bg-card hover:border-emerald-500/50 transition-colors border-emerald-200 dark:border-emerald-900">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-foreground">
+                Pagos pendientes
+              </CardTitle>
+              <DollarSign className="h-4 w-4 text-emerald-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                {pagosPendientesCount}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Comprobantes por verificar
               </p>
             </CardContent>
           </Card>
@@ -1110,6 +1156,54 @@ export default async function DashboardPage() {
             <Link href="/eventos?solicitud_suspension=1" className="block mt-4">
               <Button variant="outline" className="w-full bg-transparent">
                 Ver todas
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Pagos por verificar */}
+      {canVerifyPayments && pagosPendientes && pagosPendientes.length > 0 && (
+        <Card className="border-emerald-200 dark:border-emerald-900 bg-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <DollarSign className="h-5 w-5 text-emerald-500" />
+              Pagos por verificar
+            </CardTitle>
+            <CardDescription>
+              Comprobantes de transferencia de tu Confraternidad / Fraternidad esperando aprobación
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {pagosPendientes.map((pago: any) => {
+                const persona = pago.participante?.persona
+                const evento = pago.participante?.evento
+                return (
+                  <div
+                    key={pago.id}
+                    className="flex items-center justify-between rounded-lg border border-border p-3 gap-3"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground truncate">
+                        {persona ? `${persona.apellido}, ${persona.nombre}` : "—"}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {evento?.nombre ?? "—"}
+                        {pago.fecha_pago ? ` · ${formatDateShort(pago.fecha_pago)}` : ""}
+                      </p>
+                    </div>
+                    <span className="text-sm font-semibold text-foreground shrink-0">
+                      ${Number(pago.monto).toFixed(2)}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+            <Link href="/pagos" className="block mt-4">
+              <Button variant="outline" className="w-full bg-transparent">
+                Verificar pagos
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </Link>
