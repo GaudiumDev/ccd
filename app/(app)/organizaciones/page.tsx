@@ -14,6 +14,16 @@ import { createClient } from "@/lib/supabase/server"
 import { getUserContext, canPerform } from "@/lib/auth/context"
 import OrgExportButton from "./_components/org-export-button"
 import SortableHeader from "@/components/ui/sortable-header"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
+
+const PAGE_SIZE = 20
 
 export default async function OrganizacionesPage({
   searchParams,
@@ -26,6 +36,7 @@ export default async function OrganizacionesPage({
     localidad?: string
     sortBy?: string
     sortDir?: string
+    page?: string
   }>
 }) {
   const [params, ctx] = await Promise.all([searchParams, getUserContext()])
@@ -39,6 +50,7 @@ export default async function OrganizacionesPage({
     params.sortDir === "asc" || params.sortDir === "desc"
       ? params.sortDir
       : "asc"
+  const pageNum = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1)
 
   const canCreate = ctx ? canPerform(ctx, "organization.create") : false
   // canUpdate se evalúa por org en la tabla (ver uso abajo)
@@ -54,6 +66,7 @@ export default async function OrganizacionesPage({
     .from("organizaciones")
     .select(
       "id, codigo, nombre, tipo, localidad, provincia, estado, parent:organizaciones!parent_id(nombre)",
+      { count: "exact" },
     )
     .is("fecha_baja", null)
     .order(sortCol, { ascending: sortAsc })
@@ -64,7 +77,27 @@ export default async function OrganizacionesPage({
   if (provincia) query = query.ilike("provincia", `%${provincia}%`)
   if (localidad) query = query.ilike("localidad", `%${localidad}%`)
 
-  const { data: organizaciones } = await query
+  const from = (pageNum - 1) * PAGE_SIZE
+  const to = from + PAGE_SIZE - 1
+  const { data: organizaciones, count } = await query.range(from, to)
+
+  const total = count ?? 0
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  // Build a URL for a given page preserving current filters/sort
+  const buildPageHref = (target: number) => {
+    const sp = new URLSearchParams()
+    if (q) sp.set("q", q)
+    if (tipo) sp.set("tipo", tipo)
+    if (estado) sp.set("estado", estado)
+    if (provincia) sp.set("provincia", provincia)
+    if (localidad) sp.set("localidad", localidad)
+    if (sortBy) sp.set("sortBy", sortBy)
+    if (sortBy) sp.set("sortDir", sortDir)
+    if (target > 1) sp.set("page", String(target))
+    const qs = sp.toString()
+    return qs ? `/organizaciones?${qs}` : "/organizaciones"
+  }
 
   const tipoLabel: Record<string, string> = {
     comunidad: "Comunidad",
@@ -201,8 +234,15 @@ export default async function OrganizacionesPage({
             <>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">
-                  {organizaciones.length} confraternidad / fraternidad
-                  {organizaciones.length !== 1 ? "es" : ""}
+                  {total === 1
+                    ? "1 confraternidad / fraternidad"
+                    : `${total} confraternidades / fraternidades`}
+                  {total > PAGE_SIZE && (
+                    <>
+                      {" · "}
+                      {from + 1}–{Math.min(from + PAGE_SIZE, total)}
+                    </>
+                  )}
                 </span>
                 <OrgExportButton searchString={exportSearch} />
               </div>
@@ -289,6 +329,65 @@ export default async function OrganizacionesPage({
                   </tbody>
                 </table>
               </div>
+
+              {totalPages > 1 && (
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        href={buildPageHref(Math.max(1, pageNum - 1))}
+                        aria-disabled={pageNum <= 1}
+                        className={
+                          pageNum <= 1
+                            ? "pointer-events-none opacity-50"
+                            : undefined
+                        }
+                      />
+                    </PaginationItem>
+
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter(
+                        (p) =>
+                          p === 1 ||
+                          p === totalPages ||
+                          Math.abs(p - pageNum) <= 1,
+                      )
+                      .map((p, idx, arr) => {
+                        const prev = arr[idx - 1]
+                        const gap = prev && p - prev > 1
+                        return (
+                          <span key={p} className="flex items-center">
+                            {gap && (
+                              <span className="px-2 text-muted-foreground">
+                                …
+                              </span>
+                            )}
+                            <PaginationItem>
+                              <PaginationLink
+                                href={buildPageHref(p)}
+                                isActive={p === pageNum}
+                              >
+                                {p}
+                              </PaginationLink>
+                            </PaginationItem>
+                          </span>
+                        )
+                      })}
+
+                    <PaginationItem>
+                      <PaginationNext
+                        href={buildPageHref(Math.min(totalPages, pageNum + 1))}
+                        aria-disabled={pageNum >= totalPages}
+                        className={
+                          pageNum >= totalPages
+                            ? "pointer-events-none opacity-50"
+                            : undefined
+                        }
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              )}
             </>
           ) : (
             <div className="py-12 text-center">

@@ -21,6 +21,8 @@ export default function SortableHeader({ column, label, currentSort, currentDir,
 
   function handleClick() {
     const params = new URLSearchParams(searchParams.toString())
+    // Reordenar reinicia a la primera página
+    params.delete('page')
 
     if (!isActive) {
       params.set('sortBy', column)
