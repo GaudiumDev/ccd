@@ -4,8 +4,19 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { FileText, Check, X } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { FileText, Check, X, ExternalLink } from 'lucide-react'
 import { formatDateAR } from '@/lib/utils'
+
+function isPdfUrl(url: string) {
+  return /\.pdf(\?|#|$)/i.test(url)
+}
 
 export type PagoPendiente = {
   id: string
@@ -20,6 +31,7 @@ export function VerificacionPendientes({ pagos }: { pagos: PagoPendiente[] }) {
   const router = useRouter()
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [comprobante, setComprobante] = useState<PagoPendiente | null>(null)
 
   async function verificar(id: string, accion: 'aprobar' | 'rechazar') {
     setError(null)
@@ -74,15 +86,14 @@ export function VerificacionPendientes({ pagos }: { pagos: PagoPendiente[] }) {
                 <span className="text-muted-foreground">{p.fecha_pago ? formatDateAR(p.fecha_pago) : '—'}</span>
               </div>
               {p.comprobante_signed_url ? (
-                <a
-                  href={p.comprobante_signed_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  type="button"
+                  onClick={() => setComprobante(p)}
                   className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
                 >
                   <FileText className="h-4 w-4" />
                   Ver comprobante
-                </a>
+                </button>
               ) : (
                 <p className="text-sm text-muted-foreground">Sin comprobante</p>
               )}
@@ -111,6 +122,47 @@ export function VerificacionPendientes({ pagos }: { pagos: PagoPendiente[] }) {
           ))}
         </div>
       </CardContent>
+
+      <Dialog open={!!comprobante} onOpenChange={(open) => !open && setComprobante(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Comprobante de transferencia</DialogTitle>
+            {comprobante && (
+              <DialogDescription>
+                {comprobante.persona} — ${Number(comprobante.monto).toFixed(2)}
+              </DialogDescription>
+            )}
+          </DialogHeader>
+          {comprobante?.comprobante_signed_url && (
+            <div className="space-y-3">
+              <div className="overflow-hidden rounded-lg border border-border bg-muted">
+                {isPdfUrl(comprobante.comprobante_signed_url) ? (
+                  <iframe
+                    src={comprobante.comprobante_signed_url}
+                    title="Comprobante"
+                    className="h-[70vh] w-full"
+                  />
+                ) : (
+                  <img
+                    src={comprobante.comprobante_signed_url}
+                    alt="Comprobante de transferencia"
+                    className="mx-auto max-h-[70vh] w-auto object-contain"
+                  />
+                )}
+              </div>
+              <a
+                href={comprobante.comprobante_signed_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Abrir en una pestaña nueva
+              </a>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   )
 }

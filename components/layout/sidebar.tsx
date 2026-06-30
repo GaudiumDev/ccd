@@ -183,6 +183,11 @@ function buildNavItems(p: SidebarPermissions): NavItem[] {
           label: "Lista de eventos",
           href: "/eventos",
         },
+        {
+          icon: <UserCheck className="h-4 w-4" />,
+          label: "Interesados",
+          href: "/interesados",
+        },
         ...(p.canCreateEvent
           ? [
               {
