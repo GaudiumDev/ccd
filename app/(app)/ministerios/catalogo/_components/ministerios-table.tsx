@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import Link from "next/link"
 import {
   Settings,
@@ -9,8 +9,11 @@ import {
   ArrowDown,
   ArrowUpDown,
   Loader2,
+  Search,
+  X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 
@@ -108,6 +111,53 @@ export function MinisteriosTable({
   const [sortKey, setSortKey] = useState<SortKey | "">("")
   const [sortDir, setSortDir] = useState<SortDir>("")
 
+  // Filtros
+  const [query, setQuery] = useState("")
+  const [tipoFilter, setTipoFilter] = useState("")
+  const [nivelFilter, setNivelFilter] = useState("")
+  const [estadoFilter, setEstadoFilter] = useState("")
+
+  const tipoOptions = useMemo(
+    () =>
+      Array.from(new Set(ministerios.map((m) => m.tipo).filter(Boolean))).sort(),
+    [ministerios],
+  )
+  const nivelOptions = useMemo(
+    () =>
+      Array.from(new Set(ministerios.map((m) => m.nivel).filter(Boolean))).sort(),
+    [ministerios],
+  )
+
+  const hasFilters =
+    query.trim() !== "" ||
+    tipoFilter !== "" ||
+    nivelFilter !== "" ||
+    estadoFilter !== ""
+
+  const clearFilters = () => {
+    setQuery("")
+    setTipoFilter("")
+    setNivelFilter("")
+    setEstadoFilter("")
+  }
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return ministerios.filter((m) => {
+      if (
+        q &&
+        !m.nombre.toLowerCase().includes(q) &&
+        !(m.codigo_interno ?? "").toLowerCase().includes(q)
+      )
+        return false
+      if (tipoFilter && m.tipo !== tipoFilter) return false
+      if (nivelFilter && m.nivel !== nivelFilter) return false
+      if (estadoFilter === "activo" && !m.activo) return false
+      if (estadoFilter === "inactivo" && m.activo) return false
+      return true
+    })
+  }, [ministerios, query, tipoFilter, nivelFilter, estadoFilter])
+
   function handleSort(key: SortKey) {
     if (sortKey !== key) {
       setSortKey(key)
@@ -148,10 +198,10 @@ export function MinisteriosTable({
 
   const displayed =
     sortKey && sortDir
-      ? sortMinisterios(ministerios, sortKey, sortDir)
-      : ministerios
+      ? sortMinisterios(filtered, sortKey, sortDir)
+      : filtered
 
-  const allIds = ministerios.map((m) => m.id)
+  const allIds = filtered.map((m) => m.id)
   const allSelected =
     allIds.length > 0 && allIds.every((id) => selected.has(id))
   const someSelected = selected.size > 0
@@ -248,8 +298,78 @@ export function MinisteriosTable({
     setDeletingId(null)
   }
 
+  const selectCls =
+    "h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+
   return (
     <div className="space-y-3">
+      {/* Buscador + filtros */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="relative flex-1 min-w-50">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar por nombre o código interno..."
+            className="pl-9"
+          />
+        </div>
+
+        <select
+          value={tipoFilter}
+          onChange={(e) => setTipoFilter(e.target.value)}
+          className={selectCls}
+        >
+          <option value="">Todos los tipos</option>
+          {tipoOptions.map((t) => (
+            <option key={t} value={t}>
+              {tipoLabel[t] ?? t}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={nivelFilter}
+          onChange={(e) => setNivelFilter(e.target.value)}
+          className={cn(selectCls, "capitalize")}
+        >
+          <option value="">Todos los alcances</option>
+          {nivelOptions.map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={estadoFilter}
+          onChange={(e) => setEstadoFilter(e.target.value)}
+          className={selectCls}
+        >
+          <option value="">Todos los estados</option>
+          <option value="activo">Activo</option>
+          <option value="inactivo">Inactivo</option>
+        </select>
+
+        {hasFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearFilters}
+            className="gap-1 text-muted-foreground"
+          >
+            <X className="h-4 w-4" />
+            Limpiar
+          </Button>
+        )}
+      </div>
+
+      <p className="text-sm text-muted-foreground">
+        {filtered.length} de {ministerios.length} rol
+        {ministerios.length !== 1 ? "es" : ""}
+      </p>
+
       {/* Barra de acciones bulk */}
       {someSelected && (
         <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/50 px-4 py-2">
@@ -416,6 +536,23 @@ export function MinisteriosTable({
             })}
           </tbody>
         </table>
+        {displayed.length === 0 && (
+          <div className="py-12 text-center">
+            <p className="text-sm text-muted-foreground">
+              No hay roles que coincidan con los filtros.
+            </p>
+            {hasFilters && (
+              <Button
+                variant="link"
+                size="sm"
+                onClick={clearFilters}
+                className="mt-1"
+              >
+                Limpiar filtros
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
