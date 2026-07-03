@@ -86,14 +86,14 @@ function buildNavItems(p: SidebarPermissions): NavItem[] {
       children: [
         {
           icon: <Building2 className="h-4 w-4" />,
-          label: "Lista de organizaciones",
+          label: "Listado",
           href: "/organizaciones",
         },
         ...(p.canCreateOrganization
           ? [
               {
                 icon: <PlusCircle className="h-4 w-4" />,
-                label: "Nueva organización",
+                label: "Nueva",
                 href: "/organizaciones/nueva",
               },
             ]
