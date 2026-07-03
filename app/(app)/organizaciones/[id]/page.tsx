@@ -101,7 +101,7 @@ export default async function OrganizacionDetailPage({
           <div className="grid grid-cols-[1fr_auto] gap-4">
             <Field
               label="Nombre"
-              value={`${org.nombre}${org.nombre ? " (50 caracteres)" : ""}`}
+              value={`${org.nombre}${org.nombre ? "" : ""}`}
             />
             <div className="grid grid-cols-[160px_1fr] gap-2 items-start">
               <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide pt-0.5">
