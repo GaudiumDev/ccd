@@ -87,6 +87,7 @@ export default async function EventoDetailPage({
       centralizador_1_persona_id, centralizador_1_nombre, centralizador_1_email, centralizador_1_telefono,
       centralizador_2_persona_id, centralizador_2_nombre, centralizador_2_email, centralizador_2_telefono,
       centralizador_3_persona_id, centralizador_3_nombre, centralizador_3_email, centralizador_3_telefono,
+      manuales_stock, manuales_necesarios, manuales_solicitados,
       flyer_horizontal_url, flyer_cuadrado_url, link_pago_mercadopago,
       notas_noticias, notas_aprobacion_final,
       solicitud_suspension_notas, solicitud_suspension_fecha,
@@ -830,6 +831,8 @@ export default async function EventoDetailPage({
                 centralizador_3_nombre: (evento as Record<string, unknown>).centralizador_3_nombre as string | null,
                 centralizador_3_email: (evento as Record<string, unknown>).centralizador_3_email as string | null,
                 centralizador_3_telefono: (evento as Record<string, unknown>).centralizador_3_telefono as string | null,
+                manuales_stock: (evento as Record<string, unknown>).manuales_stock as number | null,
+                manuales_necesarios: (evento as Record<string, unknown>).manuales_necesarios as number | null,
                 notas_noticias: (evento as Record<string, unknown>).notas_noticias as string | null,
               }}
               casasRetiro={(casasRetiro ?? []) as { id: string; nombre: string; ciudad?: string | null; provincia?: string | null }[]}

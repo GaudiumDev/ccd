@@ -13,8 +13,9 @@ import { Settings, Lock, Loader2, Eye, EyeOff, User, Home, Check, AlertCircle } 
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { translateSupabaseError } from '@/lib/errors/supabase'
-import { LocationFields } from '@/components/location-fields'
+import { LocationFields, PAISES } from '@/components/location-fields'
 import { AvatarUpload } from '@/components/avatar-upload'
+import { Combobox } from '@/components/ui/combobox'
 
 type FontSize = 'small' | 'medium' | 'large'
 
@@ -37,6 +38,24 @@ const NIVELES_ESTUDIOS = [
   { value: 'universitario', label: 'Universitario' },
   { value: 'posgrado_doctorado', label: 'Posgrado / Doctorado' },
 ]
+
+// Estado Eclesiástico: 2 niveles (ver scripts/050_cecista_campos_completos.sql)
+const ESTADO_ECLESIAL_TOP = [
+  { value: 'laico', label: 'Laico/a' },
+  { value: 'clerigo', label: 'Clérigo' },
+  { value: 'consagrado', label: 'Consagrado/a' },
+]
+const ESTADO_ECLESIAL_RANGOS = [
+  { value: 'obispo', label: 'Obispo' },
+  { value: 'presbitero', label: 'Presbítero' },
+  { value: 'diacono', label: 'Diácono' },
+  { value: 'seminarista', label: 'Seminarista' },
+  { value: 'diacono_permanente', label: 'Diácono permanente' },
+]
+
+// Tipos de evento elegibles para el checklist de "realizados" (excluye
+// encuentro y otro, tal cual el relevamiento de Cecistas).
+const EVENTOS_REALIZADOS_CATEGORIAS = ['convivencia', 'retiro', 'taller']
 
 const MODOS_LABEL: Record<string, string> = {
   colaborador: 'Colaborador',
@@ -76,7 +95,10 @@ const VOTO_TIPOS = [
 
 type DedicacionState = { checked: boolean; anio: string }
 type VotoState = { anio: string; perpetuo: boolean; temporal: string }
+type EventoRealizadoState = { checked: boolean; anio: string }
 type CasaComunitaria = { id: string; nombre: string; codigo: string | null; tipo: string | null }
+type TipoEvento = { id: string; nombre: string }
+type AcompanamientoActual = { id: string; acompanante_id: string | null; acompanante_libre: string | null }
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
 type Persona = {
@@ -89,19 +111,25 @@ type Persona = {
   fecha_nacimiento: string | null
   tipo_documento: string | null
   documento: string | null
+  pais_documento: string | null
   direccion: string | null
   direccion_nro: string | null
   codigo_postal: string | null
   localidad: string | null
   provincia: string | null
   pais: string | null
+  nacionalidad: string | null
   diocesis: string | null
   estado_eclesial: string | null
+  estado_eclesial_rango: string | null
+  institucion_religiosa: string | null
   parroquia: string | null
   estado_vida: string | null
   nivel_estudios: string | null
+  titulo_estudios: string | null
+  ocupacion: string | null
   anio_ingreso: number | null
-  acompanante_id: string | null
+  codigo_interno: string | null
   notas: string | null
   tipo_persona: string | null
   foto_url: string | null
@@ -117,19 +145,25 @@ type EditForm = {
   fecha_nacimiento: string
   tipo_documento: string
   documento: string
+  pais_documento: string
   direccion: string
   direccion_nro: string
   codigo_postal: string
   localidad: string
   provincia: string
   pais: string
+  nacionalidad: string
   diocesis: string
   estado_eclesial: string
+  estado_eclesial_rango: string
+  institucion_religiosa: string
   parroquia: string
   estado_vida: string
   nivel_estudios: string
+  titulo_estudios: string
+  ocupacion: string
   anio_ingreso: string
-  acompanante_id: string
+  codigo_interno: string
   notas: string
 }
 
@@ -179,21 +213,31 @@ export default function SettingsPage() {
   const [todasPersonas, setTodasPersonas] = useState<PersonaOpcion[]>([])
   const [editForm, setEditForm] = useState<EditForm>({
     nombre: '', apellido: '', email: '', email_ccd: '', telefono: '',
-    fecha_nacimiento: '', tipo_documento: '', documento: '',
+    fecha_nacimiento: '', tipo_documento: '', documento: '', pais_documento: '',
     direccion: '', direccion_nro: '', codigo_postal: '',
-    localidad: '', provincia: '', pais: 'Argentina', diocesis: '',
-    estado_eclesial: 'laico', parroquia: '', estado_vida: '',
-    nivel_estudios: '', anio_ingreso: '', acompanante_id: '', notas: '',
+    localidad: '', provincia: '', pais: 'Argentina', nacionalidad: '', diocesis: '',
+    estado_eclesial: 'laico', estado_eclesial_rango: '', institucion_religiosa: '',
+    parroquia: '', estado_vida: '',
+    nivel_estudios: '', titulo_estudios: '', ocupacion: '',
+    anio_ingreso: '', codigo_interno: '', notas: '',
   })
   const [editLoading, setEditLoading] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
+
+  // Acompañamiento (histórico — ver persona_acompanamiento)
+  const [currentAcomp, setCurrentAcomp] = useState<AcompanamientoActual | null>(null)
+  const [acompananteId, setAcompananteId] = useState('')
+  const [acompananteLibre, setAcompananteLibre] = useState('')
+  const [acompananteLibreMode, setAcompananteLibreMode] = useState(false)
 
   // Secciones cecista
   const [casas, setCasas] = useState<CasaComunitaria[]>([])
   const [casaId, setCasaId] = useState('')
   const [dedicaciones, setDedicaciones] = useState<Record<string, DedicacionState>>({})
   const [votos, setVotos] = useState<Record<string, VotoState>>({})
+  const [tiposEventos, setTiposEventos] = useState<TipoEvento[]>([])
+  const [eventosRealizados, setEventosRealizados] = useState<Record<string, EventoRealizadoState>>({})
 
   // Autoguardado: timers de debounce por clave y flag de hidratación inicial
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
@@ -265,7 +309,7 @@ export default function SettingsPage() {
 
       const { data } = await supabase
         .from('personas')
-        .select('id, nombre, apellido, email, email_ccd, telefono, fecha_nacimiento, tipo_documento, documento, direccion, direccion_nro, codigo_postal, localidad, provincia, pais, diocesis, estado_eclesial, parroquia, estado_vida, nivel_estudios, anio_ingreso, acompanante_id, notas, tipo_persona, foto_url, casa_comunitaria_id')
+        .select('id, nombre, apellido, email, email_ccd, telefono, fecha_nacimiento, tipo_documento, documento, pais_documento, direccion, direccion_nro, codigo_postal, localidad, provincia, pais, nacionalidad, diocesis, estado_eclesial, estado_eclesial_rango, institucion_religiosa, parroquia, estado_vida, nivel_estudios, titulo_estudios, ocupacion, anio_ingreso, codigo_interno, notas, tipo_persona, foto_url, casa_comunitaria_id')
         .eq('auth_user_id', user.id)
         .single()
 
@@ -280,21 +324,38 @@ export default function SettingsPage() {
           fecha_nacimiento: data.fecha_nacimiento ?? '',
           tipo_documento: data.tipo_documento ?? '',
           documento: data.documento ?? '',
+          pais_documento: data.pais_documento ?? '',
           direccion: data.direccion ?? '',
           direccion_nro: data.direccion_nro ?? '',
           codigo_postal: data.codigo_postal ?? '',
           localidad: data.localidad ?? '',
           provincia: data.provincia ?? '',
           pais: data.pais ?? 'Argentina',
+          nacionalidad: data.nacionalidad ?? '',
           diocesis: data.diocesis ?? '',
           estado_eclesial: data.estado_eclesial ?? 'laico',
+          estado_eclesial_rango: data.estado_eclesial_rango ?? '',
+          institucion_religiosa: data.institucion_religiosa ?? '',
           parroquia: data.parroquia ?? '',
           estado_vida: data.estado_vida ?? '',
           nivel_estudios: data.nivel_estudios ?? '',
+          titulo_estudios: data.titulo_estudios ?? '',
+          ocupacion: data.ocupacion ?? '',
           anio_ingreso: data.anio_ingreso != null ? String(data.anio_ingreso) : '',
-          acompanante_id: data.acompanante_id ?? '',
+          codigo_interno: data.codigo_interno ?? '',
           notas: data.notas ?? '',
         })
+
+        const { data: acompData } = await supabase
+          .from('persona_acompanamiento')
+          .select('id, acompanante_id, acompanante_libre')
+          .eq('persona_id', data.id)
+          .is('fecha_fin', null)
+          .maybeSingle()
+        setCurrentAcomp(acompData ?? null)
+        setAcompananteId(acompData?.acompanante_id ?? '')
+        setAcompananteLibre(acompData?.acompanante_libre ?? '')
+        setAcompananteLibreMode(!!acompData?.acompanante_libre)
 
         const { data: modo } = await supabase
           .from('persona_modos')
@@ -341,6 +402,25 @@ export default function SettingsPage() {
           }
         }
         setVotos(votoMap)
+
+        const { data: tiposData } = await supabase
+          .from('tipos_eventos')
+          .select('id, nombre')
+          .in('categoria', EVENTOS_REALIZADOS_CATEGORIAS)
+          .eq('activo', true)
+          .order('nombre')
+        setTiposEventos(tiposData ?? [])
+
+        const { data: realizadosData } = await supabase
+          .from('persona_eventos_realizados')
+          .select('tipo_evento_id, anio')
+          .eq('persona_id', data.id)
+        const realizadosMap: Record<string, EventoRealizadoState> = {}
+        for (const t of tiposData ?? []) realizadosMap[t.id] = { checked: false, anio: '' }
+        for (const r of realizadosData ?? []) {
+          realizadosMap[r.tipo_evento_id] = { checked: true, anio: r.anio != null ? String(r.anio) : '' }
+        }
+        setEventosRealizados(realizadosMap)
       }
 
       // Cargar personas para el select de acompañante
@@ -400,6 +480,7 @@ export default function SettingsPage() {
   async function saveProfile(manual: boolean) {
     if (!persona) return
     if (manual) setEditLoading(true)
+    const esClerigoConsagrado = editForm.estado_eclesial === 'clerigo' || editForm.estado_eclesial === 'consagrado'
     await runSave(() =>
       createClient()
         .from('personas')
@@ -407,24 +488,30 @@ export default function SettingsPage() {
           nombre: editForm.nombre,
           apellido: editForm.apellido,
           email: editForm.email || null,
-          email_ccd: editForm.email_ccd || null,
           telefono: editForm.telefono || null,
           fecha_nacimiento: editForm.fecha_nacimiento || null,
           tipo_documento: editForm.tipo_documento || null,
           documento: editForm.documento || null,
+          pais_documento: editForm.pais_documento || null,
           direccion: editForm.direccion || null,
           direccion_nro: editForm.direccion_nro || null,
           codigo_postal: editForm.codigo_postal || null,
           localidad: editForm.localidad || null,
           provincia: editForm.provincia || null,
           pais: editForm.pais || null,
+          nacionalidad: editForm.nacionalidad || null,
           diocesis: editForm.diocesis || null,
           estado_eclesial: editForm.estado_eclesial || 'laico',
+          estado_eclesial_rango: editForm.estado_eclesial === 'clerigo' ? (editForm.estado_eclesial_rango || null) : null,
+          institucion_religiosa: esClerigoConsagrado ? (editForm.institucion_religiosa || null) : null,
           parroquia: editForm.parroquia || null,
           estado_vida: editForm.estado_vida || null,
           nivel_estudios: editForm.nivel_estudios || null,
+          titulo_estudios: (editForm.nivel_estudios === 'universitario' || editForm.nivel_estudios === 'terciario')
+            ? (editForm.titulo_estudios || null) : null,
+          ocupacion: editForm.ocupacion || null,
           anio_ingreso: editForm.anio_ingreso ? Number(editForm.anio_ingreso) : null,
-          acompanante_id: editForm.acompanante_id || null,
+          codigo_interno: editForm.codigo_interno || null,
           notas: editForm.notas || null,
         })
         .eq('id', persona.id)
@@ -436,7 +523,6 @@ export default function SettingsPage() {
             nombre: editForm.nombre,
             apellido: editForm.apellido,
             email: editForm.email || null,
-            email_ccd: editForm.email_ccd || null,
             telefono: editForm.telefono || null,
           }
         : prev
@@ -540,6 +626,101 @@ export default function SettingsPage() {
     setVotos(prev => ({ ...prev, [tipo]: row }))
     if (immediate) persistVoto(tipo, row)
     else debounceSave(`voto-${tipo}`, () => persistVoto(tipo, row))
+  }
+
+  // ── Acompañante (histórico — cierra el activo y abre uno nuevo) ──
+  async function persistAcompanante(newId: string, newLibre: string) {
+    if (!persona) return
+    const today = new Date().toISOString().split('T')[0]
+    await runSave(async () => {
+      const supabase = createClient()
+      if (currentAcomp) {
+        const { error: closeError } = await supabase
+          .from('persona_acompanamiento')
+          .update({ fecha_fin: today })
+          .eq('id', currentAcomp.id)
+        if (closeError) return { error: closeError }
+      }
+      if (newId || newLibre) {
+        const { data: newRec, error: insertError } = await supabase
+          .from('persona_acompanamiento')
+          .insert({
+            persona_id: persona.id,
+            acompanante_id: newId || null,
+            acompanante_libre: newLibre || null,
+            fecha_inicio: today,
+          })
+          .select('id, acompanante_id, acompanante_libre')
+          .single()
+        if (insertError) return { error: insertError }
+        setCurrentAcomp(newRec)
+      } else {
+        setCurrentAcomp(null)
+      }
+      // Sincroniza la columna legacy para compatibilidad con el form admin
+      await supabase.from('personas').update({ acompanante_id: newId || null }).eq('id', persona.id)
+      return { error: null }
+    })
+  }
+
+  function handleAcompananteChange(value: string) {
+    setAcompananteId(value)
+    void persistAcompanante(value, '')
+  }
+
+  function handleAcompananteLibreChange(value: string) {
+    setAcompananteLibre(value)
+    debounceSave('acomp-libre', () => { void persistAcompanante('', value) })
+  }
+
+  function toggleAcompananteLibreMode(checked: boolean) {
+    setAcompananteLibreMode(checked)
+    if (checked) {
+      setAcompananteId('')
+    } else {
+      setAcompananteLibre('')
+      void persistAcompanante('', '')
+    }
+  }
+
+  // ── Convivencias/retiros/talleres realizados ──
+  function toggleEventoRealizado(tipoId: string, checked: boolean) {
+    const anio = eventosRealizados[tipoId]?.anio ?? ''
+    setEventosRealizados(prev => ({ ...prev, [tipoId]: { checked, anio } }))
+    if (!persona) return
+    if (checked) {
+      void runSave(() =>
+        createClient()
+          .from('persona_eventos_realizados')
+          .upsert(
+            { persona_id: persona.id, tipo_evento_id: tipoId, anio: anio ? Number(anio) : null },
+            { onConflict: 'persona_id,tipo_evento_id' }
+          )
+      )
+    } else {
+      void runSave(() =>
+        createClient()
+          .from('persona_eventos_realizados')
+          .delete()
+          .eq('persona_id', persona.id)
+          .eq('tipo_evento_id', tipoId)
+      )
+    }
+  }
+
+  function setEventoRealizadoAnio(tipoId: string, anio: string) {
+    setEventosRealizados(prev => ({ ...prev, [tipoId]: { checked: prev[tipoId]?.checked ?? false, anio } }))
+    if (!persona || !eventosRealizados[tipoId]?.checked) return
+    debounceSave(`evt-${tipoId}`, () => {
+      void runSave(() =>
+        createClient()
+          .from('persona_eventos_realizados')
+          .upsert(
+            { persona_id: persona.id, tipo_evento_id: tipoId, anio: anio ? Number(anio) : null },
+            { onConflict: 'persona_id,tipo_evento_id' }
+          )
+      )
+    })
   }
 
   const selectClass = 'w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm'
@@ -726,7 +907,20 @@ export default function SettingsPage() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="p-email-ccd">Mail CcD</Label>
-                        <Input id="p-email-ccd" type="email" value={editForm.email_ccd} onChange={e => field('email_ccd', e.target.value)} disabled={editLoading} />
+                        <Input id="p-email-ccd" type="email" value={editForm.email_ccd} disabled readOnly className="bg-muted" />
+                        <p className="text-xs text-muted-foreground">Asignado por la comunidad — no editable.</p>
+                      </div>
+                    </div>
+
+                    {/* Código Interno / Ocupación */}
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="p-codigo-interno">Código Interno</Label>
+                        <Input id="p-codigo-interno" value={editForm.codigo_interno} onChange={e => field('codigo_interno', e.target.value)} disabled={editLoading} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="p-ocupacion">Ocupación o Profesión</Label>
+                        <Input id="p-ocupacion" value={editForm.ocupacion} onChange={e => field('ocupacion', e.target.value)} disabled={editLoading} />
                       </div>
                     </div>
 
@@ -745,6 +939,34 @@ export default function SettingsPage() {
                       <div className="space-y-2">
                         <Label htmlFor="p-documento">Nro Documento</Label>
                         <Input id="p-documento" value={editForm.documento} onChange={e => field('documento', e.target.value)} disabled={editLoading} />
+                      </div>
+                    </div>
+
+                    {/* Nacionalidad / País que expidió el documento */}
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>Nacionalidad</Label>
+                        <Combobox
+                          value={editForm.nacionalidad}
+                          onSelect={val => field('nacionalidad', val)}
+                          options={PAISES}
+                          placeholder="Seleccionar país..."
+                          searchPlaceholder="Buscar país..."
+                          emptyText="País no encontrado."
+                          disabled={editLoading}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>País que expidió el documento</Label>
+                        <Combobox
+                          value={editForm.pais_documento}
+                          onSelect={val => field('pais_documento', val)}
+                          options={PAISES}
+                          placeholder="Seleccionar país..."
+                          searchPlaceholder="Buscar país..."
+                          emptyText="País no encontrado."
+                          disabled={editLoading}
+                        />
                       </div>
                     </div>
 
@@ -779,13 +1001,16 @@ export default function SettingsPage() {
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
                         <Label htmlFor="p-eclesial">Estado Eclesiástico</Label>
-                        <select id="p-eclesial" value={editForm.estado_eclesial} onChange={e => field('estado_eclesial', e.target.value)} disabled={editLoading} className={selectClass}>
-                          <option value="laico">Laico</option>
-                          <option value="religioso">Religioso/a</option>
-                          <option value="diacono">Diácono</option>
-                          <option value="sacerdote">Sacerdote</option>
-                          <option value="obispo">Obispo</option>
-                          <option value="cardenal">Cardenal</option>
+                        <select
+                          id="p-eclesial"
+                          value={editForm.estado_eclesial}
+                          onChange={e => setEditForm(prev => ({ ...prev, estado_eclesial: e.target.value, estado_eclesial_rango: '', institucion_religiosa: '' }))}
+                          disabled={editLoading}
+                          className={selectClass}
+                        >
+                          {ESTADO_ECLESIAL_TOP.map(o => (
+                            <option key={o.value} value={o.value}>{o.label}</option>
+                          ))}
                         </select>
                       </div>
                       <div className="space-y-2">
@@ -794,15 +1019,37 @@ export default function SettingsPage() {
                       </div>
                     </div>
 
+                    {editForm.estado_eclesial === 'clerigo' && (
+                      <div className="space-y-2">
+                        <Label htmlFor="p-eclesial-rango">Rango</Label>
+                        <select id="p-eclesial-rango" value={editForm.estado_eclesial_rango} onChange={e => field('estado_eclesial_rango', e.target.value)} disabled={editLoading} className={selectClass}>
+                          <option value="">Seleccionar...</option>
+                          {ESTADO_ECLESIAL_RANGOS.map(o => (
+                            <option key={o.value} value={o.value}>{o.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {(editForm.estado_eclesial === 'clerigo' || editForm.estado_eclesial === 'consagrado') && (
+                      <div className="space-y-2">
+                        <Label htmlFor="p-institucion">Institución / Congregación</Label>
+                        <Input id="p-institucion" value={editForm.institucion_religiosa} onChange={e => field('institucion_religiosa', e.target.value)} disabled={editLoading} />
+                      </div>
+                    )}
+
                     {/* Estado de Vida */}
                     <div className="space-y-2">
-                      <Label htmlFor="p-vida">Estado de Vida</Label>
+                      <Label htmlFor="p-vida">Estado Civil</Label>
                       <select id="p-vida" value={editForm.estado_vida} onChange={e => field('estado_vida', e.target.value)} disabled={editLoading} className={selectClass}>
-                        <option value="">Sin especificar</option>
+                        <option value="">No completado</option>
+                        <option value="sin_especificar">Sin especificar</option>
                         <option value="soltero">Soltero/a</option>
                         <option value="casado">Casado/a</option>
                         <option value="viudo">Viudo/a</option>
                         <option value="separado">Separado/a</option>
+                        <option value="divorciado">Divorciado/a</option>
+                        <option value="union_civil">Unión Civil / Unión de Hecho</option>
                         <option value="consagrado">Consagrado/a</option>
                       </select>
                     </div>
@@ -833,15 +1080,42 @@ export default function SettingsPage() {
                       </div>
                     </div>
 
+                    {(editForm.nivel_estudios === 'universitario' || editForm.nivel_estudios === 'terciario') && (
+                      <div className="space-y-2">
+                        <Label htmlFor="p-titulo">Título</Label>
+                        <Input id="p-titulo" value={editForm.titulo_estudios} onChange={e => field('titulo_estudios', e.target.value)} disabled={editLoading} />
+                      </div>
+                    )}
+
                     {/* Acompañante */}
                     <div className="space-y-2">
-                      <Label htmlFor="p-acompanante">Acompañante</Label>
-                      <select id="p-acompanante" value={editForm.acompanante_id} onChange={e => field('acompanante_id', e.target.value)} disabled={editLoading} className={selectClass}>
-                        <option value="">Sin acompañante</option>
-                        {todasPersonas.map(p => (
-                          <option key={p.id} value={p.id}>{p.apellido}, {p.nombre}</option>
-                        ))}
-                      </select>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="p-acompanante">Acompañante</Label>
+                        <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <input
+                            type="checkbox"
+                            checked={acompananteLibreMode}
+                            onChange={e => toggleAcompananteLibreMode(e.target.checked)}
+                            className="h-4 w-4 rounded border-border"
+                          />
+                          No está registrado en la plataforma
+                        </label>
+                      </div>
+                      {acompananteLibreMode ? (
+                        <Input
+                          id="p-acompanante"
+                          placeholder="Nombre y apellido del acompañante"
+                          value={acompananteLibre}
+                          onChange={e => handleAcompananteLibreChange(e.target.value)}
+                        />
+                      ) : (
+                        <select id="p-acompanante" value={acompananteId} onChange={e => handleAcompananteChange(e.target.value)} className={selectClass}>
+                          <option value="">Sin acompañante</option>
+                          {todasPersonas.map(p => (
+                            <option key={p.id} value={p.id}>{p.apellido}, {p.nombre}</option>
+                          ))}
+                        </select>
+                      )}
                     </div>
 
                     {/* Notas */}
@@ -986,6 +1260,44 @@ export default function SettingsPage() {
                               onChange={e => changeVoto(t.value, { temporal: e.target.value }, false)}
                               disabled={v.perpetuo}
                               className="w-28"
+                            />
+                          </div>
+                        )
+                      })}
+                    </CardContent>
+                  </Card>
+
+                  {/* Convivencias, Retiros y Talleres realizados */}
+                  <Card className="border-border bg-card">
+                    <CardHeader>
+                      <CardTitle className="text-foreground">Convivencias, Retiros y Talleres realizados</CardTitle>
+                      <CardDescription>Marcá los que hayas hecho e indicá el año (opcional).</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {tiposEventos.length === 0 && (
+                        <p className="text-xs text-muted-foreground">No hay tipos de evento cargados todavía.</p>
+                      )}
+                      {tiposEventos.map(t => {
+                        const ev = eventosRealizados[t.id] ?? { checked: false, anio: '' }
+                        return (
+                          <div key={t.id} className="flex items-center gap-3">
+                            <input
+                              id={`evt-${t.id}`}
+                              type="checkbox"
+                              checked={ev.checked}
+                              onChange={e => toggleEventoRealizado(t.id, e.target.checked)}
+                              className="h-4 w-4 rounded border-border"
+                            />
+                            <Label htmlFor={`evt-${t.id}`} className="flex-1">{t.nombre}</Label>
+                            <Input
+                              type="number"
+                              min="1950"
+                              max={new Date().getFullYear()}
+                              placeholder="Año"
+                              value={ev.anio}
+                              onChange={e => setEventoRealizadoAnio(t.id, e.target.value)}
+                              disabled={!ev.checked}
+                              className="w-32"
                             />
                           </div>
                         )

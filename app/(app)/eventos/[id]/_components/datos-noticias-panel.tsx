@@ -37,6 +37,8 @@ type Props = {
     centralizador_3_nombre: string | null
     centralizador_3_email: string | null
     centralizador_3_telefono: string | null
+    manuales_stock: number | null
+    manuales_necesarios: number | null
     notas_noticias: string | null
   }
   casasRetiro: { id: string; nombre: string; ciudad?: string | null; provincia?: string | null }[]
@@ -45,6 +47,10 @@ type Props = {
 
 function toStr(v: string | null | undefined): string {
   return v ?? ''
+}
+
+function toNumStr(v: number | null | undefined): string {
+  return v === null || v === undefined ? '' : String(v)
 }
 
 export default function DatosNoticiasPannel({ eventoId, inicial, casasRetiro, personas }: Props) {
@@ -56,12 +62,19 @@ export default function DatosNoticiasPannel({ eventoId, inicial, casasRetiro, pe
     { personaId: toStr(inicial.centralizador_2_persona_id), nombre: toStr(inicial.centralizador_2_nombre), email: toStr(inicial.centralizador_2_email), telefono: toStr(inicial.centralizador_2_telefono) },
     { personaId: toStr(inicial.centralizador_3_persona_id), nombre: toStr(inicial.centralizador_3_nombre), email: toStr(inicial.centralizador_3_email), telefono: toStr(inicial.centralizador_3_telefono) },
   ])
+  const [manualesStock, setManualesStock] = useState(toNumStr(inicial.manuales_stock))
+  const [manualesNecesarios, setManualesNecesarios] = useState(toNumStr(inicial.manuales_necesarios))
   const [notas, setNotas] = useState(toStr(inicial.notas_noticias))
   const [loading, setLoading] = useState<'guardar' | 'publicar' | null>(null)
   const [error, setError] = useState('')
   const [savedOk, setSavedOk] = useState(false)
 
   const personaOptions = personas.map(p => ({ value: p.id, label: `${p.apellido}, ${p.nombre}` }))
+
+  const manualesSolicitados = Math.max(
+    (Number(manualesNecesarios) || 0) - (Number(manualesStock) || 0),
+    0
+  )
 
   function selectPersona(i: number, personaId: string) {
     const p = personas.find(x => x.id === personaId)
@@ -111,6 +124,8 @@ export default function DatosNoticiasPannel({ eventoId, inicial, casasRetiro, pe
       centralizador_3_nombre: centralizadores[2].nombre || null,
       centralizador_3_email: centralizadores[2].email || null,
       centralizador_3_telefono: centralizadores[2].telefono || null,
+      manuales_stock: manualesStock === '' ? null : Number(manualesStock),
+      manuales_necesarios: manualesNecesarios === '' ? null : Number(manualesNecesarios),
       notas_noticias: notas || null,
     }
   }
@@ -247,6 +262,37 @@ export default function DatosNoticiasPannel({ eventoId, inicial, casasRetiro, pe
           </div>
         )
       })}
+
+      {/* Manuales */}
+      <div className="space-y-2 rounded-md border border-border p-3 bg-muted/20">
+        <p className="text-xs font-medium text-foreground uppercase tracking-wide">Manuales</p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">Cantidad en stock</p>
+            <input
+              type="number"
+              min={0}
+              className={inputClass}
+              value={manualesStock}
+              onChange={e => { setManualesStock(e.target.value); setSavedOk(false) }}
+            />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">Cantidad necesarios</p>
+            <input
+              type="number"
+              min={0}
+              className={inputClass}
+              value={manualesNecesarios}
+              onChange={e => { setManualesNecesarios(e.target.value); setSavedOk(false) }}
+            />
+          </div>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground mb-1">Cantidad a solicitar</p>
+          <p className="text-sm font-medium text-foreground">{manualesSolicitados}</p>
+        </div>
+      </div>
 
       {/* Notas */}
       <div>

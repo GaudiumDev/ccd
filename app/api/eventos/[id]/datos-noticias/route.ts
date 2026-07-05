@@ -16,6 +16,8 @@ type DatosNoticias = {
   centralizador_3_nombre?: string | null
   centralizador_3_email?: string | null
   centralizador_3_telefono?: string | null
+  manuales_stock?: number | null
+  manuales_necesarios?: number | null
   notas_noticias?: string | null
 }
 
@@ -24,6 +26,7 @@ const CAMPOS_NOTICIAS = [
   'centralizador_1_persona_id', 'centralizador_1_nombre', 'centralizador_1_email', 'centralizador_1_telefono',
   'centralizador_2_persona_id', 'centralizador_2_nombre', 'centralizador_2_email', 'centralizador_2_telefono',
   'centralizador_3_persona_id', 'centralizador_3_nombre', 'centralizador_3_email', 'centralizador_3_telefono',
+  'manuales_stock', 'manuales_necesarios',
   'notas_noticias',
 ] as const
 

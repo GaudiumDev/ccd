@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox"
 
 // Short list of most common countries; Argentina first
-const PAISES: ComboboxOption[] = [
+export const PAISES: ComboboxOption[] = [
   { label: "Argentina", value: "Argentina" },
   { label: "Bolivia", value: "Bolivia" },
   { label: "Brasil", value: "Brasil" },
