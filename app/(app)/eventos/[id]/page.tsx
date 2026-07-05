@@ -96,7 +96,7 @@ export default async function EventoDetailPage({
       fecha_suspension, notas_suspension,
       fecha_solicitud, fecha_aprobacion, fecha_rechazo, motivo_rechazo,
       fecha_publicacion,
-      organizacion_id,
+      organizacion_id, fraternidad_id,
       disc_confra_estado, disc_confra_fecha, disc_confra_notas,
       disc_eqt_estado, disc_eqt_fecha, disc_eqt_notas,
       disc_confra_por_persona:personas!disc_confra_por(id, nombre, apellido),
@@ -294,11 +294,13 @@ export default async function EventoDetailPage({
     !ESTADOS_TERMINALES.includes(evento.estado) &&
     evento.estado !== 'pendiente_aprobacion_final'
 
-  // Solicitar suspensión: quien tenga el permiso (asignable) y no pueda suspender directo
+  // Solicitar suspensión: quien tenga el permiso (asignable) y no pueda suspender directo.
+  // Aplica tanto a la confraternidad como a la fraternidad del evento (quien lo solicitó).
   const canSolicitarSuspension = ctx &&
     !canPerform(ctx, 'event.suspend') &&
     !ESTADOS_TERMINALES.includes(evento.estado) &&
-    canPerform(ctx, 'event.request_suspend', evento.organizacion_id ?? null)
+    (canPerform(ctx, 'event.request_suspend', evento.organizacion_id ?? null) ||
+      (evento.fraternidad_id ? canPerform(ctx, 'event.request_suspend', evento.fraternidad_id) : false))
 
   // Build discernimiento niveles for the panel
   type NivelDiscernimiento = {

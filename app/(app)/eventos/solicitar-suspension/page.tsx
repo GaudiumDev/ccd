@@ -38,14 +38,17 @@ export default async function SolicitarSuspensionEventosPage() {
   let query = supabase
     .from("eventos")
     .select(
-      "id, nombre, tipo, estado, fecha_inicio, fecha_fin, solicitud_suspension_notas, solicitud_suspension_fecha, organizacion:organizaciones!organizacion_id(nombre)",
+      "id, nombre, tipo, estado, fecha_inicio, fecha_fin, solicitud_suspension_notas, solicitud_suspension_fecha, organizacion_id, fraternidad_id, organizacion:organizaciones!organizacion_id(nombre)",
     )
     .not("estado", "in", `(${ESTADOS_TERMINALES.join(",")})`)
     .order("fecha_inicio", { ascending: false })
 
   // Acotar por organizaciones del usuario salvo que sea admin/global.
+  // Un evento es visible tanto para quien tiene scope sobre la confraternidad (organizacion_id)
+  // como para quien lo tiene sobre la fraternidad solicitante (fraternidad_id).
   if (!ctx.is_admin && ctx.org_ids.length > 0) {
-    query = query.in("organizacion_id", ctx.org_ids)
+    const orgList = ctx.org_ids.join(",")
+    query = query.or(`organizacion_id.in.(${orgList}),fraternidad_id.in.(${orgList})`)
   }
 
   const { data } = await query

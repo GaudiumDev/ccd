@@ -11,7 +11,7 @@ async function getEventoAndCheckPermission(id: string) {
 
   const { data: evento, error } = await supabase
     .from('eventos')
-    .select('id, estado, organizacion_id, solicitado_por')
+    .select('id, estado, organizacion_id, fraternidad_id, solicitado_por')
     .eq('id', id)
     .single()
 
@@ -24,7 +24,12 @@ async function getEventoAndCheckPermission(id: string) {
     }
   }
 
-  if (!canPerform(ctx, 'event.request_suspend', evento.organizacion_id ?? null)) {
+  // Puede solicitar quien tenga el permiso en la confraternidad y/o en la fraternidad del evento
+  const puedeSolicitar =
+    canPerform(ctx, 'event.request_suspend', evento.organizacion_id ?? null) ||
+    (evento.fraternidad_id ? canPerform(ctx, 'event.request_suspend', evento.fraternidad_id) : false)
+
+  if (!puedeSolicitar) {
     return { error: 'No tenés permiso para solicitar la suspensión de este evento', status: 403, ctx: null, supabase: null, evento: null }
   }
 
