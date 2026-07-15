@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { getUserContext, canPerform } from '@/lib/auth/context'
 import { Sidebar } from '@/components/layout/sidebar'
 import type { SidebarPermissions } from '@/components/layout/sidebar'
+import { Toaster } from '@/components/ui/sonner'
 
 export default async function AppLayout({
   children,
@@ -32,6 +33,7 @@ export default async function AppLayout({
           {children}
         </div>
       </main>
+      <Toaster />
     </div>
   )
 }

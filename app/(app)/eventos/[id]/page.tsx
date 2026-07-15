@@ -13,6 +13,8 @@ import AprobacionFinalPanel from './_components/aprobacion-final-panel'
 import SuspenderEventoButton from './_components/suspender-evento-button'
 import SolicitarSuspensionPanel from './_components/solicitar-suspension-panel'
 import { PublicarButton } from './_components/publicar-button'
+import { IniciarEventoButton } from './_components/iniciar-evento-button'
+import { FinalizarEventoButton } from './_components/finalizar-evento-button'
 import FlyerUploadPanel from './_components/flyer-upload-panel'
 import LinkPagoPanel from './_components/link-pago-panel'
 import { formatDateAR } from '@/lib/utils'
@@ -26,6 +28,7 @@ const estadoClases: Record<string, string> = {
   pendiente_aprobacion_final: 'bg-violet-100 text-violet-700 dark:bg-violet-900/20 dark:text-violet-400',
   aprobado: 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400',
   publicado: 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400',
+  en_curso: 'bg-teal-100 text-teal-700 dark:bg-teal-900/20 dark:text-teal-400',
   rechazado: 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400',
   suspendido: 'bg-orange-200 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
   finalizado: 'bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400',
@@ -41,6 +44,7 @@ const estadoLabel: Record<string, string> = {
   pendiente_aprobacion_final: 'Pend. Aprobación Final EqT',
   aprobado: 'Aprobado',
   publicado: 'Publicado',
+  en_curso: 'En Curso',
   rechazado: 'Rechazado',
   suspendido: 'Suspendido',
   finalizado: 'Finalizado',
@@ -272,6 +276,12 @@ export default async function EventoDetailPage({
 
   const canEdit = ctx && canPerform(ctx, 'event.update', evento.organizacion_id ?? null)
   const canPublish = ctx && evento.estado === 'aprobado' && canPerform(ctx, 'event.publish', evento.organizacion_id ?? null)
+  const canIniciar = ctx && evento.estado === 'publicado' && canPerform(ctx, 'event.publish', evento.organizacion_id ?? null)
+  const canFinalizar = ctx && evento.estado === 'en_curso' && canPerform(ctx, 'event.publish', evento.organizacion_id ?? null)
+  // Attendance check-in available to event managers while the event is publicado/en_curso
+  const canAsistencia = ctx &&
+    (evento.estado === 'publicado' || evento.estado === 'en_curso') &&
+    canPerform(ctx, 'event.update', evento.organizacion_id ?? null)
 
   // Datos noticias panel: visible when pendiente_datos_noticias and user has permission
   const esSolicitante = ctx?.persona_id && ctx.persona_id === (evento as Record<string, unknown>).solicitado_por
@@ -373,6 +383,16 @@ export default async function EventoDetailPage({
         </Link>
         <div className="flex items-center gap-2 flex-wrap">
           {canPublish && <PublicarButton eventoId={id} />}
+          {canIniciar && <IniciarEventoButton eventoId={id} />}
+          {canAsistencia && (
+            <Link href={`/eventos/${id}/asistencia`}>
+              <Button variant="outline" size="sm" className="gap-2 bg-transparent">
+                <Users className="h-4 w-4" />
+                Tomar asistencia
+              </Button>
+            </Link>
+          )}
+          {canFinalizar && <FinalizarEventoButton eventoId={id} />}
           {canEdit && (
             <Link href={`/eventos/${id}/editar`}>
               <Button variant="outline" size="sm" className="gap-2 bg-transparent">

@@ -345,6 +345,7 @@ export default function EditarEventoForm({
                     </option>
                     <option value="aprobado">Aprobado</option>
                     <option value="publicado">Publicado</option>
+                    <option value="en_curso">En Curso</option>
                     <option value="rechazado">Rechazado</option>
                     <option value="finalizado">Finalizado</option>
                     <option value="cancelado">Cancelado</option>

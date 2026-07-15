@@ -51,6 +51,8 @@ const ESTADO_EVENT_COLORS: Record<string, string> = {
   aprobado: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
   publicado:
     "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+  en_curso:
+    "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200",
   finalizado: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
   rechazado: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
   cancelado: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
@@ -66,6 +68,7 @@ const ESTADO_LABELS: Record<string, string> = {
   pendiente_aprobacion_final: "Pend. Aprobación Final",
   aprobado: "Aprobado",
   publicado: "Publicado",
+  en_curso: "En Curso",
   finalizado: "Finalizado",
   rechazado: "Rechazado",
   cancelado: "Cancelado",
@@ -147,6 +150,7 @@ export default async function DashboardPage() {
     misRechazadosResult,
     pendienteDatosNoticiasResult,
     pendienteAprobacionFinalResult,
+    centralizadorCountResult,
   ] = await Promise.all([
     // 1. Count personas (non-admin count se calcula en el bloque cecistas más abajo)
     ctx.is_admin
@@ -324,7 +328,19 @@ export default async function DashboardPage() {
           .order("updated_at", { ascending: true })
           .limit(10)
       : Promise.resolve({ data: null, error: null }),
+
+    // 14. Eventos donde soy Centralizador (autoscopeado por persona_id)
+    hasPersonaId
+      ? supabase
+          .from("eventos")
+          .select("id", { count: "exact", head: true })
+          .or(
+            `centralizador_1_persona_id.eq.${ctx.persona_id},centralizador_2_persona_id.eq.${ctx.persona_id},centralizador_3_persona_id.eq.${ctx.persona_id}`,
+          )
+      : Promise.resolve({ count: 0, error: null }),
   ])
+
+  const centralizadorCount = centralizadorCountResult.count ?? 0
 
   let totalPersonas = personasCountResult.count ?? 0
   const totalConfraternidades = confraternidadesCountResult.count ?? 0
@@ -661,6 +677,34 @@ export default async function DashboardPage() {
           </Card>
         )}
       </div>
+
+      {/* Soy Centralizador */}
+      {centralizadorCount > 0 && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="flex flex-col gap-3 py-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <Users className="h-6 w-6 text-primary shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-foreground">
+                  Soy Centralizador en {centralizadorCount}{" "}
+                  {centralizadorCount === 1 ? "evento" : "eventos"}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Revisá tus eventos y las personas interesadas, inscriptas y
+                  convivientes.
+                </p>
+              </div>
+            </div>
+            <Link href="/eventos/centralizador" className="shrink-0">
+              <Button className="gap-2">
+                <Users className="h-4 w-4" />
+                Ver mis eventos
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Acciones rápidas */}
       {(canCreatePerson || canCreateOrg || canCreateEvent) && (
