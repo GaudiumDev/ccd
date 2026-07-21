@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -29,6 +30,8 @@ interface Props {
   datosPago: DatosPago | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** Si se define, al cerrar tras registrar el interés se navega a esta URL (ej. el listado de eventos publicados). */
+  volverAlListadoHref?: string
 }
 
 type Step = 'datos' | 'pago' | 'listo'
@@ -59,7 +62,8 @@ function CopyButton({ value }: { value: string }) {
   )
 }
 
-export function InteresModal({ eventoId, eventoNombre, montoInscripcion, datosPago, open, onOpenChange }: Props) {
+export function InteresModal({ eventoId, eventoNombre, montoInscripcion, datosPago, open, onOpenChange, volverAlListadoHref }: Props) {
+  const router = useRouter()
   const [form, setForm] = useState({
     nombre: '',
     apellido: '',
@@ -147,11 +151,16 @@ export function InteresModal({ eventoId, eventoNombre, montoInscripcion, datosPa
 
   function handleClose(open: boolean) {
     if (!open) {
+      // Si el interés quedó registrado (paso final) y hay un destino, volver al listado de eventos publicados.
+      const debeVolverAlListado = step === 'listo' && !!volverAlListadoHref
       setStep('datos')
       setError(null)
       setParticipanteId(null)
       setFile(null)
       setForm({ nombre: '', apellido: '', email: '', telefono: '', direccion: '', localidad: '', provincia: '', pais: 'Argentina' })
+      onOpenChange(open)
+      if (debeVolverAlListado) router.push(volverAlListadoHref!)
+      return
     }
     onOpenChange(open)
   }

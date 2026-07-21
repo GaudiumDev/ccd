@@ -9,9 +9,10 @@ interface Props {
   eventoNombre: string
   montoInscripcion?: number | null
   datosPago?: DatosPago | null
+  volverAlListadoHref?: string
 }
 
-export function InteresModalWrapper({ eventoId, eventoNombre, montoInscripcion, datosPago }: Props) {
+export function InteresModalWrapper({ eventoId, eventoNombre, montoInscripcion, datosPago, volverAlListadoHref }: Props) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -26,6 +27,7 @@ export function InteresModalWrapper({ eventoId, eventoNombre, montoInscripcion, 
         datosPago={datosPago ?? null}
         open={open}
         onOpenChange={setOpen}
+        volverAlListadoHref={volverAlListadoHref}
       />
     </>
   )

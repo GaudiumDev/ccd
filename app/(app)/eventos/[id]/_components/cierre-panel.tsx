@@ -1,0 +1,361 @@
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import { Button } from '@/components/ui/button'
+import { Combobox } from '@/components/ui/combobox'
+import { Download, Upload, Trash2, Users, FileText, Sparkles, Package, DollarSign, Camera, Lock } from 'lucide-react'
+import { CIERRE_BUCKET, type PreguntaInforme, type Movimiento } from '@/lib/eventos/cierre'
+import { exportConviventesPDF, exportInformeCoordinadorPDF, exportInformeCarismasPDF, type EventoInfo } from '@/lib/eventos/cierre-pdf'
+import CierreEconomico from './cierre-economico'
+import { CerrarConvivenciaButton } from './cerrar-convivencia-button'
+
+const inputClass = 'w-full rounded border border-border bg-background px-3 py-1.5 text-sm text-foreground'
+
+type Persona = { id: string; nombre: string; apellido: string; email?: string | null; telefono?: string | null }
+type Convivente = { persona_id: string; nombre: string; apellido: string; email: string | null; telefono: string | null; rol: string }
+type Servidor = { persona_id: string; nombre: string; apellido: string; rol: string }
+
+type Props = {
+  eventoId: string
+  estado: string
+  eventoInfo: EventoInfo
+  canEditar: boolean
+  canVerConfidencial: boolean
+  canEditarConfidencial: boolean
+  canCerrar: boolean
+  conviventes: Convivente[]
+  servidores: Servidor[]
+  cecistas: Persona[]
+  preguntas: PreguntaInforme[]
+  movimientos: Movimiento[]
+  inicial: {
+    cierre_foto_convivencia_url: string | null
+    cierre_foto_servidores_url: string | null
+    cierre_bolso_manuales_completo: boolean | null
+    cierre_manuales_saldo_final: number | null
+    cierre_manuales_recibidos_de: string | null
+    cierre_manuales_entrego_a: string | null
+    cierre_manuales_notas: string | null
+    informe_coordinador_respuestas: Record<string, string> | null
+    informe_carismas: { persona_id: string; texto: string }[] | null
+  }
+}
+
+function Section({ icon: Icon, title, badge, children }: { icon: React.ElementType; title: string; badge?: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-3 rounded-lg border border-border bg-card p-5">
+      <div className="flex items-center gap-2 border-b border-border pb-3">
+        <Icon className="h-4 w-4 text-muted-foreground" />
+        <h4 className="text-sm font-bold uppercase tracking-wide text-foreground">{title}</h4>
+        {badge && (
+          <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+            <Lock className="h-3 w-3" /> {badge}
+          </span>
+        )}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+export default function CierrePanel(props: Props) {
+  const { eventoId, estado, eventoInfo, canEditar, canVerConfidencial, canEditarConfidencial, canCerrar, conviventes, servidores, cecistas, preguntas, movimientos, inicial } = props
+  const router = useRouter()
+  const supabase = createClient()
+
+  const cerrado = estado === 'cerrado'
+  const cecistaOptions = cecistas.map(p => ({ value: p.id, label: `${p.apellido}, ${p.nombre}` }))
+
+  // ── Materiales ──
+  const [bolsoCompleto, setBolsoCompleto] = useState<string>(
+    inicial.cierre_bolso_manuales_completo === null ? '' : inicial.cierre_bolso_manuales_completo ? 'si' : 'no'
+  )
+  const [saldoFinal, setSaldoFinal] = useState(inicial.cierre_manuales_saldo_final == null ? '' : String(inicial.cierre_manuales_saldo_final))
+  const [recibidosDe, setRecibidosDe] = useState(inicial.cierre_manuales_recibidos_de ?? '')
+  const [entregoA, setEntregoA] = useState(inicial.cierre_manuales_entrego_a ?? '')
+  const [notasMateriales, setNotasMateriales] = useState(inicial.cierre_manuales_notas ?? '')
+
+  // ── Informes confidenciales ──
+  const [respuestas, setRespuestas] = useState<Record<string, string>>(inicial.informe_coordinador_respuestas ?? {})
+  const [carismas, setCarismas] = useState<Record<string, string>>(() => {
+    const map: Record<string, string> = {}
+    for (const c of inicial.informe_carismas ?? []) map[c.persona_id] = c.texto
+    return map
+  })
+
+  // ── Fotos ──
+  const [fotoConvivencia, setFotoConvivencia] = useState(inicial.cierre_foto_convivencia_url)
+  const [fotoServidores, setFotoServidores] = useState(inicial.cierre_foto_servidores_url)
+
+  const [saving, setSaving] = useState<string | null>(null)
+  const [error, setError] = useState('')
+  const [okMsg, setOkMsg] = useState('')
+
+  async function patchCierre(payload: Record<string, unknown>, tag: string, okText: string) {
+    setSaving(tag)
+    setError('')
+    setOkMsg('')
+    try {
+      const res = await fetch(`/api/eventos/${eventoId}/cierre`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error ?? 'Error al guardar')
+      }
+      setOkMsg(okText)
+      router.refresh()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Error inesperado')
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  function guardarMateriales() {
+    patchCierre({
+      cierre_bolso_manuales_completo: bolsoCompleto === '' ? null : bolsoCompleto === 'si',
+      cierre_manuales_saldo_final: saldoFinal === '' ? null : Number(saldoFinal),
+      cierre_manuales_recibidos_de: recibidosDe || null,
+      cierre_manuales_entrego_a: entregoA || null,
+      cierre_manuales_notas: notasMateriales || null,
+    }, 'materiales', 'Materiales guardados.')
+  }
+
+  function guardarInformeCoordinador() {
+    patchCierre({ informe_coordinador_respuestas: respuestas }, 'coordinador', 'Informe del coordinador guardado.')
+  }
+
+  function guardarCarismas() {
+    const arr = servidores.map(s => ({ persona_id: s.persona_id, texto: carismas[s.persona_id] ?? '' }))
+    patchCierre({ informe_carismas: arr }, 'carismas', 'Informe de carismas guardado.')
+  }
+
+  async function subirFoto(slot: 'convivencia' | 'servidores', file: File) {
+    if (file.size > 10 * 1024 * 1024) { setError('El archivo supera 10 MB.'); return }
+    setSaving(`foto-${slot}`)
+    setError('')
+    try {
+      const path = `${eventoId}/${slot}`
+      const { error: upErr } = await supabase.storage.from(CIERRE_BUCKET).upload(path, file, { upsert: true, contentType: file.type })
+      if (upErr) throw upErr
+      const { data: urlData } = supabase.storage.from(CIERRE_BUCKET).getPublicUrl(path)
+      const newUrl = `${urlData.publicUrl}?v=${Date.now()}`
+      const field = slot === 'convivencia' ? 'cierre_foto_convivencia_url' : 'cierre_foto_servidores_url'
+      await patchCierre({ [field]: newUrl }, `foto-${slot}`, 'Foto subida.')
+      if (slot === 'convivencia') setFotoConvivencia(newUrl); else setFotoServidores(newUrl)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Error al subir la foto.')
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  async function eliminarFoto(slot: 'convivencia' | 'servidores') {
+    setSaving(`foto-${slot}`)
+    try {
+      await supabase.storage.from(CIERRE_BUCKET).remove([`${eventoId}/${slot}`])
+      const field = slot === 'convivencia' ? 'cierre_foto_convivencia_url' : 'cierre_foto_servidores_url'
+      await patchCierre({ [field]: null }, `foto-${slot}`, 'Foto eliminada.')
+      if (slot === 'convivencia') setFotoConvivencia(null); else setFotoServidores(null)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Error al eliminar la foto.')
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <h3 className="text-lg font-bold text-foreground">Cierre de la Convivencia</h3>
+          <p className="text-xs text-muted-foreground">
+            {cerrado
+              ? 'El evento está cerrado. Los datos son de solo lectura.'
+              : 'Cargá los entregables del cierre. Cuando esté todo listo, el Equipo Timón cierra la convivencia.'}
+          </p>
+        </div>
+        {canCerrar && <CerrarConvivenciaButton eventoId={eventoId} />}
+      </div>
+
+      {(error || okMsg) && (
+        <p className={`text-sm ${error ? 'text-destructive' : 'text-green-600 dark:text-green-400'}`}>{error || okMsg}</p>
+      )}
+
+      {/* 1. Listado de conviventes */}
+      <Section icon={Users} title="Listado de conviventes">
+        <p className="text-sm text-muted-foreground">{conviventes.length} convivente(s) registrado(s).</p>
+        <div className="max-h-48 overflow-y-auto rounded border border-border divide-y divide-border">
+          {conviventes.length === 0 ? (
+            <p className="px-3 py-2 text-xs text-muted-foreground">Sin conviventes registrados.</p>
+          ) : conviventes.map(p => (
+            <div key={p.persona_id} className="px-3 py-1.5 text-sm text-foreground flex justify-between gap-2">
+              <span>{p.apellido}, {p.nombre}</span>
+              <span className="text-xs text-muted-foreground">{p.rol}</span>
+            </div>
+          ))}
+        </div>
+        <Button size="sm" variant="outline" className="gap-1 bg-transparent"
+          onClick={() => exportConviventesPDF(eventoInfo, conviventes)}>
+          <Download className="h-4 w-4" /> Exportar PDF
+        </Button>
+      </Section>
+
+      {/* 2. Informe económico */}
+      <Section icon={DollarSign} title="Informe económico">
+        <CierreEconomico
+          eventoId={eventoId}
+          eventoInfo={eventoInfo}
+          movimientosIniciales={movimientos}
+          readOnly={!canEditar}
+        />
+      </Section>
+
+      {/* 3 y 5. Fotos */}
+      <Section icon={Camera} title="Fotos">
+        <div className="grid gap-5 sm:grid-cols-2">
+          <FotoSlot label="Foto de la Convivencia" url={fotoConvivencia} disabled={!canEditar} loading={saving === 'foto-convivencia'}
+            onUpload={f => subirFoto('convivencia', f)} onDelete={() => eliminarFoto('convivencia')} />
+          <FotoSlot label="Foto del Equipo de Servidores" url={fotoServidores} disabled={!canEditar} loading={saving === 'foto-servidores'}
+            onUpload={f => subirFoto('servidores', f)} onDelete={() => eliminarFoto('servidores')} />
+        </div>
+      </Section>
+
+      {/* 6. Informe del Coordinador (confidencial) */}
+      {canVerConfidencial && (
+        <Section icon={FileText} title="Informe del Coordinador" badge="Confidencial">
+          {preguntas.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No hay preguntas definidas para este tipo de evento. Configuralas en Tipos de Evento.</p>
+          ) : preguntas.map((q, i) => (
+            <div key={q.id} className="space-y-1">
+              <p className="text-sm font-medium text-foreground">{i + 1}. {q.texto}</p>
+              <textarea
+                className={`${inputClass} min-h-16`}
+                value={respuestas[q.id] ?? ''}
+                disabled={!canEditarConfidencial}
+                onChange={e => setRespuestas(prev => ({ ...prev, [q.id]: e.target.value }))}
+              />
+            </div>
+          ))}
+          <div className="flex flex-wrap gap-2">
+            {canEditarConfidencial && (
+              <Button size="sm" onClick={guardarInformeCoordinador} disabled={saving !== null}>
+                {saving === 'coordinador' ? 'Guardando...' : 'Guardar informe'}
+              </Button>
+            )}
+            <Button size="sm" variant="outline" className="gap-1 bg-transparent"
+              onClick={() => exportInformeCoordinadorPDF(eventoInfo, preguntas, respuestas)}>
+              <Download className="h-4 w-4" /> Exportar PDF
+            </Button>
+          </div>
+        </Section>
+      )}
+
+      {/* 7. Informe de Carismas (confidencial) */}
+      {canVerConfidencial && (
+        <Section icon={Sparkles} title="Informe de Carismas del Equipo" badge="Confidencial">
+          {servidores.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No hay servidores registrados en el equipo.</p>
+          ) : servidores.map(s => (
+            <div key={s.persona_id} className="space-y-1">
+              <p className="text-sm font-medium text-foreground">{s.apellido}, {s.nombre} <span className="text-xs text-muted-foreground">({s.rol})</span></p>
+              <textarea
+                className={`${inputClass} min-h-16`}
+                value={carismas[s.persona_id] ?? ''}
+                disabled={!canEditarConfidencial}
+                onChange={e => setCarismas(prev => ({ ...prev, [s.persona_id]: e.target.value }))}
+              />
+            </div>
+          ))}
+          <div className="flex flex-wrap gap-2">
+            {canEditarConfidencial && (
+              <Button size="sm" onClick={guardarCarismas} disabled={saving !== null}>
+                {saving === 'carismas' ? 'Guardando...' : 'Guardar informe'}
+              </Button>
+            )}
+            <Button size="sm" variant="outline" className="gap-1 bg-transparent"
+              onClick={() => exportInformeCarismasPDF(eventoInfo, servidores.map(s => ({ nombre: `${s.apellido}, ${s.nombre} (${s.rol})`, texto: carismas[s.persona_id] ?? '' })))}>
+              <Download className="h-4 w-4" /> Exportar PDF
+            </Button>
+          </div>
+        </Section>
+      )}
+
+      {/* 8 y 9. Materiales / Manuales */}
+      <Section icon={Package} title="Materiales / Manuales">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Bolso de manuales completo</p>
+            <select className={inputClass} value={bolsoCompleto} disabled={!canEditar} onChange={e => setBolsoCompleto(e.target.value)}>
+              <option value="">— Sin especificar —</option>
+              <option value="si">Sí</option>
+              <option value="no">No</option>
+            </select>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Saldo final de manuales en stock</p>
+            <input className={inputClass} type="number" min={0} value={saldoFinal} disabled={!canEditar} onChange={e => setSaldoFinal(e.target.value)} />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">De quién recibí los manuales</p>
+            <Combobox value={recibidosDe} onSelect={setRecibidosDe} options={cecistaOptions}
+              placeholder="Buscar cecista..." searchPlaceholder="Buscar por apellido o nombre..." emptyText="No se encontraron personas." disabled={!canEditar} />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">A quién entrego los manuales</p>
+            <Combobox value={entregoA} onSelect={setEntregoA} options={cecistaOptions}
+              placeholder="Buscar cecista..." searchPlaceholder="Buscar por apellido o nombre..." emptyText="No se encontraron personas." disabled={!canEditar} />
+          </div>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Notas de materiales</p>
+          <textarea className={`${inputClass} min-h-16`} value={notasMateriales} disabled={!canEditar} onChange={e => setNotasMateriales(e.target.value)} />
+        </div>
+        {canEditar && (
+          <Button size="sm" onClick={guardarMateriales} disabled={saving !== null}>
+            {saving === 'materiales' ? 'Guardando...' : 'Guardar materiales'}
+          </Button>
+        )}
+      </Section>
+    </div>
+  )
+}
+
+function FotoSlot({ label, url, disabled, loading, onUpload, onDelete }: {
+  label: string; url: string | null; disabled: boolean; loading: boolean
+  onUpload: (f: File) => void; onDelete: () => void
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-medium text-foreground">{label}</p>
+        {url && !disabled && (
+          <button type="button" onClick={onDelete} disabled={loading} className="text-destructive hover:opacity-70 disabled:opacity-40" title="Eliminar">
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+      {url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={url} alt={label} className="w-full rounded-md border border-border object-cover aspect-video" />
+      ) : (
+        <div className="flex aspect-video w-full items-center justify-center rounded-md border-2 border-dashed border-border bg-muted/20 text-xs text-muted-foreground">
+          Sin foto
+        </div>
+      )}
+      {!disabled && (
+        <label className="inline-flex cursor-pointer items-center gap-1 rounded border border-border px-3 py-1.5 text-xs text-foreground hover:bg-muted/50">
+          <Upload className="h-3.5 w-3.5" />
+          {loading ? 'Subiendo…' : url ? 'Reemplazar' : 'Subir imagen'}
+          <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" disabled={loading}
+            onChange={e => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = '' }} />
+        </label>
+      )}
+    </div>
+  )
+}

@@ -1,7 +1,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft, CalendarDays, MapPin, Users, Phone, Mail, Link2 as Link2Icon, Building2, UserCheck, BookOpen, Wallet } from 'lucide-react'
+import { ArrowLeft, CalendarDays, MapPin, Users, Phone, Mail, Building2, BookOpen, Wallet } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { createClient } from '@/lib/supabase/server'
 import { InteresModalWrapper } from '@/components/landing/InteresModalWrapper'
@@ -83,11 +83,8 @@ export default async function PublicEventDetailPage({
   const org = evento.organizacion as OrgConPago | null
   const fraternidad = evento.fraternidad as OrgConPago | null
   const casaRetiro = evento.casa_retiro as { id: string; nombre: string; ciudad?: string | null; provincia?: string | null; link_maps?: string | null } | null
-  const coordinadorAsignado = ev.coordinador_asignado as { id: string; nombre: string; apellido: string } | null
-  const asesorAsignado = ev.asesor_asignado as { id: string; nombre: string; apellido: string } | null
   const flyerH = ev.flyer_horizontal_url as string | null
   const flyerC = ev.flyer_cuadrado_url as string | null
-  const linkPago = ev.link_pago_mercadopago as string | null
   const montoInscripcion = ev.precio != null ? Number(ev.precio) : null
 
   // Datos de cobro: preferir los de la fraternidad si tiene alias; si no, los de la confraternidad.
@@ -299,36 +296,6 @@ export default async function PublicEventDetailPage({
             </div>
           )}
 
-          {/* Coordinador / Asesor asignados */}
-          {(coordinadorAsignado || asesorAsignado) && (
-            <div className="mb-8 border-t border-border pt-6">
-              <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
-                <UserCheck className="h-4 w-4 text-[#F08020]" />
-                Equipo
-              </h2>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {coordinadorAsignado && (
-                  <div className="rounded-lg border border-border p-3">
-                    <p className="text-xs text-muted-foreground mb-0.5">Coordinador</p>
-                    <p className="text-sm font-medium text-foreground">
-                      {coordinadorAsignado.nombre} {coordinadorAsignado.apellido}
-                    </p>
-                  </div>
-                )}
-                {asesorAsignado && (
-                  <div className="rounded-lg border border-border p-3">
-                    <p className="text-xs text-muted-foreground mb-0.5">
-                      Asesor{ev.asesor_voluntario ? ' (voluntario)' : ''}
-                    </p>
-                    <p className="text-sm font-medium text-foreground">
-                      {asesorAsignado.nombre} {asesorAsignado.apellido}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
           {/* Centralizadores */}
           {centralizadores.length > 0 && (
             <div className="mb-8 border-t border-border pt-6">
@@ -367,14 +334,8 @@ export default async function PublicEventDetailPage({
               eventoNombre={evento.nombre}
               montoInscripcion={montoInscripcion}
               datosPago={datosPago}
+              volverAlListadoHref="/#panel-eventos"
             />
-            {linkPago && (
-              <a href={linkPago} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-md bg-[#009EE3] hover:bg-[#0089C6] text-white text-sm font-medium px-4 py-2 transition-colors">
-                <Link2Icon className="h-4 w-4" />
-                Pagar con Mercado Pago
-              </a>
-            )}
           </div>
 
         </div>

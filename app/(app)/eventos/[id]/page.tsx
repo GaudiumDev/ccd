@@ -17,6 +17,16 @@ import { IniciarEventoButton } from './_components/iniciar-evento-button'
 import { FinalizarEventoButton } from './_components/finalizar-evento-button'
 import FlyerUploadPanel from './_components/flyer-upload-panel'
 import LinkPagoPanel from './_components/link-pago-panel'
+import CierrePanel from './_components/cierre-panel'
+import {
+  canEditarCierre,
+  canVerCierre,
+  canVerInformesConfidenciales,
+  canCerrarConvivencia,
+  ROLES_SERVIDORES,
+  type PreguntaInforme,
+  type Movimiento,
+} from '@/lib/eventos/cierre'
 import { formatDateAR } from '@/lib/utils'
 
 const estadoClases: Record<string, string> = {
@@ -32,6 +42,7 @@ const estadoClases: Record<string, string> = {
   rechazado: 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400',
   suspendido: 'bg-orange-200 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
   finalizado: 'bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400',
+  cerrado: 'bg-purple-200 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
   cancelado: 'bg-red-200 text-red-800 dark:bg-red-900/40 dark:text-red-300',
 }
 
@@ -48,6 +59,7 @@ const estadoLabel: Record<string, string> = {
   rechazado: 'Rechazado',
   suspendido: 'Suspendido',
   finalizado: 'Finalizado',
+  cerrado: 'Cerrado',
   cancelado: 'Cancelado',
 }
 
@@ -92,6 +104,13 @@ export default async function EventoDetailPage({
       centralizador_2_persona_id, centralizador_2_nombre, centralizador_2_email, centralizador_2_telefono,
       centralizador_3_persona_id, centralizador_3_nombre, centralizador_3_email, centralizador_3_telefono,
       manuales_stock, manuales_necesarios, manuales_solicitados,
+      tipo_evento_id,
+      fecha_cierre, cerrado_por,
+      cierre_foto_convivencia_url, cierre_foto_servidores_url,
+      informe_coordinador_respuestas, informe_carismas,
+      cierre_bolso_manuales_completo, cierre_manuales_saldo_final,
+      cierre_manuales_recibidos_de, cierre_manuales_entrego_a, cierre_manuales_notas,
+      tipo_evento:tipos_eventos!tipo_evento_id(preguntas_informe),
       flyer_horizontal_url, flyer_cuadrado_url, link_pago_mercadopago,
       notas_noticias, notas_aprobacion_final,
       solicitud_suspension_notas, solicitud_suspension_fecha,
@@ -143,6 +162,62 @@ export default async function EventoDetailPage({
     .eq('estado', 'activo')
     .order('apellido')
     .order('nombre')
+
+  // ─── Datos del Cierre (solo si el evento está finalizado/cerrado y el usuario puede verlo) ───
+  const cierreEvento = {
+    estado: evento.estado,
+    organizacion_id: evento.organizacion_id ?? null,
+    fraternidad_id: evento.fraternidad_id ?? null,
+    coordinador_asignado_id: (evento as Record<string, unknown>).coordinador_asignado_id as string | null,
+  }
+  const showCierre = canVerCierre(ctx, cierreEvento)
+
+  type ParticipanteRow = {
+    persona_id: string
+    rol_en_evento: string
+    estado_participacion: string
+    persona: { nombre: string; apellido: string; email: string | null; telefono: string | null } | null
+  }
+  let participantes: ParticipanteRow[] = []
+  let movimientos: Movimiento[] = []
+  if (showCierre) {
+    const [{ data: parts }, { data: movs }] = await Promise.all([
+      supabase
+        .from('evento_participantes')
+        .select('persona_id, rol_en_evento, estado_participacion, persona:personas!persona_id(nombre, apellido, email, telefono)')
+        .eq('evento_id', id),
+      supabase
+        .from('evento_movimientos')
+        .select('*')
+        .eq('evento_id', id)
+        .order('created_at', { ascending: true }),
+    ])
+    participantes = (parts ?? []) as unknown as ParticipanteRow[]
+    movimientos = (movs ?? []) as Movimiento[]
+  }
+
+  const conviventesCierre = participantes
+    .filter(p => p.rol_en_evento === 'convivente' && p.estado_participacion !== 'cancelado')
+    .map(p => ({
+      persona_id: p.persona_id,
+      nombre: p.persona?.nombre ?? '',
+      apellido: p.persona?.apellido ?? '',
+      email: p.persona?.email ?? null,
+      telefono: p.persona?.telefono ?? null,
+      rol: p.rol_en_evento,
+    }))
+
+  const servidoresCierre = participantes
+    .filter(p => (ROLES_SERVIDORES as readonly string[]).includes(p.rol_en_evento) && p.estado_participacion !== 'cancelado')
+    .map(p => ({
+      persona_id: p.persona_id,
+      nombre: p.persona?.nombre ?? '',
+      apellido: p.persona?.apellido ?? '',
+      rol: p.rol_en_evento,
+    }))
+
+  const tipoEvento = (evento as Record<string, unknown>).tipo_evento as { preguntas_informe: PreguntaInforme[] } | null
+  const preguntasInforme: PreguntaInforme[] = Array.isArray(tipoEvento?.preguntas_informe) ? tipoEvento!.preguntas_informe : []
 
   const campoLabel: Record<string, string> = {
     nombre: 'Nombre', fecha_inicio: 'Fecha inicio', fecha_fin: 'Fecha fin',
@@ -296,7 +371,13 @@ export default async function EventoDetailPage({
     evento.estado === 'pendiente_aprobacion_final' &&
     canPerform(ctx, 'event.approve_eqt')
 
-  const ESTADOS_TERMINALES = ['suspendido', 'cancelado', 'finalizado', 'rechazado']
+  // Cierre de convivencia
+  const canEditarCierrePanel = canEditarCierre(ctx, cierreEvento)
+  const canVerConfidencial = canVerInformesConfidenciales(ctx, cierreEvento)
+  const canEditarConfidencial = canVerConfidencial && evento.estado === 'finalizado'
+  const canCerrar = canCerrarConvivencia(ctx, cierreEvento)
+
+  const ESTADOS_TERMINALES = ['suspendido', 'cancelado', 'finalizado', 'cerrado', 'rechazado']
 
   // Suspender directo: solo Timonel, cualquier estado no-terminal excepto pendiente_aprobacion_final
   const canSuspend = ctx &&
@@ -911,6 +992,39 @@ export default async function EventoDetailPage({
       )}
 
       </div>
+
+      {/* Cierre de la Convivencia — visible en finalizado/cerrado a quien tenga acceso */}
+      {showCierre && (
+        <CierrePanel
+          eventoId={id}
+          estado={evento.estado}
+          eventoInfo={{
+            nombre: evento.nombre,
+            fecha_inicio: evento.fecha_inicio ?? null,
+            confraternidad_nombre: confraternidad?.nombre ?? null,
+          }}
+          canEditar={!!canEditarCierrePanel}
+          canVerConfidencial={!!canVerConfidencial}
+          canEditarConfidencial={!!canEditarConfidencial}
+          canCerrar={!!canCerrar}
+          conviventes={conviventesCierre}
+          servidores={servidoresCierre}
+          cecistas={(personasCecistas ?? []) as { id: string; nombre: string; apellido: string }[]}
+          preguntas={preguntasInforme}
+          movimientos={movimientos}
+          inicial={{
+            cierre_foto_convivencia_url: (ev.cierre_foto_convivencia_url as string | null) ?? null,
+            cierre_foto_servidores_url: (ev.cierre_foto_servidores_url as string | null) ?? null,
+            cierre_bolso_manuales_completo: (ev.cierre_bolso_manuales_completo as boolean | null) ?? null,
+            cierre_manuales_saldo_final: (ev.cierre_manuales_saldo_final as number | null) ?? null,
+            cierre_manuales_recibidos_de: (ev.cierre_manuales_recibidos_de as string | null) ?? null,
+            cierre_manuales_entrego_a: (ev.cierre_manuales_entrego_a as string | null) ?? null,
+            cierre_manuales_notas: (ev.cierre_manuales_notas as string | null) ?? null,
+            informe_coordinador_respuestas: (ev.informe_coordinador_respuestas as Record<string, string> | null) ?? null,
+            informe_carismas: (ev.informe_carismas as { persona_id: string; texto: string }[] | null) ?? null,
+          }}
+        />
+      )}
 
       {/* Link de pago — visible para quienes pueden editar el evento */}
       {canEdit && (
