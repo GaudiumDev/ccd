@@ -29,10 +29,10 @@ const estadoClases: Record<string, string> = {
   aprobado: "bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400",
   publicado:
     "bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400",
-  en_curso:
-    "bg-teal-100 text-teal-700 dark:bg-teal-900/20 dark:text-teal-400",
+  en_curso: "bg-teal-100 text-teal-700 dark:bg-teal-900/20 dark:text-teal-400",
   rechazado: "bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400",
-  suspendido: "bg-orange-200 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300",
+  suspendido:
+    "bg-orange-200 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300",
   finalizado:
     "bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400",
   cancelado: "bg-red-200 text-red-800 dark:bg-red-900/40 dark:text-red-300",
@@ -116,7 +116,9 @@ function EventoItem({
         {isPendiente ? (
           <Link href={`/eventos/${evento.id}`}>
             <Button size="sm">
-              {evento.estado === "pendiente_aprobacion_final" ? "Revisar" : "Discernir"}
+              {evento.estado === "pendiente_aprobacion_final"
+                ? "Revisar"
+                : "Discernir"}
             </Button>
           </Link>
         ) : (
@@ -141,9 +143,21 @@ function EventoItem({
 export default async function EventosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; estado?: string; tipo?: string; fecha_desde?: string; fecha_hasta?: string }>
+  searchParams: Promise<{
+    q?: string
+    estado?: string
+    tipo?: string
+    fecha_desde?: string
+    fecha_hasta?: string
+  }>
 }) {
-  const { q, estado: estadoFiltro, tipo: tipoFiltro, fecha_desde: fechaDesde, fecha_hasta: fechaHasta } = await searchParams
+  const {
+    q,
+    estado: estadoFiltro,
+    tipo: tipoFiltro,
+    fecha_desde: fechaDesde,
+    fecha_hasta: fechaHasta,
+  } = await searchParams
   const [supabase, ctx] = await Promise.all([createClient(), getUserContext()])
   const canCreate = ctx && (ctx.is_admin || ctx.nivel_max >= 50)
   const canSuspend = ctx && canPerform(ctx, "event.suspend")
@@ -176,7 +190,11 @@ export default async function EventosPage({
         pendingStates.push("solicitud")
       }
       if (canApproveTimon) {
-        pendingStates.push("discernimiento_confra", "discernimiento_eqt", "pendiente_aprobacion_final")
+        pendingStates.push(
+          "discernimiento_confra",
+          "discernimiento_eqt",
+          "pendiente_aprobacion_final",
+        )
         if (!pendingStates.includes("solicitud"))
           pendingStates.push("solicitud")
       }
@@ -202,7 +220,8 @@ export default async function EventosPage({
           // discernimiento_eqt = legacy state, also EqT's turn
           if (ev.estado === "discernimiento_eqt" && canApproveTimon) return true
           // pendiente_aprobacion_final = awaiting EqT final approval
-          if (ev.estado === "pendiente_aprobacion_final" && canApproveTimon) return true
+          if (ev.estado === "pendiente_aprobacion_final" && canApproveTimon)
+            return true
 
           if (ev.estado === "solicitud") {
             // EqT acts directly when no confra step required
@@ -226,11 +245,19 @@ export default async function EventosPage({
   }
 
   // Solicitudes de suspensión pendientes — solo Timonel
-  let solicitudesSuspension: { id: string; nombre: string; solicitud_suspension_notas: string | null; solicitud_suspension_fecha: string | null; organizacion: { nombre: string } | null }[] = []
+  let solicitudesSuspension: {
+    id: string
+    nombre: string
+    solicitud_suspension_notas: string | null
+    solicitud_suspension_fecha: string | null
+    organizacion: { nombre: string } | null
+  }[] = []
   if (canSuspend) {
     const { data: suspData } = await supabase
       .from("eventos")
-      .select("id, nombre, solicitud_suspension_notas, solicitud_suspension_fecha, organizacion:organizaciones!organizacion_id(nombre)")
+      .select(
+        "id, nombre, solicitud_suspension_notas, solicitud_suspension_fecha, organizacion:organizaciones!organizacion_id(nombre)",
+      )
       .not("solicitud_suspension_fecha", "is", null)
       .not("estado", "in", "(suspendido,cancelado,finalizado,rechazado)")
       .order("solicitud_suspension_fecha", { ascending: true })
@@ -242,11 +269,9 @@ export default async function EventosPage({
       <div>
         <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
           <Calendar className="h-8 w-8 text-primary" />
-          Gestión de Eventos
+          Plataforma de Gestión de Eventos Convivencia con Dios
         </h1>
-        <p className="mt-2 text-muted-foreground">
-          Crea y administra eventos espirituales
-        </p>
+        <p className="mt-2 text-muted-foreground">Crea y administra eventos.</p>
       </div>
 
       {/* Pendientes de aprobación */}
@@ -283,20 +308,36 @@ export default async function EventosPage({
           </CardHeader>
           <CardContent className="space-y-3">
             {solicitudesSuspension.map((ev) => (
-              <div key={ev.id} className="flex items-center justify-between rounded-lg border border-border p-4 hover:bg-muted/50 transition-colors">
+              <div
+                key={ev.id}
+                className="flex items-center justify-between rounded-lg border border-border p-4 hover:bg-muted/50 transition-colors"
+              >
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-foreground truncate">{ev.nombre}</p>
+                  <p className="font-medium text-foreground truncate">
+                    {ev.nombre}
+                  </p>
                   <div className="flex gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
                     {ev.organizacion && <span>{ev.organizacion.nombre}</span>}
-                    {ev.solicitud_suspension_fecha && <span>Solicitado el {formatDateAR(ev.solicitud_suspension_fecha)}</span>}
+                    {ev.solicitud_suspension_fecha && (
+                      <span>
+                        Solicitado el{" "}
+                        {formatDateAR(ev.solicitud_suspension_fecha)}
+                      </span>
+                    )}
                   </div>
                   {ev.solicitud_suspension_notas && (
-                    <p className="text-xs text-muted-foreground mt-0.5 truncate">Motivo: {ev.solicitud_suspension_notas}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                      Motivo: {ev.solicitud_suspension_notas}
+                    </p>
                   )}
                 </div>
                 <div className="ml-4 shrink-0">
                   <Link href={`/eventos/${ev.id}`}>
-                    <Button size="sm" variant="outline" className="border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 bg-transparent">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 bg-transparent"
+                    >
                       Revisar
                     </Button>
                   </Link>
@@ -377,7 +418,9 @@ export default async function EventosPage({
               <option value="encuentro">Encuentro</option>
             </select>
             <div className="flex items-center gap-1">
-              <label className="text-xs text-muted-foreground whitespace-nowrap">Desde</label>
+              <label className="text-xs text-muted-foreground whitespace-nowrap">
+                Desde
+              </label>
               <input
                 name="fecha_desde"
                 type="date"
@@ -386,7 +429,9 @@ export default async function EventosPage({
               />
             </div>
             <div className="flex items-center gap-1">
-              <label className="text-xs text-muted-foreground whitespace-nowrap">Hasta</label>
+              <label className="text-xs text-muted-foreground whitespace-nowrap">
+                Hasta
+              </label>
               <input
                 name="fecha_hasta"
                 type="date"
@@ -429,14 +474,19 @@ export default async function EventosPage({
                   ? "Probá con otros filtros"
                   : "Comienza agregando el primer evento al sistema"}
               </p>
-              {!q && !estadoFiltro && !tipoFiltro && !fechaDesde && !fechaHasta && canCreate && (
-                <Link href="/eventos/nuevo" className="mt-4 inline-block">
-                  <Button className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Nuevo Evento
-                  </Button>
-                </Link>
-              )}
+              {!q &&
+                !estadoFiltro &&
+                !tipoFiltro &&
+                !fechaDesde &&
+                !fechaHasta &&
+                canCreate && (
+                  <Link href="/eventos/nuevo" className="mt-4 inline-block">
+                    <Button className="gap-2">
+                      <Plus className="h-4 w-4" />
+                      Nuevo Evento
+                    </Button>
+                  </Link>
+                )}
             </div>
           )}
         </CardContent>
