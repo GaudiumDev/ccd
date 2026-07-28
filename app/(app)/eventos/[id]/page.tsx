@@ -531,6 +531,30 @@ export default async function EventoDetailPage({
         </div>
       )}
 
+      {/* Suspension request notice — full width. Visible cuando hay una solicitud pendiente
+          (motivo cargado por quien la solicitó) y el evento aún no fue suspendido/terminal.
+          Le muestra al Equipo Timón el porqué de la solicitud antes de resolverla. */}
+      {(() => {
+        const solicitudNotas = (evento as Record<string, unknown>).solicitud_suspension_notas as string | null
+        const solicitudFecha = (evento as Record<string, unknown>).solicitud_suspension_fecha as string | null
+        const solicitudPor = (evento as Record<string, unknown>).solicitud_suspension_por_persona as { nombre: string; apellido: string } | null
+        if (!solicitudNotas || ESTADOS_TERMINALES.includes(evento.estado)) return null
+        return (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 p-5 space-y-1">
+            <p className="font-semibold text-amber-800 dark:text-amber-300 text-sm uppercase tracking-wide">
+              Solicitud de Suspensión Pendiente
+            </p>
+            {solicitudPor && (
+              <p className="text-sm text-amber-700 dark:text-amber-400">
+                Solicitada por: {solicitudPor.nombre} {solicitudPor.apellido}
+                {solicitudFecha && ` el ${formatDateAR(solicitudFecha)}`}
+              </p>
+            )}
+            <p className="text-sm text-amber-700 dark:text-amber-400">Motivo: {solicitudNotas}</p>
+          </div>
+        )
+      })()}
+
       {/* Main grid: event card + sidebar */}
       <div className={discNiveles.length > 0 || canDatosNoticias || canAprobacionFinal || canSolicitarSuspension ? 'grid gap-6 lg:grid-cols-3 items-start' : undefined}>
 
