@@ -16,6 +16,8 @@ export type Permission =
   | 'person.update'
   | 'person.delete'       // soft delete — solo admin
   | 'person.merge'        // fusión de duplicados — solo admin
+  | 'votos.edit'          // editar votos de Dedicados (Referente/Responsable) — global
+  | 'votos.list'          // ver listado consolidado de votos (Animadores) — solo lectura
   | 'event.create'
   | 'event.approve'       // aprobar eventos directamente (sin discernimiento) — solo admin
   | 'event.approve_confra' // aprobar en discernimiento confra (tecnico_confraternidad, responsable_fraternidad)
@@ -52,6 +54,8 @@ export const rolePermissions: Record<SystemRole, Permission[]> = {
     'person.update',
     'person.delete',
     'person.merge',
+    'votos.edit',
+    'votos.list',
     'event.create',
     'event.approve',
     'event.approve_confra',

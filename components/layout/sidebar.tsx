@@ -27,6 +27,7 @@ import {
   OctagonX,
   AlertTriangle,
   DollarSign,
+  ScrollText,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
@@ -41,6 +42,7 @@ export interface SidebarPermissions {
   canSuspendEvent: boolean
   canRequestSuspend: boolean
   canVerifyPayments: boolean
+  canViewVotos: boolean
   isAdmin: boolean
 }
 
@@ -74,6 +76,15 @@ function buildNavItems(p: SidebarPermissions): NavItem[] {
                 icon: <UserPlus className="h-4 w-4" />,
                 label: "Registrar persona",
                 href: "/personas/nueva",
+              },
+            ]
+          : []),
+        ...(p.canViewVotos
+          ? [
+              {
+                icon: <ScrollText className="h-4 w-4" />,
+                label: "Votos de Dedicados",
+                href: "/votos",
               },
             ]
           : []),
