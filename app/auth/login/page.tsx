@@ -36,7 +36,15 @@ export default function LoginPage() {
     setError(null)
 
     const supabase = createClient()
-    const fakeEmail = `${username.toLowerCase().trim()}@ccd.internal`
+    // Normalizar el usuario a ASCII (ñ→n, sin tildes) para que coincida con la
+    // cuenta interna, que se crea siempre en ASCII. Así se puede tipear con o sin ñ/acentos.
+    const usuarioNormalizado = username
+      .normalize("NFKD")
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/ñ/gi, "n")
+      .toLowerCase()
+      .trim()
+    const fakeEmail = `${usuarioNormalizado}@ccd.internal`
     const { error } = await supabase.auth.signInWithPassword({
       email: fakeEmail,
       password,
