@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { CheckCircle, Copy, Check } from 'lucide-react'
+import { CheckCircle, Copy, Check, Link2 } from 'lucide-react'
 
 export type DatosPago = {
   alias: string
@@ -27,6 +27,7 @@ interface Props {
   eventoId: string
   eventoNombre: string
   montoInscripcion: number | null
+  mpDisponible: boolean
   datosPago: DatosPago | null
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -62,7 +63,7 @@ function CopyButton({ value }: { value: string }) {
   )
 }
 
-export function InteresModal({ eventoId, eventoNombre, montoInscripcion, datosPago, open, onOpenChange, volverAlListadoHref }: Props) {
+export function InteresModal({ eventoId, eventoNombre, montoInscripcion, mpDisponible, datosPago, open, onOpenChange, volverAlListadoHref }: Props) {
   const router = useRouter()
   const [form, setForm] = useState({
     nombre: '',
@@ -79,9 +80,11 @@ export function InteresModal({ eventoId, eventoNombre, montoInscripcion, datosPa
   const [error, setError] = useState<string | null>(null)
   const [participanteId, setParticipanteId] = useState<string | null>(null)
   const [file, setFile] = useState<File | null>(null)
+  const [comprobanteEnviado, setComprobanteEnviado] = useState(false)
 
-  // ¿Corresponde el paso de pago? Solo si hay monto y datos de cobro configurados.
-  const requierePago = (montoInscripcion ?? 0) > 0 && !!datosPago
+  // ¿Corresponde el paso de pago? Solo si hay monto y algún medio de cobro configurado
+  // (Mercado Pago conectado y/o datos de transferencia cargados).
+  const requierePago = (montoInscripcion ?? 0) > 0 && (mpDisponible || !!datosPago)
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
@@ -114,6 +117,30 @@ export function InteresModal({ eventoId, eventoNombre, montoInscripcion, datosPa
     }
   }
 
+  async function handlePagarMercadoPago() {
+    if (!participanteId) return
+    setLoading(true)
+    setError(null)
+
+    try {
+      const res = await fetch('/api/public/pagos/mercadopago/preferencia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ evento_participante_id: participanteId }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error ?? 'No se pudo iniciar el pago. Intentá de nuevo.')
+        setLoading(false)
+        return
+      }
+      window.location.href = data.checkout_url
+    } catch {
+      setError('Error de conexión. Verificá tu internet e intentá de nuevo.')
+      setLoading(false)
+    }
+  }
+
   async function handleSubmitComprobante(e: React.FormEvent) {
     e.preventDefault()
     if (!file || !participanteId) return
@@ -140,6 +167,7 @@ export function InteresModal({ eventoId, eventoNombre, montoInscripcion, datosPa
       if (!res.ok) {
         setError(data.error ?? 'No se pudo subir el comprobante. Intentá de nuevo.')
       } else {
+        setComprobanteEnviado(true)
         setStep('listo')
       }
     } catch {
@@ -157,6 +185,7 @@ export function InteresModal({ eventoId, eventoNombre, montoInscripcion, datosPa
       setError(null)
       setParticipanteId(null)
       setFile(null)
+      setComprobanteEnviado(false)
       setForm({ nombre: '', apellido: '', email: '', telefono: '', direccion: '', localidad: '', provincia: '', pais: 'Argentina' })
       onOpenChange(open)
       if (debeVolverAlListado) router.push(volverAlListadoHref!)
@@ -176,91 +205,112 @@ export function InteresModal({ eventoId, eventoNombre, montoInscripcion, datosPa
             <div>
               <p className="text-lg font-semibold text-foreground">¡Gracias por tu interés!</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                {participanteId && file
+                {comprobanteEnviado
                   ? <>Recibimos tu comprobante para <strong>{eventoNombre}</strong>. Lo verificaremos y nos comunicaremos pronto.</>
-                  : <>Tu interés en <strong>{eventoNombre}</strong> fue registrado. Nos comunicaremos pronto.</>}
+                  : participanteId
+                    ? <>Tu inscripción a <strong>{eventoNombre}</strong> quedó registrada. Cuando se confirme el pago te avisaremos.</>
+                    : <>Tu interés en <strong>{eventoNombre}</strong> fue registrado. Nos comunicaremos pronto.</>}
               </p>
             </div>
             <Button onClick={() => handleClose(false)} className="mt-2">
               Cerrar
             </Button>
           </div>
-        ) : step === 'pago' && datosPago ? (
+        ) : step === 'pago' ? (
           <>
             <DialogHeader>
               <DialogTitle>Pago de inscripción</DialogTitle>
               <DialogDescription>
                 Para reservar tu lugar en <strong className="text-foreground">{eventoNombre}</strong>
-                {montoLabel ? <> transferí <strong className="text-foreground">{montoLabel}</strong></> : <> transferí el pago de inscripción</>}
-                {' '}y adjuntá el comprobante.
+                {montoLabel ? <> aboná <strong className="text-foreground">{montoLabel}</strong></> : <> aboná el pago de inscripción</>}.
               </DialogDescription>
             </DialogHeader>
 
-            <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-3 text-sm">
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <p className="text-xs text-muted-foreground">Alias</p>
-                  <p className="font-medium text-foreground">{datosPago.alias}</p>
+            <div className="grid gap-4 py-1">
+              {mpDisponible && (
+                <div className="rounded-lg border border-border p-4 space-y-3">
+                  <p className="text-sm font-medium text-foreground">Pagar con Mercado Pago</p>
+                  <p className="text-xs text-muted-foreground">
+                    Vas a ser redirigido a un entorno seguro para completar el pago al instante.
+                  </p>
+                  <Button type="button" onClick={handlePagarMercadoPago} disabled={loading}>
+                    <Link2 className="h-4 w-4" />
+                    {loading ? 'Redirigiendo...' : 'Pagar con Mercado Pago'}
+                  </Button>
                 </div>
-                <CopyButton value={datosPago.alias} />
-              </div>
-              {datosPago.cbu && (
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <p className="text-xs text-muted-foreground">CBU / CVU</p>
-                    <p className="font-medium text-foreground break-all">{datosPago.cbu}</p>
+              )}
+
+              {datosPago && (
+                <form onSubmit={handleSubmitComprobante} className="rounded-lg border border-border p-4 space-y-3">
+                  <p className="text-sm font-medium text-foreground">Pagar por transferencia</p>
+
+                  <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-3 text-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Alias</p>
+                        <p className="font-medium text-foreground">{datosPago.alias}</p>
+                      </div>
+                      <CopyButton value={datosPago.alias} />
+                    </div>
+                    {datosPago.cbu && (
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="text-xs text-muted-foreground">CBU / CVU</p>
+                          <p className="font-medium text-foreground break-all">{datosPago.cbu}</p>
+                        </div>
+                        <CopyButton value={datosPago.cbu} />
+                      </div>
+                    )}
+                    {datosPago.titular && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">Titular</p>
+                        <p className="font-medium text-foreground">{datosPago.titular}</p>
+                      </div>
+                    )}
+                    {datosPago.banco && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">Banco</p>
+                        <p className="font-medium text-foreground">{datosPago.banco}</p>
+                      </div>
+                    )}
+                    {datosPago.instrucciones && (
+                      <p className="text-xs text-muted-foreground whitespace-pre-wrap border-t border-border pt-2">{datosPago.instrucciones}</p>
+                    )}
                   </div>
-                  <CopyButton value={datosPago.cbu} />
-                </div>
-              )}
-              {datosPago.titular && (
-                <div>
-                  <p className="text-xs text-muted-foreground">Titular</p>
-                  <p className="font-medium text-foreground">{datosPago.titular}</p>
-                </div>
-              )}
-              {datosPago.banco && (
-                <div>
-                  <p className="text-xs text-muted-foreground">Banco</p>
-                  <p className="font-medium text-foreground">{datosPago.banco}</p>
-                </div>
-              )}
-              {datosPago.instrucciones && (
-                <p className="text-xs text-muted-foreground whitespace-pre-wrap border-t border-border pt-2">{datosPago.instrucciones}</p>
+
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="comprobante">
+                      Comprobante <span className="text-destructive">*</span>{' '}
+                      <span className="text-muted-foreground text-xs">(PDF o imagen, máx. 10 MB)</span>
+                    </Label>
+                    <Input
+                      id="comprobante"
+                      type="file"
+                      accept="application/pdf,image/jpeg,image/png,image/webp"
+                      onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <Button type="submit" disabled={loading || !file}>
+                    {loading ? 'Enviando...' : 'Enviar comprobante'}
+                  </Button>
+                </form>
               )}
             </div>
 
-            <form onSubmit={handleSubmitComprobante} className="grid gap-3 py-1">
-              <div className="grid gap-1.5">
-                <Label htmlFor="comprobante">
-                  Comprobante <span className="text-destructive">*</span>{' '}
-                  <span className="text-muted-foreground text-xs">(PDF o imagen, máx. 10 MB)</span>
-                </Label>
-                <Input
-                  id="comprobante"
-                  type="file"
-                  accept="application/pdf,image/jpeg,image/png,image/webp"
-                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                  disabled={loading}
-                />
-              </div>
+            {error && <p className="text-sm text-destructive">{error}</p>}
 
-              {error && <p className="text-sm text-destructive">{error}</p>}
-
-              <DialogFooter className="mt-2 flex-col sm:flex-row gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setStep('listo')}
-                  disabled={loading}
-                >
-                  Lo envío más tarde
-                </Button>
-                <Button type="submit" disabled={loading || !file}>
-                  {loading ? 'Enviando...' : 'Enviar comprobante'}
-                </Button>
-              </DialogFooter>
-            </form>
+            <DialogFooter className="mt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setStep('listo')}
+                disabled={loading}
+              >
+                Lo pago más tarde
+              </Button>
+            </DialogFooter>
           </>
         ) : (
           <>

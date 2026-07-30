@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import MercadoPagoPanel from "./_components/mercadopago-panel"
 
 type OrgOption = { id: string; nombre: string; tipo: string }
 type OrgDependiente = { id: string; nombre: string; tipo: string }
@@ -549,6 +550,8 @@ export default function EditarOrganizacionPage() {
           </form>
         </CardContent>
       </Card>
+
+      <MercadoPagoPanel organizacionId={id} />
 
       {/* Organizaciones Dependientes */}
       <Card className="border-border bg-card">

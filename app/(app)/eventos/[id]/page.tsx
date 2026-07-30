@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getUserContext, canPerform } from '@/lib/auth/context'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Edit2, Calendar, MapPin, Users, Link2 as Link2Icon } from 'lucide-react'
+import { ArrowLeft, Edit2, Calendar, MapPin, Users } from 'lucide-react'
 import DiscernimientoPanel from './_components/approval-panel'
 import DatosNoticiasPannel from './_components/datos-noticias-panel'
 import AprobacionFinalPanel from './_components/aprobacion-final-panel'
@@ -16,7 +16,6 @@ import { PublicarButton } from './_components/publicar-button'
 import { IniciarEventoButton } from './_components/iniciar-evento-button'
 import { FinalizarEventoButton } from './_components/finalizar-evento-button'
 import FlyerUploadPanel from './_components/flyer-upload-panel'
-import LinkPagoPanel from './_components/link-pago-panel'
 import CierrePanel from './_components/cierre-panel'
 import {
   canEditarCierre,
@@ -111,7 +110,7 @@ export default async function EventoDetailPage({
       cierre_bolso_manuales_completo, cierre_manuales_saldo_final,
       cierre_manuales_recibidos_de, cierre_manuales_entrego_a, cierre_manuales_notas,
       tipo_evento:tipos_eventos!tipo_evento_id(preguntas_informe),
-      flyer_horizontal_url, flyer_cuadrado_url, link_pago_mercadopago,
+      flyer_horizontal_url, flyer_cuadrado_url,
       notas_noticias, notas_aprobacion_final,
       solicitud_suspension_notas, solicitud_suspension_fecha,
       solicitud_suspension_por_persona:personas!solicitud_suspension_por(id, nombre, apellido),
@@ -669,22 +668,6 @@ export default async function EventoDetailPage({
             </div>
           )}
 
-          {/* Link de pago Mercado Pago */}
-          {(ev.link_pago_mercadopago as string | null) && (
-            <div className="border-t border-border pt-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Preinscripción</p>
-              <a
-                href={ev.link_pago_mercadopago as string}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-md bg-[#009EE3] hover:bg-[#0089C6] text-white text-sm font-medium px-4 py-2 transition-colors"
-              >
-                <Link2Icon className="h-4 w-4" />
-                Pagar con Mercado Pago
-              </a>
-            </div>
-          )}
-
           {/* Personas propuestas — visible cuando la confra ya discernió */}
           {evento.disc_confra_estado && (evento.coordinadores_propuestos || evento.asesor_propuesto) && (
             <div className="space-y-2 border-t border-border pt-4">
@@ -1047,14 +1030,6 @@ export default async function EventoDetailPage({
             informe_coordinador_respuestas: (ev.informe_coordinador_respuestas as Record<string, string> | null) ?? null,
             informe_carismas: (ev.informe_carismas as { persona_id: string; texto: string }[] | null) ?? null,
           }}
-        />
-      )}
-
-      {/* Link de pago — visible para quienes pueden editar el evento */}
-      {canEdit && (
-        <LinkPagoPanel
-          eventoId={id}
-          linkPagoActual={(ev.link_pago_mercadopago as string | null) ?? null}
         />
       )}
 

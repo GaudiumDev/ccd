@@ -33,11 +33,13 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Protect all app routes (everything except /auth/*)
+  // Protect all app routes (everything except /auth/*, the public event
+  // landing page, and the public APIs it calls to register interest / pay)
   if (
     !user &&
     !request.nextUrl.pathname.startsWith('/auth') &&
     !request.nextUrl.pathname.startsWith('/e/') &&
+    !request.nextUrl.pathname.startsWith('/api/public/') &&
     request.nextUrl.pathname !== '/'
   ) {
     const url = request.nextUrl.clone()
