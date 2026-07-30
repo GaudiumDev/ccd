@@ -134,7 +134,7 @@ export function InteresModal({ eventoId, eventoNombre, montoInscripcion, mpDispo
         setLoading(false)
         return
       }
-      window.location.href = data.sandbox_init_point ?? data.init_point
+      window.location.href = data.checkout_url
     } catch {
       setError('Error de conexión. Verificá tu internet e intentá de nuevo.')
       setLoading(false)

@@ -117,7 +117,13 @@ export async function POST(request: Request) {
 
     await supabaseAdmin.from('pagos').update({ mp_preference_id: result.id }).eq('id', pago.id)
 
-    return NextResponse.json({ init_point: result.init_point, sandbox_init_point: result.sandbox_init_point })
+    // En producción siempre el checkout real; sandbox_init_point queda solo
+    // para cuando se prueba localmente con credenciales de prueba.
+    const checkoutUrl = process.env.VERCEL_ENV === 'production'
+      ? result.init_point
+      : (result.sandbox_init_point ?? result.init_point)
+
+    return NextResponse.json({ checkout_url: checkoutUrl })
   } catch {
     await supabaseAdmin.from('pagos').delete().eq('id', pago.id)
     return NextResponse.json({ error: 'No se pudo iniciar el pago con Mercado Pago. Intentá de nuevo.' }, { status: 502 })
