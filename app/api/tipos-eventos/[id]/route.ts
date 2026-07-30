@@ -51,6 +51,10 @@ export async function PATCH(
     activo: body.activo ?? true,
   }
 
+  if (Array.isArray(body.preguntas_informe)) {
+    updateData.preguntas_informe = body.preguntas_informe
+  }
+
   const { error } = await supabase
     .from('tipos_eventos')
     .update(updateData)

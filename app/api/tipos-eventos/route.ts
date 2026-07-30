@@ -49,6 +49,7 @@ export async function POST(request: Request) {
     activo: body.activo ?? true,
   }
   if (body.requisitos) insertData.requisitos = body.requisitos
+  if (Array.isArray(body.preguntas_informe)) insertData.preguntas_informe = body.preguntas_informe
 
   const { data, error } = await supabase.from('tipos_eventos').insert(insertData).select('id').single()
 

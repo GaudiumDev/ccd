@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server"
 import { getUserContext, canPerform } from "@/lib/auth/context"
 import { formatDateAR } from "@/lib/utils"
 import { PersonaAvatar } from "./_components/persona-avatar"
+import { VotosEditor } from "./_components/votos-editor"
 
 function formatDate(date: string | null) {
   return formatDateAR(date)
@@ -28,6 +29,18 @@ const nivelEstudiosLabel: Record<string, string> = {
   terciario: "Terciario",
   universitario: "Universitario",
   posgrado_doctorado: "Posgrado / Doctorado",
+}
+
+// Etiquetas de votos del cecista — deben coincidir con VOTO_TIPOS de settings/page.tsx
+const votoLabel: Record<string, string> = {
+  tender_union_dios: "Tender a la unión con Dios",
+  caridad_fraterna: "Caridad fraterna",
+  irradiacion: "Irradiación",
+  castidad: "Castidad",
+  pobreza: "Pobreza",
+  obediencia: "Obediencia",
+  tender_union_dios_matrimonios: "Tender a la unión con Dios (matrimonios)",
+  otros_familiares: "Solo familiares — otros votos",
 }
 
 function Field({ label, value }: { label: string; value?: string | null }) {
@@ -54,6 +67,7 @@ export default async function PersonaDetailPage({
     { data: personaOrgs },
     { data: historialAcompanamiento },
     { data: acompanaA },
+    { data: votos },
   ] = await Promise.all([
     supabase
       .from("personas")
@@ -89,11 +103,16 @@ export default async function PersonaDetailPage({
       .select("persona_id, persona:personas!persona_id(id, nombre, apellido)")
       .eq("acompanante_id", id)
       .is("fecha_fin", null),
+    supabase
+      .from("persona_votos")
+      .select("tipo_voto, anio, perpetuo, temporal_cant_anios")
+      .eq("persona_id", id),
   ])
 
   if (error || !persona) notFound()
 
   const canUpdate = ctx ? canPerform(ctx, "person.update") : false
+  const canEditVotos = ctx ? canPerform(ctx, "votos.edit") : false
   const confraternidadOrg = (personaOrgs as any[])?.find((o) => o.tipo_relacion === "confraternidad")?.organizacion
   const fraternidadOrg = (personaOrgs as any[])?.find((o) => o.tipo_relacion === "fraternidad")?.organizacion
 
@@ -406,6 +425,58 @@ export default async function PersonaDetailPage({
           </div>
         </CardContent>
       </Card>
+
+      {/* Votos — editable para Referentes/Responsables de Dedicados (votos.edit) */}
+      {persona.tipo_persona === "cecista" && canEditVotos && (
+        <VotosEditor personaId={persona.id} initialVotos={(votos ?? []) as any} />
+      )}
+
+      {/* Votos (solo lectura — cecistas con votos cargados, sin permiso de edición) */}
+      {persona.tipo_persona === "cecista" &&
+        !canEditVotos &&
+        (() => {
+          const votosConDatos = (votos ?? []).filter(
+            (v: any) => v.anio || v.perpetuo || v.temporal_cant_anios,
+          )
+          if (votosConDatos.length === 0) return null
+          return (
+            <Card className="border-border bg-card">
+              <CardHeader>
+                <CardTitle className="text-sm font-semibold text-foreground uppercase tracking-wide">
+                  Votos
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Voto</th>
+                      <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Año</th>
+                      <th className="text-left py-2 font-medium text-muted-foreground">Duración</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {votosConDatos.map((v: any, i) => (
+                      <tr key={i} className="border-b border-border/50 last:border-0">
+                        <td className="py-2 pr-4 text-foreground">
+                          {votoLabel[v.tipo_voto] ?? v.tipo_voto}
+                        </td>
+                        <td className="py-2 pr-4 text-muted-foreground">{v.anio || "—"}</td>
+                        <td className="py-2 text-muted-foreground">
+                          {v.perpetuo
+                            ? "Perpetuo"
+                            : v.temporal_cant_anios
+                              ? `Temporal · ${v.temporal_cant_anios} ${v.temporal_cant_anios === 1 ? "año" : "años"}`
+                              : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
+          )
+        })()}
 
       {/* Asignaciones de Rol */}
       <Card className="border-border bg-card">

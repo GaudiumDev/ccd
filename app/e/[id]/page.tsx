@@ -2,7 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
-import { ArrowLeft, CalendarDays, MapPin, Users, Phone, Mail, Building2, UserCheck, BookOpen, Wallet } from 'lucide-react'
+import { ArrowLeft, CalendarDays, MapPin, Users, Phone, Mail, Building2, BookOpen, Wallet } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { InteresModalWrapper } from '@/components/landing/InteresModalWrapper'
 import { hayCuentaConectada } from '@/lib/mercadopago/org-account'
@@ -65,8 +65,8 @@ export default async function PublicEventDetailPage({
         centralizador_1_persona_id, centralizador_1_nombre, centralizador_1_email, centralizador_1_telefono,
         centralizador_2_persona_id, centralizador_2_nombre, centralizador_2_email, centralizador_2_telefono,
         centralizador_3_persona_id, centralizador_3_nombre, centralizador_3_email, centralizador_3_telefono,
-        organizacion:organizaciones!organizacion_id(id, nombre),
-        fraternidad:organizaciones!fraternidad_id(id, nombre),
+        organizacion:organizaciones!organizacion_id(id, nombre, pago_alias, pago_cbu, pago_titular, pago_banco, pago_instrucciones),
+        fraternidad:organizaciones!fraternidad_id(id, nombre, pago_alias, pago_cbu, pago_titular, pago_banco, pago_instrucciones),
         casa_retiro:casas_retiro!casa_retiro_id(id, nombre, ciudad, provincia, link_maps),
         coordinador_asignado:personas!coordinador_asignado_id(id, nombre, apellido),
         asesor_asignado:personas!asesor_asignado_id(id, nombre, apellido)
@@ -83,19 +83,37 @@ export default async function PublicEventDetailPage({
 
   if (!evento) notFound()
 
-  type Org = { id: string; nombre: string }
+  type Org = {
+    id: string
+    nombre: string
+    pago_alias?: string | null
+    pago_cbu?: string | null
+    pago_titular?: string | null
+    pago_banco?: string | null
+    pago_instrucciones?: string | null
+  }
 
   const ev = evento as Record<string, unknown>
   const org = evento.organizacion as Org | null
   const fraternidad = evento.fraternidad as Org | null
   const casaRetiro = evento.casa_retiro as { id: string; nombre: string; ciudad?: string | null; provincia?: string | null; link_maps?: string | null } | null
-  const coordinadorAsignado = ev.coordinador_asignado as { id: string; nombre: string; apellido: string } | null
-  const asesorAsignado = ev.asesor_asignado as { id: string; nombre: string; apellido: string } | null
   const flyerH = ev.flyer_horizontal_url as string | null
   const flyerC = ev.flyer_cuadrado_url as string | null
   const montoInscripcion = ev.precio != null ? Number(ev.precio) : null
 
   const mpDisponible = await hayCuentaConectada(org?.id ?? null, fraternidad?.id ?? null)
+
+  // Datos de transferencia: preferir los de la fraternidad si tiene alias; si no, los de la confraternidad.
+  const orgPago = fraternidad?.pago_alias ? fraternidad : org
+  const datosPago = orgPago?.pago_alias
+    ? {
+        alias: orgPago.pago_alias as string,
+        cbu: orgPago.pago_cbu ?? null,
+        titular: orgPago.pago_titular ?? null,
+        banco: orgPago.pago_banco ?? null,
+        instrucciones: orgPago.pago_instrucciones ?? null,
+      }
+    : null
 
   const centralizadores = [
     { nombre: ev.centralizador_1_nombre as string | null, email: ev.centralizador_1_email as string | null, telefono: ev.centralizador_1_telefono as string | null },
@@ -252,9 +270,13 @@ export default async function PublicEventDetailPage({
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Precio</p>
                   <p className="text-sm font-medium text-foreground">${montoInscripcion.toLocaleString('es-AR')}</p>
-                  {mpDisponible && (
+                  {mpDisponible && datosPago ? (
+                    <p className="text-xs text-muted-foreground/70 mt-0.5">Se abona con Mercado Pago o por transferencia al inscribirte</p>
+                  ) : mpDisponible ? (
                     <p className="text-xs text-muted-foreground/70 mt-0.5">Se abona con Mercado Pago al inscribirte</p>
-                  )}
+                  ) : datosPago ? (
+                    <p className="text-xs text-muted-foreground/70 mt-0.5">Se abona por transferencia al inscribirte</p>
+                  ) : null}
                 </div>
               </div>
             )}
@@ -291,36 +313,6 @@ export default async function PublicEventDetailPage({
               {evento.notas && (
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{evento.notas}</p>
               )}
-            </div>
-          )}
-
-          {/* Coordinador / Asesor asignados */}
-          {(coordinadorAsignado || asesorAsignado) && (
-            <div className="mb-8 border-t border-border pt-6">
-              <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
-                <UserCheck className="h-4 w-4 text-[#F08020]" />
-                Equipo
-              </h2>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {coordinadorAsignado && (
-                  <div className="rounded-lg border border-border p-3">
-                    <p className="text-xs text-muted-foreground mb-0.5">Coordinador</p>
-                    <p className="text-sm font-medium text-foreground">
-                      {coordinadorAsignado.nombre} {coordinadorAsignado.apellido}
-                    </p>
-                  </div>
-                )}
-                {asesorAsignado && (
-                  <div className="rounded-lg border border-border p-3">
-                    <p className="text-xs text-muted-foreground mb-0.5">
-                      Asesor{ev.asesor_voluntario ? ' (voluntario)' : ''}
-                    </p>
-                    <p className="text-sm font-medium text-foreground">
-                      {asesorAsignado.nombre} {asesorAsignado.apellido}
-                    </p>
-                  </div>
-                )}
-              </div>
             </div>
           )}
 
@@ -362,6 +354,8 @@ export default async function PublicEventDetailPage({
               eventoNombre={evento.nombre}
               montoInscripcion={montoInscripcion}
               mpDisponible={mpDisponible}
+              datosPago={datosPago}
+              volverAlListadoHref="/#panel-eventos"
             />
           </div>
 

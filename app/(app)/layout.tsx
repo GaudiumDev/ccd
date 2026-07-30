@@ -22,6 +22,7 @@ export default async function AppLayout({
     canSuspendEvent:       canPerform(ctx, 'event.suspend'),
     canRequestSuspend:     canPerform(ctx, 'event.request_suspend'),
     canVerifyPayments:     canPerform(ctx, 'payment.verify'),
+    canViewVotos:          canPerform(ctx, 'votos.list') || canPerform(ctx, 'votos.edit'),
     isAdmin:               ctx.is_admin,
   }
 

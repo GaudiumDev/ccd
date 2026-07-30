@@ -5,11 +5,16 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tag, ArrowLeft, Users } from 'lucide-react'
+import { Tag, ArrowLeft, Users, FileText, Plus, Trash2 } from 'lucide-react'
 
 interface Ministerio {
   id: string
   nombre: string
+}
+
+interface Pregunta {
+  id: string
+  texto: string
 }
 
 export default function EditarTipoEventoForm() {
@@ -32,6 +37,7 @@ export default function EditarTipoEventoForm() {
   })
   const [rolesOpciones, setRolesOpciones] = useState<Ministerio[]>([])
   const [rolesSeleccionados, setRolesSeleccionados] = useState<Set<string>>(new Set())
+  const [preguntas, setPreguntas] = useState<Pregunta[]>([])
 
   useEffect(() => {
     fetch(`/api/tipos-eventos/${id}`)
@@ -47,6 +53,7 @@ export default function EditarTipoEventoForm() {
             requisitos: data.requisitos ?? '',
             activo: data.activo ?? true,
           })
+          setPreguntas(Array.isArray(data.preguntas_informe) ? data.preguntas_informe : [])
         }
         setLoadingData(false)
       })
@@ -74,6 +81,11 @@ export default function EditarTipoEventoForm() {
     }))
   }
 
+  const addPregunta = () => setPreguntas(prev => [...prev, { id: crypto.randomUUID(), texto: '' }])
+  const updatePregunta = (pid: string, texto: string) =>
+    setPreguntas(prev => prev.map(p => (p.id === pid ? { ...p, texto } : p)))
+  const removePregunta = (pid: string) => setPreguntas(prev => prev.filter(p => p.id !== pid))
+
   const toggleRol = (ministerioId: string) => {
     setRolesSeleccionados(prev => {
       const next = new Set(prev)
@@ -93,7 +105,7 @@ export default function EditarTipoEventoForm() {
         fetch(`/api/tipos-eventos/${id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData),
+          body: JSON.stringify({ ...formData, preguntas_informe: preguntas.filter(p => p.texto.trim()) }),
         }),
         fetch(`/api/tipos-eventos/${id}/roles-solicitantes`, {
           method: 'PUT',
@@ -298,6 +310,48 @@ export default function EditarTipoEventoForm() {
                 ))}
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        <Card className="max-w-2xl">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-base font-semibold">Preguntas del Informe del Coordinador</CardTitle>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              El coordinador responderá estas preguntas al cerrar cada evento de este tipo.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {preguntas.length === 0 && (
+                <p className="text-sm text-muted-foreground">No hay preguntas definidas todavía.</p>
+              )}
+              {preguntas.map((p, i) => (
+                <div key={p.id} className="flex items-start gap-2">
+                  <span className="mt-2 text-xs text-muted-foreground w-5 shrink-0">{i + 1}.</span>
+                  <textarea
+                    rows={2}
+                    value={p.texto}
+                    onChange={e => updatePregunta(p.id, e.target.value)}
+                    placeholder="Escribí la pregunta..."
+                    className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removePregunta(p.id)}
+                    className="mt-2 text-destructive hover:opacity-70"
+                    title="Eliminar pregunta"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+              <Button type="button" variant="outline" size="sm" onClick={addPregunta} className="gap-1">
+                <Plus className="h-4 w-4" /> Agregar pregunta
+              </Button>
+            </div>
           </CardContent>
         </Card>
 

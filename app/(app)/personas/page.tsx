@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getUserContext, canPerform } from '@/lib/auth/context'
 import PersonasTable from './_components/personas-table'
 import PersonasFilters from './_components/personas-filters'
+import PersonasPagination from './_components/personas-pagination'
 
 export default async function PersonasPage({
   searchParams,
@@ -24,6 +25,7 @@ export default async function PersonasPage({
     persona?: string
     sortBy?: string
     sortDir?: string
+    page?: string
   }>
 }) {
   const [params, ctx] = await Promise.all([searchParams, getUserContext()])
@@ -38,6 +40,9 @@ export default async function PersonasPage({
   const initialPersonaId = params.persona ?? null
   const sortBy = params.sortBy ?? ''
   const sortDir = (params.sortDir === 'asc' || params.sortDir === 'desc') ? params.sortDir : 'asc'
+
+  const PAGE_SIZE = 25
+  const page = Math.max(1, Number.parseInt(params.page ?? '1', 10) || 1)
 
   const canCreate = ctx ? canPerform(ctx, 'person.create') : false
   const canUpdate = ctx ? canPerform(ctx, 'person.update') : false
@@ -91,17 +96,22 @@ export default async function PersonasPage({
   const noResults = filterIds !== null && filterIds.length === 0
 
   let personas: { id: string; nombre: string; apellido: string; email: string | null; telefono: string | null; localidad: string | null; estado: string | null; estado_eclesial: string | null }[] = []
+  let totalCount = 0
 
   const SORTABLE_PERSONAS = ['apellido', 'email', 'localidad', 'estado_eclesial', 'estado']
   const sortCol = (sortBy && SORTABLE_PERSONAS.includes(sortBy)) ? sortBy : 'apellido'
   const sortAsc = sortBy ? sortDir === 'asc' : true
 
   if (!noResults) {
+    const from = (page - 1) * PAGE_SIZE
+    const to = from + PAGE_SIZE - 1
+
     let query = supabase
       .from('personas')
-      .select('id, nombre, apellido, email, telefono, localidad, estado, estado_eclesial')
+      .select('id, nombre, apellido, email, telefono, localidad, estado, estado_eclesial', { count: 'exact' })
       .is('fecha_baja', null)
       .order(sortCol, { ascending: sortAsc })
+      .range(from, to)
 
     if (q) {
       query = query.or(`nombre.ilike.%${q}%,apellido.ilike.%${q}%,email.ilike.%${q}%`)
@@ -112,9 +122,12 @@ export default async function PersonasPage({
     if (tipo_persona) query = query.eq('tipo_persona', tipo_persona)
     if (filterIds !== null) query = query.in('id', filterIds)
 
-    const { data } = await query
+    const { data, count } = await query
     personas = data ?? []
+    totalCount = count ?? 0
   }
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
 
   const hasFilters = !!(q || estado || estado_eclesial || provincia || modo || ministerio_id || organizacion_id || tipo_persona)
 
@@ -174,7 +187,16 @@ export default async function PersonasPage({
             initialPersonaId={initialPersonaId}
             sortBy={sortBy}
             sortDir={sortDir}
+            totalCount={totalCount}
           />
+          {totalCount > 0 && (
+            <PersonasPagination
+              page={page}
+              totalPages={totalPages}
+              totalCount={totalCount}
+              pageSize={PAGE_SIZE}
+            />
+          )}
           {personas.length === 0 && (
             <div className="py-12 text-center">
               <Users className="mx-auto h-12 w-12 text-muted-foreground" />

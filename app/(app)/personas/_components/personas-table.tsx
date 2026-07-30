@@ -35,6 +35,7 @@ type Props = {
   initialPersonaId: string | null
   sortBy: string
   sortDir: 'asc' | 'desc' | ''
+  totalCount?: number
 }
 
 export default function PersonasTable({
@@ -45,6 +46,7 @@ export default function PersonasTable({
   initialPersonaId,
   sortBy,
   sortDir,
+  totalCount,
 }: Props) {
   // Deep-link modal (URL-based, kept for backwards compat with ?persona=UUID)
   const [selectedId, setSelectedId] = useState<string | null>(initialPersonaId)
@@ -204,7 +206,7 @@ export default function PersonasTable({
         <>
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-muted-foreground">
-              {personas.length} persona{personas.length !== 1 ? "s" : ""}
+              {(totalCount ?? personas.length)} persona{(totalCount ?? personas.length) !== 1 ? "s" : ""} en total
             </span>
             <ExportButton searchString={exportSearch} />
           </div>
