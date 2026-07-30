@@ -2,7 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
-import { ArrowLeft, CalendarDays, MapPin, Users, Phone, Mail, Building2, BookOpen, Wallet } from 'lucide-react'
+import { ArrowLeft, CalendarDays, MapPin, Users, Phone, Mail, Building2, BookOpen, Wallet, CheckCircle2, Clock, XCircle, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { InteresModalWrapper } from '@/components/landing/InteresModalWrapper'
 import { hayCuentaConectada } from '@/lib/mercadopago/org-account'
@@ -35,12 +35,54 @@ function formatDateRange(inicio: string, fin: string) {
   return `${start.toLocaleDateString(locale, { day: 'numeric', month: 'long' })} al ${end.toLocaleDateString(locale, opts)}`
 }
 
+const PAGO_BANNER: Record<string, {
+  icon: typeof CheckCircle2
+  circleClassName: string
+  iconClassName: string
+  tituloClassName: string
+  titulo: string
+  mensaje: string
+  estadoLabel: string
+}> = {
+  success: {
+    icon: CheckCircle2,
+    circleClassName: 'bg-green-100',
+    iconClassName: 'text-green-600',
+    tituloClassName: 'text-green-600',
+    titulo: '¡Pago confirmado!',
+    mensaje: 'Recibimos tu pago y tu lugar quedó reservado. ¡Te esperamos!',
+    estadoLabel: 'Confirmado',
+  },
+  pending: {
+    icon: Clock,
+    circleClassName: 'bg-amber-100',
+    iconClassName: 'text-amber-600',
+    tituloClassName: 'text-amber-600',
+    titulo: 'Pago en proceso',
+    mensaje: 'Tu pago está siendo procesado. En cuanto se confirme, vas a quedar inscripto.',
+    estadoLabel: 'Pendiente',
+  },
+  failure: {
+    icon: XCircle,
+    circleClassName: 'bg-red-100',
+    iconClassName: 'text-red-600',
+    tituloClassName: 'text-red-600',
+    titulo: 'El pago no se completó',
+    mensaje: 'Algo falló al procesar el pago. Podés volver a intentarlo cuando quieras desde "Quiero participar".',
+    estadoLabel: 'No completado',
+  },
+}
+
 export default async function PublicEventDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ pago?: string }>
 }) {
   const { id } = await params
+  const { pago } = await searchParams
+  const pagoBanner = pago ? PAGO_BANNER[pago] : undefined
   // Página pública: el control de acceso es el filtro estado='publicado' de
   // abajo, no RLS. Usamos el cliente de servicio porque organizaciones no
   // tiene policy de lectura anónima y el join a fraternidad/organizacion
@@ -83,6 +125,60 @@ export default async function PublicEventDetailPage({
 
   if (!evento) notFound()
 
+  if (pagoBanner) {
+    const Icon = pagoBanner.icon
+    return (
+      <div className="min-h-screen flex flex-col">
+        <header className="sticky top-0 z-50 border-b border-border bg-white/95 backdrop-blur supports-backdrop-filter:bg-white/80">
+          <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
+            <Link href="/" className="flex items-center gap-2">
+              <Image src="/logoccd.jpeg" alt="Convivencia con Dios" width={32} height={32} className="rounded-md" priority />
+              <span className="text-sm font-semibold text-foreground" translate="no">Convivencia con Dios</span>
+            </Link>
+          </div>
+        </header>
+
+        <main className="flex-1 flex items-center justify-center bg-background px-4 py-12 relative">
+          <Link
+            href={`/e/${id}`}
+            aria-label="Cerrar y ver el evento"
+            className="absolute top-4 left-4 flex h-9 w-9 items-center justify-center rounded-full border border-border bg-white text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </Link>
+
+          <div className="max-w-sm w-full text-center space-y-5">
+            <div className={`mx-auto flex h-20 w-20 items-center justify-center rounded-full ${pagoBanner.circleClassName}`}>
+              <Icon className={`h-10 w-10 ${pagoBanner.iconClassName}`} />
+            </div>
+            <div className="space-y-2">
+              <h1 className={`text-2xl font-bold ${pagoBanner.tituloClassName}`}>{pagoBanner.titulo}</h1>
+              <p className="text-sm text-muted-foreground">{pagoBanner.mensaje}</p>
+            </div>
+            <div className="rounded-xl border border-border p-4 text-left space-y-3 text-sm">
+              <p className="font-semibold text-foreground">{evento.nombre}</p>
+              <div className="flex items-center justify-between border-t border-border pt-2">
+                <span className="text-muted-foreground">Estado</span>
+                <span className={`font-medium ${pagoBanner.tituloClassName}`}>{pagoBanner.estadoLabel}</span>
+              </div>
+              {evento.precio != null && Number(evento.precio) > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Monto</span>
+                  <span className="font-medium text-foreground">${Number(evento.precio).toLocaleString('es-AR')}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </main>
+
+        <footer className="px-4 py-8 text-center text-sm text-white/80" style={{ backgroundColor: '#1B3A4C' }}>
+          <p className="font-medium text-white mb-1" translate="no">Convivencia con Dios</p>
+          <p>© {new Date().getFullYear()} Todos los derechos reservados.</p>
+        </footer>
+      </div>
+    )
+  }
+
   type Org = {
     id: string
     nombre: string
@@ -94,9 +190,9 @@ export default async function PublicEventDetailPage({
   }
 
   const ev = evento as Record<string, unknown>
-  const org = evento.organizacion as Org | null
-  const fraternidad = evento.fraternidad as Org | null
-  const casaRetiro = evento.casa_retiro as { id: string; nombre: string; ciudad?: string | null; provincia?: string | null; link_maps?: string | null } | null
+  const org = evento.organizacion as unknown as Org | null
+  const fraternidad = evento.fraternidad as unknown as Org | null
+  const casaRetiro = evento.casa_retiro as unknown as { id: string; nombre: string; ciudad?: string | null; provincia?: string | null; link_maps?: string | null } | null
   const flyerH = ev.flyer_horizontal_url as string | null
   const flyerC = ev.flyer_cuadrado_url as string | null
   const montoInscripcion = ev.precio != null ? Number(ev.precio) : null
