@@ -1,10 +1,15 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft, CalendarDays, MapPin, Users, Phone, Mail, Link2 as Link2Icon, Building2, UserCheck, BookOpen, Wallet } from 'lucide-react'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { ArrowLeft, CalendarDays, MapPin, Users, Phone, Mail, Building2, UserCheck, BookOpen, Wallet } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { createClient } from '@/lib/supabase/server'
 import { InteresModalWrapper } from '@/components/landing/InteresModalWrapper'
+import { hayCuentaConectada } from '@/lib/mercadopago/org-account'
+
+// El precio y la disponibilidad de Mercado Pago pueden cambiar en cualquier
+// momento (una organización conecta su cuenta) — no cachear esta página.
+export const dynamic = 'force-dynamic'
 
 const TIPO_LABELS: Record<string, string> = {
   convivencia: 'Convivencia',
@@ -36,7 +41,16 @@ export default async function PublicEventDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const supabase = await createClient()
+  // Página pública: el control de acceso es el filtro estado='publicado' de
+  // abajo, no RLS. Usamos el cliente de servicio porque organizaciones no
+  // tiene policy de lectura anónima y el join a fraternidad/organizacion
+  // (necesario para saber si hay cuenta de Mercado Pago conectada) devolvería
+  // null con el cliente atado a la sesión del visitante.
+  const supabase = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
 
   const [{ data: evento }, { data: fechasEjecucion }] = await Promise.all([
     supabase
@@ -45,14 +59,14 @@ export default async function PublicEventDetailPage({
         id, nombre, tipo, estado, fecha_inicio, fecha_fin,
         modalidad, descripcion, notas, cupo_maximo, audiencia,
         ciudad, codigo_postal, diocesis, provincia_evento, pais_evento,
-        es_apv, link_pago_mercadopago, precio,
+        es_apv, precio,
         flyer_horizontal_url, flyer_cuadrado_url,
         asesor_voluntario,
         centralizador_1_persona_id, centralizador_1_nombre, centralizador_1_email, centralizador_1_telefono,
         centralizador_2_persona_id, centralizador_2_nombre, centralizador_2_email, centralizador_2_telefono,
         centralizador_3_persona_id, centralizador_3_nombre, centralizador_3_email, centralizador_3_telefono,
-        organizacion:organizaciones!organizacion_id(id, nombre, pago_alias, pago_cbu, pago_titular, pago_banco, pago_instrucciones),
-        fraternidad:organizaciones!fraternidad_id(id, nombre, pago_alias, pago_cbu, pago_titular, pago_banco, pago_instrucciones),
+        organizacion:organizaciones!organizacion_id(id, nombre),
+        fraternidad:organizaciones!fraternidad_id(id, nombre),
         casa_retiro:casas_retiro!casa_retiro_id(id, nombre, ciudad, provincia, link_maps),
         coordinador_asignado:personas!coordinador_asignado_id(id, nombre, apellido),
         asesor_asignado:personas!asesor_asignado_id(id, nombre, apellido)
@@ -69,38 +83,19 @@ export default async function PublicEventDetailPage({
 
   if (!evento) notFound()
 
-  type OrgConPago = {
-    id: string
-    nombre: string
-    pago_alias?: string | null
-    pago_cbu?: string | null
-    pago_titular?: string | null
-    pago_banco?: string | null
-    pago_instrucciones?: string | null
-  }
+  type Org = { id: string; nombre: string }
 
   const ev = evento as Record<string, unknown>
-  const org = evento.organizacion as OrgConPago | null
-  const fraternidad = evento.fraternidad as OrgConPago | null
+  const org = evento.organizacion as Org | null
+  const fraternidad = evento.fraternidad as Org | null
   const casaRetiro = evento.casa_retiro as { id: string; nombre: string; ciudad?: string | null; provincia?: string | null; link_maps?: string | null } | null
   const coordinadorAsignado = ev.coordinador_asignado as { id: string; nombre: string; apellido: string } | null
   const asesorAsignado = ev.asesor_asignado as { id: string; nombre: string; apellido: string } | null
   const flyerH = ev.flyer_horizontal_url as string | null
   const flyerC = ev.flyer_cuadrado_url as string | null
-  const linkPago = ev.link_pago_mercadopago as string | null
   const montoInscripcion = ev.precio != null ? Number(ev.precio) : null
 
-  // Datos de cobro: preferir los de la fraternidad si tiene alias; si no, los de la confraternidad.
-  const orgPago = fraternidad?.pago_alias ? fraternidad : org
-  const datosPago = orgPago?.pago_alias
-    ? {
-        alias: orgPago.pago_alias as string,
-        cbu: orgPago.pago_cbu ?? null,
-        titular: orgPago.pago_titular ?? null,
-        banco: orgPago.pago_banco ?? null,
-        instrucciones: orgPago.pago_instrucciones ?? null,
-      }
-    : null
+  const mpDisponible = await hayCuentaConectada(org?.id ?? null, fraternidad?.id ?? null)
 
   const centralizadores = [
     { nombre: ev.centralizador_1_nombre as string | null, email: ev.centralizador_1_email as string | null, telefono: ev.centralizador_1_telefono as string | null },
@@ -257,8 +252,8 @@ export default async function PublicEventDetailPage({
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Precio</p>
                   <p className="text-sm font-medium text-foreground">${montoInscripcion.toLocaleString('es-AR')}</p>
-                  {datosPago && (
-                    <p className="text-xs text-muted-foreground/70 mt-0.5">Se abona por transferencia al inscribirte</p>
+                  {mpDisponible && (
+                    <p className="text-xs text-muted-foreground/70 mt-0.5">Se abona con Mercado Pago al inscribirte</p>
                   )}
                 </div>
               </div>
@@ -366,15 +361,8 @@ export default async function PublicEventDetailPage({
               eventoId={evento.id}
               eventoNombre={evento.nombre}
               montoInscripcion={montoInscripcion}
-              datosPago={datosPago}
+              mpDisponible={mpDisponible}
             />
-            {linkPago && (
-              <a href={linkPago} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-md bg-[#009EE3] hover:bg-[#0089C6] text-white text-sm font-medium px-4 py-2 transition-colors">
-                <Link2Icon className="h-4 w-4" />
-                Pagar con Mercado Pago
-              </a>
-            )}
           </div>
 
         </div>

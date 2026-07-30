@@ -2,16 +2,16 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { InteresModal, type DatosPago } from './InteresModal'
+import { InteresModal } from './InteresModal'
 
 interface Props {
   eventoId: string
   eventoNombre: string
   montoInscripcion?: number | null
-  datosPago?: DatosPago | null
+  mpDisponible?: boolean
 }
 
-export function InteresModalWrapper({ eventoId, eventoNombre, montoInscripcion, datosPago }: Props) {
+export function InteresModalWrapper({ eventoId, eventoNombre, montoInscripcion, mpDisponible }: Props) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -23,7 +23,7 @@ export function InteresModalWrapper({ eventoId, eventoNombre, montoInscripcion, 
         eventoId={eventoId}
         eventoNombre={eventoNombre}
         montoInscripcion={montoInscripcion ?? null}
-        datosPago={datosPago ?? null}
+        mpDisponible={mpDisponible ?? false}
         open={open}
         onOpenChange={setOpen}
       />

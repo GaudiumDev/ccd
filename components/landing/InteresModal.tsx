@@ -12,54 +12,20 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { CheckCircle, Copy, Check } from 'lucide-react'
-
-export type DatosPago = {
-  alias: string
-  cbu: string | null
-  titular: string | null
-  banco: string | null
-  instrucciones: string | null
-}
+import { CheckCircle, Link2 } from 'lucide-react'
 
 interface Props {
   eventoId: string
   eventoNombre: string
   montoInscripcion: number | null
-  datosPago: DatosPago | null
+  mpDisponible: boolean
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
 type Step = 'datos' | 'pago' | 'listo'
 
-const MAX_SIZE_BYTES = 10 * 1024 * 1024
-const ALLOWED_MIME = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp']
-
-function CopyButton({ value }: { value: string }) {
-  const [copied, setCopied] = useState(false)
-  return (
-    <button
-      type="button"
-      onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(value)
-          setCopied(true)
-          setTimeout(() => setCopied(false), 1500)
-        } catch {
-          /* noop */
-        }
-      }}
-      className="inline-flex items-center gap-1 text-xs text-[#F08020] hover:underline"
-      aria-label="Copiar"
-    >
-      {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-      {copied ? 'Copiado' : 'Copiar'}
-    </button>
-  )
-}
-
-export function InteresModal({ eventoId, eventoNombre, montoInscripcion, datosPago, open, onOpenChange }: Props) {
+export function InteresModal({ eventoId, eventoNombre, montoInscripcion, mpDisponible, open, onOpenChange }: Props) {
   const [form, setForm] = useState({
     nombre: '',
     apellido: '',
@@ -74,10 +40,9 @@ export function InteresModal({ eventoId, eventoNombre, montoInscripcion, datosPa
   const [step, setStep] = useState<Step>('datos')
   const [error, setError] = useState<string | null>(null)
   const [participanteId, setParticipanteId] = useState<string | null>(null)
-  const [file, setFile] = useState<File | null>(null)
 
-  // ¿Corresponde el paso de pago? Solo si hay monto y datos de cobro configurados.
-  const requierePago = (montoInscripcion ?? 0) > 0 && !!datosPago
+  // ¿Corresponde el paso de pago? Solo si el evento tiene monto y la organización conectó Mercado Pago.
+  const requierePago = (montoInscripcion ?? 0) > 0 && mpDisponible
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
@@ -110,37 +75,26 @@ export function InteresModal({ eventoId, eventoNombre, montoInscripcion, datosPa
     }
   }
 
-  async function handleSubmitComprobante(e: React.FormEvent) {
-    e.preventDefault()
-    if (!file || !participanteId) return
+  async function handlePagarMercadoPago() {
+    if (!participanteId) return
     setLoading(true)
     setError(null)
 
-    if (file.size > MAX_SIZE_BYTES) {
-      setError('El archivo supera los 10 MB.')
-      setLoading(false)
-      return
-    }
-    if (!ALLOWED_MIME.includes(file.type)) {
-      setError('Formato no permitido. Usá PDF, JPG, PNG o WebP.')
-      setLoading(false)
-      return
-    }
-
     try {
-      const fd = new FormData()
-      fd.append('evento_participante_id', participanteId)
-      fd.append('file', file)
-      const res = await fetch('/api/public/pago-transferencia', { method: 'POST', body: fd })
+      const res = await fetch('/api/public/pagos/mercadopago/preferencia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ evento_participante_id: participanteId }),
+      })
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error ?? 'No se pudo subir el comprobante. Intentá de nuevo.')
-      } else {
-        setStep('listo')
+        setError(data.error ?? 'No se pudo iniciar el pago. Intentá de nuevo.')
+        setLoading(false)
+        return
       }
+      window.location.href = data.sandbox_init_point ?? data.init_point
     } catch {
       setError('Error de conexión. Verificá tu internet e intentá de nuevo.')
-    } finally {
       setLoading(false)
     }
   }
@@ -150,7 +104,6 @@ export function InteresModal({ eventoId, eventoNombre, montoInscripcion, datosPa
       setStep('datos')
       setError(null)
       setParticipanteId(null)
-      setFile(null)
       setForm({ nombre: '', apellido: '', email: '', telefono: '', direccion: '', localidad: '', provincia: '', pais: 'Argentina' })
     }
     onOpenChange(open)
@@ -167,8 +120,8 @@ export function InteresModal({ eventoId, eventoNombre, montoInscripcion, datosPa
             <div>
               <p className="text-lg font-semibold text-foreground">¡Gracias por tu interés!</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                {participanteId && file
-                  ? <>Recibimos tu comprobante para <strong>{eventoNombre}</strong>. Lo verificaremos y nos comunicaremos pronto.</>
+                {participanteId
+                  ? <>Tu inscripción a <strong>{eventoNombre}</strong> quedó registrada. Cuando se confirme el pago te avisaremos.</>
                   : <>Tu interés en <strong>{eventoNombre}</strong> fue registrado. Nos comunicaremos pronto.</>}
               </p>
             </div>
@@ -176,82 +129,33 @@ export function InteresModal({ eventoId, eventoNombre, montoInscripcion, datosPa
               Cerrar
             </Button>
           </div>
-        ) : step === 'pago' && datosPago ? (
+        ) : step === 'pago' ? (
           <>
             <DialogHeader>
               <DialogTitle>Pago de inscripción</DialogTitle>
               <DialogDescription>
                 Para reservar tu lugar en <strong className="text-foreground">{eventoNombre}</strong>
-                {montoLabel ? <> transferí <strong className="text-foreground">{montoLabel}</strong></> : <> transferí el pago de inscripción</>}
-                {' '}y adjuntá el comprobante.
+                {montoLabel ? <> aboná <strong className="text-foreground">{montoLabel}</strong></> : <> aboná el pago de inscripción</>}
+                {' '}con Mercado Pago. Vas a ser redirigido a un entorno seguro para completar el pago.
               </DialogDescription>
             </DialogHeader>
 
-            <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-3 text-sm">
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <p className="text-xs text-muted-foreground">Alias</p>
-                  <p className="font-medium text-foreground">{datosPago.alias}</p>
-                </div>
-                <CopyButton value={datosPago.alias} />
-              </div>
-              {datosPago.cbu && (
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <p className="text-xs text-muted-foreground">CBU / CVU</p>
-                    <p className="font-medium text-foreground break-all">{datosPago.cbu}</p>
-                  </div>
-                  <CopyButton value={datosPago.cbu} />
-                </div>
-              )}
-              {datosPago.titular && (
-                <div>
-                  <p className="text-xs text-muted-foreground">Titular</p>
-                  <p className="font-medium text-foreground">{datosPago.titular}</p>
-                </div>
-              )}
-              {datosPago.banco && (
-                <div>
-                  <p className="text-xs text-muted-foreground">Banco</p>
-                  <p className="font-medium text-foreground">{datosPago.banco}</p>
-                </div>
-              )}
-              {datosPago.instrucciones && (
-                <p className="text-xs text-muted-foreground whitespace-pre-wrap border-t border-border pt-2">{datosPago.instrucciones}</p>
-              )}
-            </div>
+            {error && <p className="text-sm text-destructive">{error}</p>}
 
-            <form onSubmit={handleSubmitComprobante} className="grid gap-3 py-1">
-              <div className="grid gap-1.5">
-                <Label htmlFor="comprobante">
-                  Comprobante <span className="text-destructive">*</span>{' '}
-                  <span className="text-muted-foreground text-xs">(PDF o imagen, máx. 10 MB)</span>
-                </Label>
-                <Input
-                  id="comprobante"
-                  type="file"
-                  accept="application/pdf,image/jpeg,image/png,image/webp"
-                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                  disabled={loading}
-                />
-              </div>
-
-              {error && <p className="text-sm text-destructive">{error}</p>}
-
-              <DialogFooter className="mt-2 flex-col sm:flex-row gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setStep('listo')}
-                  disabled={loading}
-                >
-                  Lo envío más tarde
-                </Button>
-                <Button type="submit" disabled={loading || !file}>
-                  {loading ? 'Enviando...' : 'Enviar comprobante'}
-                </Button>
-              </DialogFooter>
-            </form>
+            <DialogFooter className="mt-2 flex-col sm:flex-row gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setStep('listo')}
+                disabled={loading}
+              >
+                Lo pago más tarde
+              </Button>
+              <Button type="button" onClick={handlePagarMercadoPago} disabled={loading}>
+                <Link2 className="h-4 w-4" />
+                {loading ? 'Redirigiendo...' : 'Pagar con Mercado Pago'}
+              </Button>
+            </DialogFooter>
           </>
         ) : (
           <>
