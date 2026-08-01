@@ -134,6 +134,8 @@ type Persona = {
   tipo_persona: string | null
   foto_url: string | null
   casa_comunitaria_id: string | null
+  estado: string | null
+  nombre_usuario: string | null
 }
 
 type EditForm = {
@@ -209,6 +211,8 @@ export default function SettingsPage() {
   // Perfil tab state
   const [persona, setPersona] = useState<Persona | null>(null)
   const [modoActual, setModoActual] = useState<string | null>(null)
+  const [confraternidadNombre, setConfraternidadNombre] = useState<string | null>(null)
+  const [fraternidadNombre, setFraternidadNombre] = useState<string | null>(null)
   const [loadingPersona, setLoadingPersona] = useState(true)
   const [todasPersonas, setTodasPersonas] = useState<PersonaOpcion[]>([])
   const [editForm, setEditForm] = useState<EditForm>({
@@ -309,7 +313,7 @@ export default function SettingsPage() {
 
       const { data } = await supabase
         .from('personas')
-        .select('id, nombre, apellido, email, email_ccd, telefono, fecha_nacimiento, tipo_documento, documento, pais_documento, direccion, direccion_nro, codigo_postal, localidad, provincia, pais, nacionalidad, diocesis, estado_eclesial, estado_eclesial_rango, institucion_religiosa, parroquia, estado_vida, nivel_estudios, titulo_estudios, ocupacion, anio_ingreso, codigo_interno, notas, tipo_persona, foto_url, casa_comunitaria_id')
+        .select('id, nombre, apellido, email, email_ccd, telefono, fecha_nacimiento, tipo_documento, documento, pais_documento, direccion, direccion_nro, codigo_postal, localidad, provincia, pais, nacionalidad, diocesis, estado_eclesial, estado_eclesial_rango, institucion_religiosa, parroquia, estado_vida, nivel_estudios, titulo_estudios, ocupacion, anio_ingreso, codigo_interno, notas, tipo_persona, foto_url, casa_comunitaria_id, estado, nombre_usuario')
         .eq('auth_user_id', user.id)
         .single()
 
@@ -365,6 +369,18 @@ export default function SettingsPage() {
           .maybeSingle()
 
         setModoActual(modo?.modo ?? null)
+
+        // Confraternidad / Fraternidad vigentes (persona_organizacion activa).
+        // Solo lectura — se importan/gestionan desde la Administración de CcD.
+        const { data: orgs } = await supabase
+          .from('persona_organizacion')
+          .select('tipo_relacion, organizacion:organizaciones!organizacion_id(nombre)')
+          .eq('persona_id', data.id)
+          .is('fecha_fin', null)
+        const confra = (orgs as any[])?.find(o => o.tipo_relacion === 'confraternidad')?.organizacion
+        const frat = (orgs as any[])?.find(o => o.tipo_relacion === 'fraternidad')?.organizacion
+        setConfraternidadNombre(confra?.nombre ?? null)
+        setFraternidadNombre(frat?.nombre ?? null)
 
         // Secciones cecista: casas disponibles, dedicaciones y votos
         setCasaId(data.casa_comunitaria_id ?? '')
@@ -485,8 +501,8 @@ export default function SettingsPage() {
       createClient()
         .from('personas')
         .update({
-          nombre: editForm.nombre,
-          apellido: editForm.apellido,
+          // nombre, apellido y codigo_interno son solo lectura en la autogestión
+          // (los gestiona la Administración de CcD) — no se incluyen en el update.
           email: editForm.email || null,
           telefono: editForm.telefono || null,
           fecha_nacimiento: editForm.fecha_nacimiento || null,
@@ -511,7 +527,6 @@ export default function SettingsPage() {
             ? (editForm.titulo_estudios || null) : null,
           ocupacion: editForm.ocupacion || null,
           anio_ingreso: editForm.anio_ingreso ? Number(editForm.anio_ingreso) : null,
-          codigo_interno: editForm.codigo_interno || null,
           notas: editForm.notas || null,
         })
         .eq('id', persona.id)
@@ -857,6 +872,45 @@ export default function SettingsPage() {
                 </CardContent>
               </Card>
 
+              {/* Datos institucionales — solo lectura (gestionados por la Administración de CcD) */}
+              <Card className="border-border bg-card">
+                <CardHeader>
+                  <CardTitle className="text-foreground flex items-center gap-2">
+                    <Lock className="h-5 w-5 text-primary" />
+                    Datos institucionales
+                  </CardTitle>
+                  <CardDescription>
+                    Estos datos los administra la comunidad y se importan desde la Administración de CcD. No son editables desde acá.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Categoría</Label>
+                    <Input value={persona.tipo_persona ? (TIPOS_PERSONA_LABEL[persona.tipo_persona] ?? persona.tipo_persona) : '—'} readOnly disabled className="bg-muted" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Estado</Label>
+                    <Input value={persona.estado ? persona.estado.charAt(0).toUpperCase() + persona.estado.slice(1) : '—'} readOnly disabled className="bg-muted" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Modo de participación</Label>
+                    <Input value={modoActual ? (MODOS_LABEL[modoActual] ?? modoActual) : '—'} readOnly disabled className="bg-muted" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Nombre de usuario de la plataforma</Label>
+                    <Input value={persona.nombre_usuario ?? '—'} readOnly disabled className="bg-muted" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Confraternidad</Label>
+                    <Input value={confraternidadNombre ?? '—'} readOnly disabled className="bg-muted" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Fraternidad</Label>
+                    <Input value={fraternidadNombre ?? '—'} readOnly disabled className="bg-muted" />
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Edit form */}
               <form onSubmit={handleSaveProfile}>
                 <Card className="border-border bg-card">
@@ -874,17 +928,20 @@ export default function SettingsPage() {
                   </CardHeader>
                   <CardContent className="space-y-6">
 
-                    {/* Nombre / Apellido */}
+                    {/* Nombre / Apellido — solo lectura (gestionado por la Administración de CcD) */}
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
-                        <Label htmlFor="p-nombre">Nombre *</Label>
-                        <Input id="p-nombre" value={editForm.nombre} onChange={e => field('nombre', e.target.value)} required disabled={editLoading} />
+                        <Label htmlFor="p-nombre">Nombre</Label>
+                        <Input id="p-nombre" value={editForm.nombre} readOnly disabled className="bg-muted" />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="p-apellido">Apellido *</Label>
-                        <Input id="p-apellido" value={editForm.apellido} onChange={e => field('apellido', e.target.value)} required disabled={editLoading} />
+                        <Label htmlFor="p-apellido">Apellido</Label>
+                        <Input id="p-apellido" value={editForm.apellido} readOnly disabled className="bg-muted" />
                       </div>
                     </div>
+                    <p className="-mt-3 text-xs text-muted-foreground flex items-center gap-1.5">
+                      <Lock className="h-3 w-3" /> Nombre y apellido los gestiona la Administración de CcD.
+                    </p>
 
                     {/* Teléfono / Fecha nacimiento */}
                     <div className="grid gap-4 md:grid-cols-2">
@@ -916,7 +973,8 @@ export default function SettingsPage() {
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
                         <Label htmlFor="p-codigo-interno">Código Interno</Label>
-                        <Input id="p-codigo-interno" value={editForm.codigo_interno} onChange={e => field('codigo_interno', e.target.value)} disabled={editLoading} />
+                        <Input id="p-codigo-interno" value={editForm.codigo_interno} readOnly disabled className="bg-muted" placeholder="Asignado por la Administración" />
+                        <p className="text-xs text-muted-foreground">Asignado por la Administración de CcD — no editable.</p>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="p-ocupacion">Ocupación o Profesión</Label>
