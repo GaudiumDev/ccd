@@ -636,6 +636,8 @@ export function EditPersonaForm({
               onCodigoPostalChange={(val) => setBasicData((prev) => ({ ...prev, codigo_postal: val }))}
               onDiocesisChange={(val) => setBasicData((prev) => ({ ...prev, diocesis: val }))}
               disabled={basicLoading}
+              paisLabel="País de residencia"
+              provinciaLabel="Provincia/Estado"
             />
 
             <div className="grid gap-4 md:grid-cols-2">

@@ -456,6 +456,8 @@ export default function NewPersonaPage() {
               onDiocesisChange={(val) =>
                 setFormData((prev) => ({ ...prev, diocesis: val }))
               }
+              paisLabel="País de residencia"
+              provinciaLabel="Provincia/Estado"
             />
 
             <div className="grid gap-4 md:grid-cols-2">
