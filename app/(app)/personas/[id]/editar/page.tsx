@@ -24,7 +24,7 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
     { data: personaOrgs },
     { data: todasPersonas },
     { data: acompañamientoActual },
-    { data: cecistas },
+    { data: acompanados },
   ] = await Promise.all([
     supabase.from("personas").select("*").eq("id", id).single(),
     supabase
@@ -67,16 +67,37 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
       .eq("persona_id", id)
       .is("fecha_fin", null)
       .maybeSingle(),
+    // "Acompaño a": personas que eligieron a esta persona como su acompañante.
     supabase
-      .from("personas")
-      .select("id, nombre, apellido")
-      .eq("tipo_persona", "cecista")
-      .is("fecha_baja", null)
-      .neq("id", id)
-      .order("apellido"),
+      .from("persona_acompanamiento")
+      .select("id, persona:personas!persona_id(id, nombre, apellido)")
+      .eq("acompanante_id", id)
+      .is("fecha_fin", null),
   ])
 
   if (!persona) notFound()
+
+  // Cecistas activos para el selector de acompañante (paginado: Supabase
+  // corta la respuesta por defecto en 1000 filas y hay más que eso).
+  const cecistas: { id: string; nombre: string; apellido: string }[] = []
+  {
+    const pageSize = 1000
+    let from = 0
+    while (true) {
+      const { data: page } = await supabase
+        .from("personas")
+        .select("id, nombre, apellido")
+        .eq("tipo_persona", "cecista")
+        .is("fecha_baja", null)
+        .neq("id", id)
+        .order("apellido")
+        .range(from, from + pageSize - 1)
+      if (!page || page.length === 0) break
+      cecistas.push(...page)
+      if (page.length < pageSize) break
+      from += pageSize
+    }
+  }
 
   const confraternidadOrg = personaOrgs?.find(o => o.tipo_relacion === 'confraternidad') as { id: string; organizacion_id: string; organizacion: { nombre: string } } | undefined
   const fraternidadOrg = personaOrgs?.find(o => o.tipo_relacion === 'fraternidad') as { id: string; organizacion_id: string; organizacion: { nombre: string } } | undefined
@@ -96,7 +117,8 @@ export default async function EditPersonaPage({ params }: { params: Promise<{ id
       personaOrgFraternidadId={fraternidadOrg?.id ?? null}
       todasPersonas={todasPersonas ?? []}
       acompañamientoActual={(acompañamientoActual as any) ?? null}
-      cecistas={cecistas ?? []}
+      cecistas={cecistas}
+      acompanados={(acompanados as any) ?? []}
     />
   )
 }

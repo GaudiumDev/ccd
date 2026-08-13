@@ -1291,20 +1291,16 @@ export default function SettingsPage() {
                     {/* Acompaño a — se completa solo cuando otro cecista te elige como acompañante */}
                     <div className="space-y-2">
                       <Label>Acompaño a</Label>
-                      {acompanados.length > 0 ? (
-                        <div className="flex flex-wrap gap-2">
-                          {acompanados.map(a => (
-                            <span
-                              key={a.id}
-                              className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-foreground"
-                            >
-                              {a.persona?.apellido}, {a.persona?.nombre}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground italic">Todavía nadie te eligió como acompañante.</p>
-                      )}
+                      <div className="flex flex-wrap gap-2">
+                        {acompanados.map(a => (
+                          <span
+                            key={a.id}
+                            className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-foreground"
+                          >
+                            {a.persona?.apellido}, {a.persona?.nombre}
+                          </span>
+                        ))}
+                      </div>
                       <p className="text-xs text-muted-foreground">
                         Se completa automáticamente cuando otro cecista te elige a vos como su acompañante.
                       </p>
@@ -1383,7 +1379,7 @@ export default function SettingsPage() {
                           <option value="">Sin casa comunitaria</option>
                           {casas.map(c => (
                             <option key={c.id} value={c.id}>
-                              {c.codigo ? `${c.codigo} — ` : ''}{c.nombre}
+                              {c.nombre}
                             </option>
                           ))}
                         </select>
