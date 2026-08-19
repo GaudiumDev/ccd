@@ -66,6 +66,34 @@ export const accesoCreado = defineTemplate<AccesoCreadoProps>({
   },
 })
 
+export type RecuperarPasswordProps = {
+  nombre: string
+  nombreUsuario: string
+  /** Link de un solo uso a `/auth/reset-password`. */
+  resetUrl: string
+  /** Validez del link, en minutos, para avisar al destinatario. */
+  expiraEnMinutos?: number
+}
+
+export const recuperarPassword = defineTemplate<RecuperarPasswordProps>({
+  subject: () => 'Restablecé tu contraseña — Comunidad CcD',
+  preheader: () => 'Link para crear una nueva contraseña de tu cuenta.',
+  tags: () => ({ categoria: 'recuperacion' }),
+  blocks: p => [
+    block.heading(`Hola, ${p.nombre}`),
+    block.paragraph(
+      'Recibimos un pedido para restablecer la contraseña de tu cuenta en la plataforma de la Comunidad CcD.'
+    ),
+    block.facts([{ label: 'Usuario', value: p.nombreUsuario }]),
+    block.button('Crear una nueva contraseña', p.resetUrl),
+    block.note(
+      `El link es de un solo uso y vence ${
+        p.expiraEnMinutos ? `en ${p.expiraEnMinutos} minutos` : 'en poco tiempo'
+      }. Si no pediste este cambio, ignorá este correo: tu contraseña actual sigue funcionando.`
+    ),
+  ],
+})
+
 // ─── Inscripciones ────────────────────────────────────────────────────────────
 
 export type InscripcionProps = {
@@ -248,6 +276,7 @@ export const eventoSuspendido = defineTemplate<EventoEstadoProps>({
 export const templates = {
   generico,
   accesoCreado,
+  recuperarPassword,
   inscripcionRegistrada,
   recordatorioEvento,
   pagoConfirmado,

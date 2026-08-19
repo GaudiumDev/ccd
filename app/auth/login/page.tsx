@@ -21,6 +21,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/client"
+import { internalEmailFor } from "@/lib/auth/username"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -38,15 +39,8 @@ export default function LoginPage() {
     const supabase = createClient()
     // Normalizar el usuario a ASCII (ñ→n, sin tildes) para que coincida con la
     // cuenta interna, que se crea siempre en ASCII. Así se puede tipear con o sin ñ/acentos.
-    const usuarioNormalizado = username
-      .normalize("NFKD")
-      .replace(/[̀-ͯ]/g, "")
-      .replace(/ñ/gi, "n")
-      .toLowerCase()
-      .trim()
-    const fakeEmail = `${usuarioNormalizado}@ccd.internal`
     const { error } = await supabase.auth.signInWithPassword({
-      email: fakeEmail,
+      email: internalEmailFor(username),
       password,
     })
 
