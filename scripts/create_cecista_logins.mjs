@@ -94,7 +94,9 @@ async function processOne(p) {
   }
 
   // respaldo: enlazar auth_user_id explícitamente (el trigger también lo hace)
-  if (data?.user) await admin.from('personas').update({ auth_user_id: data.user.id }).eq('id', p.id)
+  // + marcar que debe cambiar la contraseña temporal en el primer login
+  if (data?.user)
+    await admin.from('personas').update({ auth_user_id: data.user.id, debe_cambiar_password: true }).eq('id', p.id)
   return { status: 'created', user }
 }
 
@@ -126,4 +128,4 @@ if (failures.length) {
   console.log(`Fallidos (${failures.length}) guardados en scripts/cecista_logins_fallidos.json`)
 }
 if (!DRY && counts.created)
-  console.log('\n⚠️  Password inicial = nombre de usuario (TEMPORAL). Forzar cambio en el primer login.')
+  console.log('\n⚠️  Password inicial = nombre de usuario (TEMPORAL). Se les va a pedir cambiarla en el primer login.')

@@ -411,7 +411,7 @@ export function Sidebar({ permissions }: { permissions: SidebarPermissions }) {
               }`}
             >
               <Settings className="h-5 w-5" />
-              <span>Ajustes</span>
+              <span>Configuración</span>
             </Link>
             <Button
               onClick={handleSignOut}

@@ -16,6 +16,7 @@ import { translateSupabaseError } from '@/lib/errors/supabase'
 import { LocationFields, PAISES } from '@/components/location-fields'
 import { AvatarUpload } from '@/components/avatar-upload'
 import { Combobox } from '@/components/ui/combobox'
+import { MultiCombobox } from '@/components/ui/multi-combobox'
 
 type FontSize = 'small' | 'medium' | 'large'
 
@@ -98,7 +99,9 @@ type VotoState = { anio: string; perpetuo: boolean; temporal: string }
 type EventoRealizadoState = { checked: boolean; anio: string }
 type CasaComunitaria = { id: string; nombre: string; codigo: string | null; tipo: string | null }
 type TipoEvento = { id: string; nombre: string }
+type AreaServicio = { id: string; nombre: string }
 type AcompanamientoActual = { id: string; acompanante_id: string | null; acompanante_libre: string | null }
+type AcompanadoRow = { id: string; persona: { nombre: string; apellido: string } | null }
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
 type Persona = {
@@ -136,6 +139,8 @@ type Persona = {
   casa_comunitaria_id: string | null
   estado: string | null
   nombre_usuario: string | null
+  socio_asociacion: boolean | null
+  modo_participacion_ingreso: string | null
 }
 
 type EditForm = {
@@ -167,6 +172,8 @@ type EditForm = {
   anio_ingreso: string
   codigo_interno: string
   notas: string
+  socio_asociacion: boolean
+  modo_participacion_ingreso: string
 }
 
 type PersonaOpcion = { id: string; nombre: string; apellido: string }
@@ -196,7 +203,7 @@ function SaveIndicator({ status }: { status: SaveStatus }) {
 
 export default function SettingsPage() {
   const searchParams = useSearchParams()
-  const initialTab = searchParams.get('tab') ?? 'general'
+  const initialTab = searchParams.get('tab') ?? 'perfil'
   const [activeTab, setActiveTab] = useState(initialTab)
   const [fontSize, setFontSize] = useState<FontSize>('small')
 
@@ -224,6 +231,7 @@ export default function SettingsPage() {
     parroquia: '', estado_vida: '',
     nivel_estudios: '', titulo_estudios: '', ocupacion: '',
     anio_ingreso: '', codigo_interno: '', notas: '',
+    socio_asociacion: false, modo_participacion_ingreso: '',
   })
   const [editLoading, setEditLoading] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
@@ -234,6 +242,11 @@ export default function SettingsPage() {
   const [acompananteId, setAcompananteId] = useState('')
   const [acompananteLibre, setAcompananteLibre] = useState('')
   const [acompananteLibreMode, setAcompananteLibreMode] = useState(false)
+  const [acompanados, setAcompanados] = useState<AcompanadoRow[]>([])
+
+  // Ministerios que ejerce (áreas de servicio autodeclaradas)
+  const [areasServicio, setAreasServicio] = useState<AreaServicio[]>([])
+  const [misAreasServicio, setMisAreasServicio] = useState<string[]>([])
 
   // Secciones cecista
   const [casas, setCasas] = useState<CasaComunitaria[]>([])
@@ -313,7 +326,7 @@ export default function SettingsPage() {
 
       const { data } = await supabase
         .from('personas')
-        .select('id, nombre, apellido, email, email_ccd, telefono, fecha_nacimiento, tipo_documento, documento, pais_documento, direccion, direccion_nro, codigo_postal, localidad, provincia, pais, nacionalidad, diocesis, estado_eclesial, estado_eclesial_rango, institucion_religiosa, parroquia, estado_vida, nivel_estudios, titulo_estudios, ocupacion, anio_ingreso, codigo_interno, notas, tipo_persona, foto_url, casa_comunitaria_id, estado, nombre_usuario')
+        .select('id, nombre, apellido, email, email_ccd, telefono, fecha_nacimiento, tipo_documento, documento, pais_documento, direccion, direccion_nro, codigo_postal, localidad, provincia, pais, nacionalidad, diocesis, estado_eclesial, estado_eclesial_rango, institucion_religiosa, parroquia, estado_vida, nivel_estudios, titulo_estudios, ocupacion, anio_ingreso, codigo_interno, notas, tipo_persona, foto_url, casa_comunitaria_id, estado, nombre_usuario, socio_asociacion, modo_participacion_ingreso')
         .eq('auth_user_id', user.id)
         .single()
 
@@ -348,6 +361,8 @@ export default function SettingsPage() {
           anio_ingreso: data.anio_ingreso != null ? String(data.anio_ingreso) : '',
           codigo_interno: data.codigo_interno ?? '',
           notas: data.notas ?? '',
+          socio_asociacion: data.socio_asociacion ?? false,
+          modo_participacion_ingreso: data.modo_participacion_ingreso ?? '',
         })
 
         const { data: acompData } = await supabase
@@ -360,6 +375,15 @@ export default function SettingsPage() {
         setAcompananteId(acompData?.acompanante_id ?? '')
         setAcompananteLibre(acompData?.acompanante_libre ?? '')
         setAcompananteLibreMode(!!acompData?.acompanante_libre)
+
+        // "Acompaño a": se completa solo con quienes me eligieron como su
+        // acompañante (misma tabla, mirada del otro lado — no es editable).
+        const { data: acompanadosData } = await supabase
+          .from('persona_acompanamiento')
+          .select('id, persona:personas!persona_id(nombre, apellido)')
+          .eq('acompanante_id', data.id)
+          .is('fecha_fin', null)
+        setAcompanados((acompanadosData as unknown as AcompanadoRow[]) ?? [])
 
         const { data: modo } = await supabase
           .from('persona_modos')
@@ -437,17 +461,42 @@ export default function SettingsPage() {
           realizadosMap[r.tipo_evento_id] = { checked: true, anio: r.anio != null ? String(r.anio) : '' }
         }
         setEventosRealizados(realizadosMap)
+
+        // Ministerios que ejerce (áreas de servicio autodeclaradas)
+        const { data: areasData } = await supabase
+          .from('areas_servicio')
+          .select('id, nombre')
+          .eq('activo', true)
+          .order('nombre')
+        setAreasServicio(areasData ?? [])
+
+        const { data: misAreasData } = await supabase
+          .from('persona_areas_servicio')
+          .select('area_servicio_id')
+          .eq('persona_id', data.id)
+        setMisAreasServicio((misAreasData ?? []).map((r: { area_servicio_id: string }) => r.area_servicio_id))
       }
 
-      // Cargar personas para el select de acompañante
-      const { data: personas } = await supabase
-        .from('personas')
-        .select('id, nombre, apellido')
-        .is('fecha_baja', null)
-        .eq('estado', 'activo')
-        .order('apellido')
-
-      setTodasPersonas(personas ?? [])
+      // Cargar cecistas activos para el selector de acompañante (paginado: son
+      // ~2000 y Supabase corta la respuesta por defecto en 1000 filas).
+      const cecistas: PersonaOpcion[] = []
+      const pageSize = 1000
+      let from = 0
+      while (true) {
+        const { data: page } = await supabase
+          .from('personas')
+          .select('id, nombre, apellido')
+          .is('fecha_baja', null)
+          .eq('estado', 'activo')
+          .eq('tipo_persona', 'cecista')
+          .order('apellido')
+          .range(from, from + pageSize - 1)
+        if (!page || page.length === 0) break
+        cecistas.push(...page)
+        if (page.length < pageSize) break
+        from += pageSize
+      }
+      setTodasPersonas(cecistas)
       setLoadingPersona(false)
     }
     loadPersona()
@@ -528,6 +577,8 @@ export default function SettingsPage() {
           ocupacion: editForm.ocupacion || null,
           anio_ingreso: editForm.anio_ingreso ? Number(editForm.anio_ingreso) : null,
           notas: editForm.notas || null,
+          socio_asociacion: modoActual === 'servidor' ? editForm.socio_asociacion : false,
+          modo_participacion_ingreso: editForm.modo_participacion_ingreso || null,
         })
         .eq('id', persona.id)
     )
@@ -738,6 +789,30 @@ export default function SettingsPage() {
     })
   }
 
+  // ── Ministerios que ejerce (áreas de servicio, sin histórico) ──
+  function changeMisAreasServicio(newValues: string[]) {
+    if (!persona) return
+    const added = newValues.filter(v => !misAreasServicio.includes(v))
+    const removed = misAreasServicio.filter(v => !newValues.includes(v))
+    setMisAreasServicio(newValues)
+    for (const areaId of added) {
+      void runSave(() =>
+        createClient()
+          .from('persona_areas_servicio')
+          .insert({ persona_id: persona.id, area_servicio_id: areaId })
+      )
+    }
+    for (const areaId of removed) {
+      void runSave(() =>
+        createClient()
+          .from('persona_areas_servicio')
+          .delete()
+          .eq('persona_id', persona.id)
+          .eq('area_servicio_id', areaId)
+      )
+    }
+  }
+
   const selectClass = 'w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm'
 
   return (
@@ -755,6 +830,16 @@ export default function SettingsPage() {
       {/* Tabs */}
       <div className="flex gap-4 border-b border-border">
         <button
+          onClick={() => setActiveTab('perfil')}
+          className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+            activeTab === 'perfil'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Datos Personales
+        </button>
+        <button
           onClick={() => setActiveTab('general')}
           className={`px-4 py-2 font-medium border-b-2 transition-colors ${
             activeTab === 'general'
@@ -763,16 +848,6 @@ export default function SettingsPage() {
           }`}
         >
           General
-        </button>
-        <button
-          onClick={() => setActiveTab('perfil')}
-          className={`px-4 py-2 font-medium border-b-2 transition-colors ${
-            activeTab === 'perfil'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          Perfil
         </button>
         <button
           onClick={() => setActiveTab('seguridad')}
@@ -908,6 +983,51 @@ export default function SettingsPage() {
                     <Label>Fraternidad</Label>
                     <Input value={fraternidadNombre ?? '—'} readOnly disabled className="bg-muted" />
                   </div>
+                </CardContent>
+
+                {/* Subsección editable — la completa el propio cecista */}
+                <CardContent className="grid gap-4 border-t border-border pt-6 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="p-anio-ingreso">Año de Ingreso a la Comunidad</Label>
+                    <Input
+                      id="p-anio-ingreso"
+                      type="number"
+                      min="1950"
+                      max={new Date().getFullYear()}
+                      placeholder="Ej: 2010"
+                      value={editForm.anio_ingreso}
+                      onChange={e => field('anio_ingreso', e.target.value)}
+                      disabled={editLoading}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="p-modo-ingreso">Modo de Participación al Ingreso</Label>
+                    <select
+                      id="p-modo-ingreso"
+                      value={editForm.modo_participacion_ingreso}
+                      onChange={e => field('modo_participacion_ingreso', e.target.value)}
+                      disabled={editLoading}
+                      className={selectClass}
+                    >
+                      <option value="">Sin especificar</option>
+                      {Object.entries(MODOS_LABEL).map(([value, label]) => (
+                        <option key={value} value={value}>{label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {modoActual === 'servidor' && (
+                    <div className="flex items-center gap-3 md:col-span-2">
+                      <input
+                        id="p-socio-activo"
+                        type="checkbox"
+                        checked={editForm.socio_asociacion}
+                        onChange={e => setEditForm(prev => ({ ...prev, socio_asociacion: e.target.checked }))}
+                        disabled={editLoading}
+                        className="h-4 w-4 rounded border-border"
+                      />
+                      <Label htmlFor="p-socio-activo">Socio Activo de la Asociación Civil</Label>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -1053,6 +1173,8 @@ export default function SettingsPage() {
                       onCodigoPostalChange={val => field('codigo_postal', val)}
                       onDiocesisChange={val => field('diocesis', val)}
                       disabled={editLoading}
+                      paisLabel="País de residencia"
+                      provinciaLabel="Provincia/Estado"
                     />
 
                     {/* Estado Eclesiástico / Parroquia */}
@@ -1112,30 +1234,15 @@ export default function SettingsPage() {
                       </select>
                     </div>
 
-                    {/* Nivel Estudios / Año Ingreso */}
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="p-estudios">Máx. Nivel de Estudios</Label>
-                        <select id="p-estudios" value={editForm.nivel_estudios} onChange={e => field('nivel_estudios', e.target.value)} disabled={editLoading} className={selectClass}>
-                          <option value="">Sin especificar</option>
-                          {NIVELES_ESTUDIOS.map(n => (
-                            <option key={n.value} value={n.value}>{n.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="p-anio">Año de Ingreso</Label>
-                        <Input
-                          id="p-anio"
-                          type="number"
-                          min="1950"
-                          max={new Date().getFullYear()}
-                          placeholder="Ej: 2010"
-                          value={editForm.anio_ingreso}
-                          onChange={e => field('anio_ingreso', e.target.value)}
-                          disabled={editLoading}
-                        />
-                      </div>
+                    {/* Nivel Estudios */}
+                    <div className="space-y-2">
+                      <Label htmlFor="p-estudios">Máx. Nivel de Estudios</Label>
+                      <select id="p-estudios" value={editForm.nivel_estudios} onChange={e => field('nivel_estudios', e.target.value)} disabled={editLoading} className={selectClass}>
+                        <option value="">Sin especificar</option>
+                        {NIVELES_ESTUDIOS.map(n => (
+                          <option key={n.value} value={n.value}>{n.label}</option>
+                        ))}
+                      </select>
                     </div>
 
                     {(editForm.nivel_estudios === 'universitario' || editForm.nivel_estudios === 'terciario') && (
@@ -1167,13 +1274,36 @@ export default function SettingsPage() {
                           onChange={e => handleAcompananteLibreChange(e.target.value)}
                         />
                       ) : (
-                        <select id="p-acompanante" value={acompananteId} onChange={e => handleAcompananteChange(e.target.value)} className={selectClass}>
-                          <option value="">Sin acompañante</option>
-                          {todasPersonas.map(p => (
-                            <option key={p.id} value={p.id}>{p.apellido}, {p.nombre}</option>
-                          ))}
-                        </select>
+                        <Combobox
+                          value={acompananteId}
+                          onSelect={handleAcompananteChange}
+                          options={[
+                            { label: 'Sin acompañante', value: '' },
+                            ...todasPersonas.map(p => ({ label: `${p.apellido}, ${p.nombre}`, value: p.id })),
+                          ]}
+                          placeholder="Seleccionar acompañante..."
+                          searchPlaceholder="Buscar por nombre o apellido..."
+                          emptyText="No se encontró la persona."
+                        />
                       )}
+                    </div>
+
+                    {/* Acompaño a — se completa solo cuando otro cecista te elige como acompañante */}
+                    <div className="space-y-2">
+                      <Label>Acompaño a</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {acompanados.map(a => (
+                          <span
+                            key={a.id}
+                            className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-foreground"
+                          >
+                            {a.persona?.apellido}, {a.persona?.nombre}
+                          </span>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Se completa automáticamente cuando otro cecista te elige a vos como su acompañante.
+                      </p>
                     </div>
 
                     {/* Notas */}
@@ -1209,6 +1339,25 @@ export default function SettingsPage() {
               {/* Secciones específicas de Cecistas */}
               {persona.tipo_persona === 'cecista' && (
                 <>
+                  {/* Ministerios que ejerce (autodeclarado, selección múltiple) */}
+                  <Card className="border-border bg-card">
+                    <CardHeader>
+                      <CardTitle className="text-foreground">Ministerios que ejerce</CardTitle>
+                      <CardDescription>Marcá todos los que correspondan.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <MultiCombobox
+                        values={misAreasServicio}
+                        onChange={changeMisAreasServicio}
+                        options={areasServicio.map(a => ({ label: a.nombre, value: a.id }))}
+                        placeholder="Seleccionar ministerios..."
+                        searchPlaceholder="Buscar..."
+                        emptyText="No se encontraron resultados."
+                        disabled={editLoading}
+                      />
+                    </CardContent>
+                  </Card>
+
                   {/* Casa Comunitaria */}
                   <Card className="border-border bg-card">
                     <CardHeader>
@@ -1230,7 +1379,7 @@ export default function SettingsPage() {
                           <option value="">Sin casa comunitaria</option>
                           {casas.map(c => (
                             <option key={c.id} value={c.id}>
-                              {c.codigo ? `${c.codigo} — ` : ''}{c.nombre}
+                              {c.nombre}
                             </option>
                           ))}
                         </select>

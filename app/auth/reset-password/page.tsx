@@ -95,12 +95,23 @@ function ResetPasswordForm() {
 
     setIsLoading(true)
     const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
     const { error } = await supabase.auth.updateUser({ password })
 
     if (error) {
       setError("No se pudo actualizar la contraseña. El link puede haber expirado.")
       setIsLoading(false)
       return
+    }
+
+    // Si la persona todavía arrastraba la contraseña temporal, ya la cambió acá:
+    // sin esto el middleware la mandaría igual a /auth/cambiar-password-inicial
+    // a cambiarla por segunda vez (ver `lib/supabase/proxy.ts`).
+    if (user) {
+      await supabase
+        .from("personas")
+        .update({ debe_cambiar_password: false })
+        .eq("auth_user_id", user.id)
     }
 
     // La sesión abierta por el link de recuperación no debe quedar viva: que vuelva

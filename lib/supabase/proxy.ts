@@ -35,17 +35,33 @@ export async function updateSession(request: NextRequest) {
 
   // Protect all app routes (everything except /auth/* and its APIs, the public
   // event landing page, and the public APIs it calls to register interest / pay)
-  if (
-    !user &&
-    !request.nextUrl.pathname.startsWith('/auth') &&
-    !request.nextUrl.pathname.startsWith('/e/') &&
-    !request.nextUrl.pathname.startsWith('/api/public/') &&
-    !request.nextUrl.pathname.startsWith('/api/auth/') &&
-    request.nextUrl.pathname !== '/'
-  ) {
+  const isPublicRoute =
+    request.nextUrl.pathname.startsWith('/auth') ||
+    request.nextUrl.pathname.startsWith('/e/') ||
+    request.nextUrl.pathname.startsWith('/api/public/') ||
+    request.nextUrl.pathname.startsWith('/api/auth/') ||
+    request.nextUrl.pathname === '/'
+
+  if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/auth/login'
     return NextResponse.redirect(url)
+  }
+
+  // Cecistas con contraseña temporal (= su usuario) deben cambiarla antes de
+  // usar el resto de la plataforma.
+  if (user && !isPublicRoute) {
+    const { data: persona } = await supabase
+      .from('personas')
+      .select('debe_cambiar_password')
+      .eq('auth_user_id', user.id)
+      .maybeSingle()
+
+    if (persona?.debe_cambiar_password) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/auth/cambiar-password-inicial'
+      return NextResponse.redirect(url)
+    }
   }
 
   return supabaseResponse

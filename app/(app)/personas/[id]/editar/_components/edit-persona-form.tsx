@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { createClient } from "@/lib/supabase/client"
 import { translateSupabaseError } from "@/lib/errors/supabase"
 import { LocationFields } from "@/components/location-fields"
+import { Combobox } from "@/components/ui/combobox"
 
 type Persona = {
   id: string
@@ -85,6 +86,8 @@ type AcompañamientoActual = {
   acompanante: { id: string; nombre: string; apellido: string }
 } | null
 
+type AcompanadoRow = { id: string; persona: { nombre: string; apellido: string } | null }
+
 const NIVELES_ESTUDIOS = [
   { value: "primario", label: "Primario" },
   { value: "secundario", label: "Secundario" },
@@ -108,6 +111,7 @@ interface Props {
   todasPersonas: PersonaOpcion[]
   acompañamientoActual: AcompañamientoActual
   cecistas: PersonaOpcion[]
+  acompanados: AcompanadoRow[]
 }
 
 const modoLabels: Record<string, string> = {
@@ -147,6 +151,7 @@ export function EditPersonaForm({
   todasPersonas,
   acompañamientoActual,
   cecistas,
+  acompanados,
 }: Props) {
   const router = useRouter()
   const today = new Date().toISOString().split("T")[0]
@@ -636,6 +641,8 @@ export function EditPersonaForm({
               onCodigoPostalChange={(val) => setBasicData((prev) => ({ ...prev, codigo_postal: val }))}
               onDiocesisChange={(val) => setBasicData((prev) => ({ ...prev, diocesis: val }))}
               disabled={basicLoading}
+              paisLabel="País de residencia"
+              provinciaLabel="Provincia/Estado"
             />
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -1099,6 +1106,25 @@ export function EditPersonaForm({
             )}
           </div>
 
+          {/* Acompaño a — solo lectura: quienes eligieron a esta persona como su acompañante */}
+          <div className="space-y-2">
+            <span className="text-sm text-muted-foreground">Acompaña a:</span>
+            {acompanados.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {acompanados.map(a => (
+                  <span
+                    key={a.id}
+                    className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-sm font-medium text-foreground"
+                  >
+                    {a.persona?.apellido}, {a.persona?.nombre}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <span className="ml-2 text-sm text-muted-foreground italic">Nadie lo eligió como acompañante todavía</span>
+            )}
+          </div>
+
           <form onSubmit={handleAcompSubmit} className="space-y-4">
             {acompError && (
               <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{acompError}</div>
@@ -1111,20 +1137,15 @@ export function EditPersonaForm({
                 <Label htmlFor="nuevoAcompanante">
                   {currentAcomp ? "Nuevo Acompañante" : "Asignar Acompañante"}
                 </Label>
-                <select
-                  id="nuevoAcompanante"
+                <Combobox
                   value={nuevoAcompanante}
-                  onChange={e => setNuevoAcompanante(e.target.value)}
+                  onSelect={setNuevoAcompanante}
+                  options={cecistas.map(p => ({ label: `${p.apellido}, ${p.nombre}`, value: p.id }))}
+                  placeholder="Seleccionar cecista..."
+                  searchPlaceholder="Buscar por nombre o apellido..."
+                  emptyText="No se encontró la persona."
                   disabled={acompLoading}
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
-                >
-                  <option value="">Seleccionar cecista...</option>
-                  {cecistas.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.apellido}, {p.nombre}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="acompFechaInicio">Fecha de Inicio</Label>

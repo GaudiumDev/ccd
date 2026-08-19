@@ -43,6 +43,8 @@ interface LocationFieldsProps {
   onCodigoPostalChange?: (val: string) => void
   onDiocesisChange?: (val: string) => void
   disabled?: boolean
+  paisLabel?: string
+  provinciaLabel?: string
 }
 
 const GEOREF_BASE = "https://apis.datos.gob.ar/georef/api"
@@ -68,6 +70,8 @@ export function LocationFields({
   onCodigoPostalChange,
   onDiocesisChange,
   disabled,
+  paisLabel = "País",
+  provinciaLabel = "Provincia",
 }: LocationFieldsProps) {
   const isArgentina = pais === "Argentina"
 
@@ -87,7 +91,7 @@ export function LocationFields({
   React.useEffect(() => {
     if (!isArgentina) return
     setProvinciasLoading(true)
-    const params = new URLSearchParams({ max: "10", campos: "id,nombre" })
+    const params = new URLSearchParams({ max: "30", campos: "id,nombre" })
     if (debouncedProvinciaQuery) params.set("nombre", debouncedProvinciaQuery)
     fetch(`${GEOREF_BASE}/provincias?${params}`)
       .then((r) => r.json())
@@ -109,7 +113,7 @@ export function LocationFields({
       return
     }
     setLocalidadesLoading(true)
-    const params = new URLSearchParams({ provincia, max: "10", campos: "id,nombre" })
+    const params = new URLSearchParams({ provincia, max: "50", campos: "id,nombre" })
     if (debouncedLocalidadQuery) params.set("nombre", debouncedLocalidadQuery)
     fetch(`${GEOREF_BASE}/localidades?${params}`)
       .then((r) => r.json())
@@ -143,7 +147,7 @@ export function LocationFields({
     <div className="space-y-4">
       {/* País */}
       <div className="space-y-2">
-        <Label>País</Label>
+        <Label>{paisLabel}</Label>
         <Combobox
           value={pais}
           onSelect={handlePaisChange}
@@ -157,7 +161,7 @@ export function LocationFields({
 
       {/* Provincia */}
       <div className="space-y-2">
-        <Label>Provincia</Label>
+        <Label>{provinciaLabel}</Label>
         {isArgentina ? (
           <Combobox
             value={provincia}
