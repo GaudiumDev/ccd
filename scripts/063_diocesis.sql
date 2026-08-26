@@ -1,5 +1,5 @@
 -- ============================================================
--- Migration 060: Catálogo de Diócesis
+-- Migration 063: Catálogo de Diócesis
 -- La columna `diocesis` es TEXT en personas, organizaciones,
 -- casas_retiro y eventos. NO se cambia el tipo: este catálogo
 -- solo alimenta el menú desplegable y se sigue guardando el

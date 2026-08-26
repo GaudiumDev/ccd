@@ -1,10 +1,10 @@
 -- ============================================================
--- Migration 061: Seed del catálogo de Diócesis (Argentina)
+-- Migration 064: Seed del catálogo de Diócesis (Argentina)
 -- Fuente: "Diocesis - Listado.csv" (carpeta listados para importación),
 -- a su vez tomado de catholic-hierarchy.org.
 -- GENERADO por scratchpad/gen_diocesis.py — no editar a mano.
 --
--- Requiere la migración 060 (tabla public.diocesis).
+-- Requiere la migración 063 (tabla public.diocesis).
 -- Idempotente: upsert por `codigo` (uq_diocesis_codigo).
 --
 -- Ajustes sobre el CSV original:
