@@ -64,7 +64,8 @@ COMMIT;
 -- INSERT INTO public.diocesis (codigo, nombre, tipo, pais, provincia) VALUES
 --   ('DIOC-001', 'Arquidiócesis de Buenos Aires', 'arquidiocesis', 'Argentina', 'Ciudad Autónoma de Buenos Aires'),
 --   ('DIOC-002', 'Diócesis de Corrientes',        'diocesis',      'Argentina', 'Corrientes')
--- ON CONFLICT (codigo) DO UPDATE SET
+-- ON CONFLICT (codigo) WHERE codigo IS NOT NULL DO UPDATE SET  -- el índice es parcial:
+--                                                              -- hay que repetir el WHERE
 --   nombre     = EXCLUDED.nombre,
 --   tipo       = EXCLUDED.tipo,
 --   pais       = EXCLUDED.pais,

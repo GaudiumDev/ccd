@@ -21,6 +21,12 @@
 
 BEGIN;
 
+-- 0. Índice único parcial sobre `codigo` (lo crea 060; se repite acá para que
+--    el seed corra igual si 060 se ejecutó antes de agregarlo). El ON CONFLICT
+--    de abajo necesita repetir el predicado WHERE para poder inferirlo.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_diocesis_codigo
+  ON public.diocesis (codigo) WHERE codigo IS NOT NULL;
+
 -- 1. Baja lógica de todas las diócesis argentinas (las canónicas se
 --    reactivan en el paso 2, igual que en los seeds 045 / 053).
 UPDATE public.diocesis
@@ -98,7 +104,7 @@ INSERT INTO public.diocesis (codigo, nombre, tipo, pais, provincia) VALUES
   ('DIOC-064', 'Diócesis de Mercedes Luján', 'diocesis', 'Argentina', 'Buenos Aires'),
   ('DIOC-065', 'Diócesis de Oberá', 'diocesis', 'Argentina', 'Misiones'),
   ('DIOC-066', 'Prelatura de Esquel', 'prelatura', 'Argentina', 'Chubut')
-ON CONFLICT (codigo) DO UPDATE SET
+ON CONFLICT (codigo) WHERE codigo IS NOT NULL DO UPDATE SET
   nombre     = EXCLUDED.nombre,
   tipo       = EXCLUDED.tipo,
   pais       = EXCLUDED.pais,
