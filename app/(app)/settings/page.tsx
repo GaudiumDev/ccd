@@ -58,6 +58,57 @@ const ESTADO_ECLESIAL_RANGOS = [
 // encuentro y otro, tal cual el relevamiento de Cecistas).
 const EVENTOS_REALIZADOS_CATEGORIAS = ['convivencia', 'retiro', 'taller']
 
+// Retiros por ministerio/estado — no son hitos del itinerario, así que quedan
+// fuera del checklist autodeclarado. Se filtran por nombre (no por código)
+// porque `tipos_eventos.codigo` recién lo agrega scripts/046.
+const EVENTOS_REALIZADOS_EXCLUIDOS = [
+  'retiro de asesores',
+  'retiro de casas comunitarias',
+  'retiro de dedicados confraternidades',
+]
+
+// Los 7 primeros casilleros son el itinerario de convivencias, en este orden.
+const CONVIVENCIAS_ORDEN = [
+  'convivencia con cristo',
+  'convivencia con pablo',
+  'convivencia con pedro',
+  'convivencia con maria',
+  'convivencia con el espiritu',
+  'convivencia trinidad',
+  'convivencia dios amor',
+]
+
+function normalizar(valor: string) {
+  return valor.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+}
+
+// El catálogo guarda las convivencias en MAYÚSCULA; acá se muestran en formato
+// título para que la lista se lea bien.
+const PALABRAS_MINUSCULA = new Set(['con', 'de', 'del', 'el', 'la', 'los', 'las', 'y', 'en', 'a'])
+function nombreLegible(nombre: string) {
+  if (/[a-záéíóúüñ]/.test(nombre)) return nombre
+  return nombre
+    .toLocaleLowerCase('es')
+    .split(' ')
+    .map((w, i) => (i > 0 && PALABRAS_MINUSCULA.has(w) ? w : w.charAt(0).toLocaleUpperCase('es') + w.slice(1)))
+    .join(' ')
+}
+
+// Convivencias primero (orden fijo del itinerario), luego retiros y talleres
+// alfabéticamente.
+function ordenarTiposEventos(rows: TipoEvento[]): TipoEvento[] {
+  return rows
+    .filter(t => !EVENTOS_REALIZADOS_EXCLUIDOS.includes(normalizar(t.nombre)))
+    .sort((a, b) => {
+      const ia = CONVIVENCIAS_ORDEN.indexOf(normalizar(a.nombre))
+      const ib = CONVIVENCIAS_ORDEN.indexOf(normalizar(b.nombre))
+      if (ia !== -1 && ib !== -1) return ia - ib
+      if (ia !== -1) return -1
+      if (ib !== -1) return 1
+      return nombreLegible(a.nombre).localeCompare(nombreLegible(b.nombre), 'es')
+    })
+}
+
 const MODOS_LABEL: Record<string, string> = {
   colaborador: 'Colaborador',
   servidor: 'Servidor',
@@ -132,6 +183,7 @@ type Persona = {
   titulo_estudios: string | null
   ocupacion: string | null
   anio_ingreso: number | null
+  anio_ultimo_cambio_modo: number | null
   codigo_interno: string | null
   notas: string | null
   tipo_persona: string | null
@@ -170,6 +222,7 @@ type EditForm = {
   titulo_estudios: string
   ocupacion: string
   anio_ingreso: string
+  anio_ultimo_cambio_modo: string
   codigo_interno: string
   notas: string
   socio_asociacion: boolean
@@ -230,7 +283,7 @@ export default function SettingsPage() {
     estado_eclesial: 'laico', estado_eclesial_rango: '', institucion_religiosa: '',
     parroquia: '', estado_vida: '',
     nivel_estudios: '', titulo_estudios: '', ocupacion: '',
-    anio_ingreso: '', codigo_interno: '', notas: '',
+    anio_ingreso: '', anio_ultimo_cambio_modo: '', codigo_interno: '', notas: '',
     socio_asociacion: false, modo_participacion_ingreso: '',
   })
   const [editLoading, setEditLoading] = useState(false)
@@ -326,7 +379,7 @@ export default function SettingsPage() {
 
       const { data } = await supabase
         .from('personas')
-        .select('id, nombre, apellido, email, email_ccd, telefono, fecha_nacimiento, tipo_documento, documento, pais_documento, direccion, direccion_nro, codigo_postal, localidad, provincia, pais, nacionalidad, diocesis, estado_eclesial, estado_eclesial_rango, institucion_religiosa, parroquia, estado_vida, nivel_estudios, titulo_estudios, ocupacion, anio_ingreso, codigo_interno, notas, tipo_persona, foto_url, casa_comunitaria_id, estado, nombre_usuario, socio_asociacion, modo_participacion_ingreso')
+        .select('id, nombre, apellido, email, email_ccd, telefono, fecha_nacimiento, tipo_documento, documento, pais_documento, direccion, direccion_nro, codigo_postal, localidad, provincia, pais, nacionalidad, diocesis, estado_eclesial, estado_eclesial_rango, institucion_religiosa, parroquia, estado_vida, nivel_estudios, titulo_estudios, ocupacion, anio_ingreso, anio_ultimo_cambio_modo, codigo_interno, notas, tipo_persona, foto_url, casa_comunitaria_id, estado, nombre_usuario, socio_asociacion, modo_participacion_ingreso')
         .eq('auth_user_id', user.id)
         .single()
 
@@ -359,6 +412,7 @@ export default function SettingsPage() {
           titulo_estudios: data.titulo_estudios ?? '',
           ocupacion: data.ocupacion ?? '',
           anio_ingreso: data.anio_ingreso != null ? String(data.anio_ingreso) : '',
+          anio_ultimo_cambio_modo: data.anio_ultimo_cambio_modo != null ? String(data.anio_ultimo_cambio_modo) : '',
           codigo_interno: data.codigo_interno ?? '',
           notas: data.notas ?? '',
           socio_asociacion: data.socio_asociacion ?? false,
@@ -449,14 +503,15 @@ export default function SettingsPage() {
           .in('categoria', EVENTOS_REALIZADOS_CATEGORIAS)
           .eq('activo', true)
           .order('nombre')
-        setTiposEventos(tiposData ?? [])
+        const tiposOrdenados = ordenarTiposEventos(tiposData ?? [])
+        setTiposEventos(tiposOrdenados)
 
         const { data: realizadosData } = await supabase
           .from('persona_eventos_realizados')
           .select('tipo_evento_id, anio')
           .eq('persona_id', data.id)
         const realizadosMap: Record<string, EventoRealizadoState> = {}
-        for (const t of tiposData ?? []) realizadosMap[t.id] = { checked: false, anio: '' }
+        for (const t of tiposOrdenados) realizadosMap[t.id] = { checked: false, anio: '' }
         for (const r of realizadosData ?? []) {
           realizadosMap[r.tipo_evento_id] = { checked: true, anio: r.anio != null ? String(r.anio) : '' }
         }
@@ -576,6 +631,7 @@ export default function SettingsPage() {
             ? (editForm.titulo_estudios || null) : null,
           ocupacion: editForm.ocupacion || null,
           anio_ingreso: editForm.anio_ingreso ? Number(editForm.anio_ingreso) : null,
+          anio_ultimo_cambio_modo: editForm.anio_ultimo_cambio_modo ? Number(editForm.anio_ultimo_cambio_modo) : null,
           notas: editForm.notas || null,
           socio_asociacion: modoActual === 'servidor' ? editForm.socio_asociacion : false,
           modo_participacion_ingreso: editForm.modo_participacion_ingreso || null,
@@ -976,6 +1032,14 @@ export default function SettingsPage() {
                     <Input value={persona.nombre_usuario ?? '—'} readOnly disabled className="bg-muted" />
                   </div>
                   <div className="space-y-2">
+                    <Label>Código Interno</Label>
+                    <Input value={editForm.codigo_interno || '—'} readOnly disabled className="bg-muted" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Mail CcD</Label>
+                    <Input value={editForm.email_ccd || '—'} readOnly disabled className="bg-muted" />
+                  </div>
+                  <div className="space-y-2">
                     <Label>Confraternidad</Label>
                     <Input value={confraternidadNombre ?? '—'} readOnly disabled className="bg-muted" />
                   </div>
@@ -986,36 +1050,8 @@ export default function SettingsPage() {
                 </CardContent>
 
                 {/* Subsección editable — la completa el propio cecista */}
-                <CardContent className="grid gap-4 border-t border-border pt-6 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="p-anio-ingreso">Año de Ingreso a la Comunidad</Label>
-                    <Input
-                      id="p-anio-ingreso"
-                      type="number"
-                      min="1950"
-                      max={new Date().getFullYear()}
-                      placeholder="Ej: 2010"
-                      value={editForm.anio_ingreso}
-                      onChange={e => field('anio_ingreso', e.target.value)}
-                      disabled={editLoading}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="p-modo-ingreso">Modo de Participación al Ingreso</Label>
-                    <select
-                      id="p-modo-ingreso"
-                      value={editForm.modo_participacion_ingreso}
-                      onChange={e => field('modo_participacion_ingreso', e.target.value)}
-                      disabled={editLoading}
-                      className={selectClass}
-                    >
-                      <option value="">Sin especificar</option>
-                      {Object.entries(MODOS_LABEL).map(([value, label]) => (
-                        <option key={value} value={value}>{label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  {modoActual === 'servidor' && (
+                {modoActual === 'servidor' && (
+                  <CardContent className="grid gap-4 border-t border-border pt-6 md:grid-cols-2">
                     <div className="flex items-center gap-3 md:col-span-2">
                       <input
                         id="p-socio-activo"
@@ -1027,8 +1063,8 @@ export default function SettingsPage() {
                       />
                       <Label htmlFor="p-socio-activo">Socio Activo de la Asociación Civil</Label>
                     </div>
-                  )}
-                </CardContent>
+                  </CardContent>
+                )}
               </Card>
 
               {/* Edit form */}
@@ -1075,31 +1111,11 @@ export default function SettingsPage() {
                       </div>
                     </div>
 
-                    {/* Mail Personal / Mail CcD */}
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="p-email">Mail Personal</Label>
-                        <Input id="p-email" type="email" value={editForm.email} onChange={e => field('email', e.target.value)} disabled={editLoading} />
-                        <p className="text-xs text-muted-foreground">No afecta el acceso al sistema.</p>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="p-email-ccd">Mail CcD</Label>
-                        <Input id="p-email-ccd" type="email" value={editForm.email_ccd} disabled readOnly className="bg-muted" />
-                        <p className="text-xs text-muted-foreground">Asignado por la comunidad — no editable.</p>
-                      </div>
-                    </div>
-
-                    {/* Código Interno / Ocupación */}
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="p-codigo-interno">Código Interno</Label>
-                        <Input id="p-codigo-interno" value={editForm.codigo_interno} readOnly disabled className="bg-muted" placeholder="Asignado por la Administración" />
-                        <p className="text-xs text-muted-foreground">Asignado por la Administración de CcD — no editable.</p>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="p-ocupacion">Ocupación o Profesión</Label>
-                        <Input id="p-ocupacion" value={editForm.ocupacion} onChange={e => field('ocupacion', e.target.value)} disabled={editLoading} />
-                      </div>
+                    {/* Mail Personal — el Mail CcD vive en Datos institucionales */}
+                    <div className="space-y-2">
+                      <Label htmlFor="p-email">Mail Personal</Label>
+                      <Input id="p-email" type="email" value={editForm.email} onChange={e => field('email', e.target.value)} disabled={editLoading} />
+                      <p className="text-xs text-muted-foreground">No afecta el acceso al sistema.</p>
                     </div>
 
                     {/* Tipo Documento / Nro Documento */}
@@ -1218,6 +1234,23 @@ export default function SettingsPage() {
                       </div>
                     )}
 
+                    {/* Ministerios que ejerce (autodeclarado, selección múltiple) */}
+                    {persona.tipo_persona === 'cecista' && (
+                      <div className="space-y-2">
+                        <Label>Ministerios que ejerce</Label>
+                        <MultiCombobox
+                          values={misAreasServicio}
+                          onChange={changeMisAreasServicio}
+                          options={areasServicio.map(a => ({ label: a.nombre, value: a.id }))}
+                          placeholder="Seleccionar ministerios..."
+                          searchPlaceholder="Buscar..."
+                          emptyText="No se encontraron resultados."
+                          disabled={editLoading}
+                        />
+                        <p className="text-xs text-muted-foreground">Marcá todos los que correspondan.</p>
+                      </div>
+                    )}
+
                     {/* Estado de Vida */}
                     <div className="space-y-2">
                       <Label htmlFor="p-vida">Estado Civil</Label>
@@ -1232,6 +1265,12 @@ export default function SettingsPage() {
                         <option value="union_civil">Unión Civil / Unión de Hecho</option>
                         <option value="consagrado">Consagrado/a</option>
                       </select>
+                    </div>
+
+                    {/* Ocupación o Profesión */}
+                    <div className="space-y-2">
+                      <Label htmlFor="p-ocupacion">Ocupación o Profesión</Label>
+                      <Input id="p-ocupacion" value={editForm.ocupacion} onChange={e => field('ocupacion', e.target.value)} disabled={editLoading} />
                     </div>
 
                     {/* Nivel Estudios */}
@@ -1251,60 +1290,6 @@ export default function SettingsPage() {
                         <Input id="p-titulo" value={editForm.titulo_estudios} onChange={e => field('titulo_estudios', e.target.value)} disabled={editLoading} />
                       </div>
                     )}
-
-                    {/* Acompañante */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="p-acompanante">Acompañante</Label>
-                        <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <input
-                            type="checkbox"
-                            checked={acompananteLibreMode}
-                            onChange={e => toggleAcompananteLibreMode(e.target.checked)}
-                            className="h-4 w-4 rounded border-border"
-                          />
-                          No está registrado en la plataforma
-                        </label>
-                      </div>
-                      {acompananteLibreMode ? (
-                        <Input
-                          id="p-acompanante"
-                          placeholder="Nombre y apellido del acompañante"
-                          value={acompananteLibre}
-                          onChange={e => handleAcompananteLibreChange(e.target.value)}
-                        />
-                      ) : (
-                        <Combobox
-                          value={acompananteId}
-                          onSelect={handleAcompananteChange}
-                          options={[
-                            { label: 'Sin acompañante', value: '' },
-                            ...todasPersonas.map(p => ({ label: `${p.apellido}, ${p.nombre}`, value: p.id })),
-                          ]}
-                          placeholder="Seleccionar acompañante..."
-                          searchPlaceholder="Buscar por nombre o apellido..."
-                          emptyText="No se encontró la persona."
-                        />
-                      )}
-                    </div>
-
-                    {/* Acompaño a — se completa solo cuando otro cecista te elige como acompañante */}
-                    <div className="space-y-2">
-                      <Label>Acompaño a</Label>
-                      <div className="flex flex-wrap gap-2">
-                        {acompanados.map(a => (
-                          <span
-                            key={a.id}
-                            className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-foreground"
-                          >
-                            {a.persona?.apellido}, {a.persona?.nombre}
-                          </span>
-                        ))}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Se completa automáticamente cuando otro cecista te elige a vos como su acompañante.
-                      </p>
-                    </div>
 
                     {/* Notas */}
                     <div className="space-y-2">
@@ -1336,182 +1321,271 @@ export default function SettingsPage() {
                 </Card>
               </form>
 
-              {/* Secciones específicas de Cecistas */}
-              {persona.tipo_persona === 'cecista' && (
-                <>
-                  {/* Ministerios que ejerce (autodeclarado, selección múltiple) */}
-                  <Card className="border-border bg-card">
-                    <CardHeader>
-                      <CardTitle className="text-foreground">Ministerios que ejerce</CardTitle>
-                      <CardDescription>Marcá todos los que correspondan.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <MultiCombobox
-                        values={misAreasServicio}
-                        onChange={changeMisAreasServicio}
-                        options={areasServicio.map(a => ({ label: a.nombre, value: a.id }))}
-                        placeholder="Seleccionar ministerios..."
-                        searchPlaceholder="Buscar..."
-                        emptyText="No se encontraron resultados."
+              {/* Actividad — recorrido de la persona en la comunidad */}
+              <Card className="border-border bg-card">
+                <CardHeader>
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <CardTitle className="text-foreground">Actividad</CardTitle>
+                      <CardDescription>Tu recorrido en la comunidad — se guarda automáticamente</CardDescription>
+                    </div>
+                    <SaveIndicator status={saveStatus} />
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="p-anio-ingreso">Año de Ingreso a la Comunidad</Label>
+                      <Input
+                        id="p-anio-ingreso"
+                        type="number"
+                        min="1950"
+                        max={new Date().getFullYear()}
+                        placeholder="Ej: 2010"
+                        value={editForm.anio_ingreso}
+                        onChange={e => field('anio_ingreso', e.target.value)}
                         disabled={editLoading}
                       />
-                    </CardContent>
-                  </Card>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="p-modo-ingreso">Modo de Participación al Ingreso</Label>
+                      <select
+                        id="p-modo-ingreso"
+                        value={editForm.modo_participacion_ingreso}
+                        onChange={e => field('modo_participacion_ingreso', e.target.value)}
+                        disabled={editLoading}
+                        className={selectClass}
+                      >
+                        <option value="">Sin especificar</option>
+                        {Object.entries(MODOS_LABEL).map(([value, label]) => (
+                          <option key={value} value={value}>{label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="p-anio-cambio-modo">Año del Último Cambio de Modo de Participar</Label>
+                      <Input
+                        id="p-anio-cambio-modo"
+                        type="number"
+                        min="1950"
+                        max={new Date().getFullYear()}
+                        placeholder="Ej: 2018"
+                        value={editForm.anio_ultimo_cambio_modo}
+                        onChange={e => field('anio_ultimo_cambio_modo', e.target.value)}
+                        disabled={editLoading}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Desde cuándo rige tu modo de participación actual
+                        {modoActual ? ` (${MODOS_LABEL[modoActual] ?? modoActual})` : ''}.
+                      </p>
+                    </div>
+                  </div>
 
-                  {/* Casa Comunitaria */}
-                  <Card className="border-border bg-card">
-                    <CardHeader>
-                      <CardTitle className="text-foreground flex items-center gap-2">
-                        <Home className="h-5 w-5 text-primary" />
-                        Casa Comunitaria
-                      </CardTitle>
-                      <CardDescription>Casa comunitaria que integrás (una sola).</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2 max-w-md">
-                        <Label htmlFor="p-casa">Casa Comunitaria</Label>
-                        <select
-                          id="p-casa"
-                          value={casaId}
-                          onChange={e => persistCasa(e.target.value)}
-                          className={selectClass}
+                  {/* Acompañante */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="p-acompanante">Acompañante</Label>
+                      <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <input
+                          type="checkbox"
+                          checked={acompananteLibreMode}
+                          onChange={e => toggleAcompananteLibreMode(e.target.checked)}
+                          className="h-4 w-4 rounded border-border"
+                        />
+                        No está registrado en la plataforma
+                      </label>
+                    </div>
+                    {acompananteLibreMode ? (
+                      <Input
+                        id="p-acompanante"
+                        placeholder="Nombre y apellido del acompañante"
+                        value={acompananteLibre}
+                        onChange={e => handleAcompananteLibreChange(e.target.value)}
+                      />
+                    ) : (
+                      <Combobox
+                        value={acompananteId}
+                        onSelect={handleAcompananteChange}
+                        options={[
+                          { label: 'Sin acompañante', value: '' },
+                          ...todasPersonas.map(p => ({ label: `${p.apellido}, ${p.nombre}`, value: p.id })),
+                        ]}
+                        placeholder="Seleccionar acompañante..."
+                        searchPlaceholder="Buscar por nombre o apellido..."
+                        emptyText="No se encontró la persona."
+                      />
+                    )}
+                  </div>
+
+                  {/* Acompaño a — se completa solo cuando otro cecista te elige como acompañante */}
+                  <div className="space-y-2">
+                    <Label>Acompaño a</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {acompanados.map(a => (
+                        <span
+                          key={a.id}
+                          className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-foreground"
                         >
-                          <option value="">Sin casa comunitaria</option>
-                          {casas.map(c => (
-                            <option key={c.id} value={c.id}>
-                              {c.nombre}
-                            </option>
-                          ))}
-                        </select>
-                        {casas.length === 0 && (
-                          <p className="text-xs text-muted-foreground">
-                            Todavía no hay casas comunitarias cargadas. Pedile a un administrador que las dé de alta.
-                          </p>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
+                          {a.persona?.apellido}, {a.persona?.nombre}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Se completa automáticamente cuando otro cecista te elige a vos como su acompañante.
+                    </p>
+                  </div>
 
-                  {/* Dedicaciones */}
-                  <Card className="border-border bg-card">
-                    <CardHeader>
-                      <CardTitle className="text-foreground">Dedicación</CardTitle>
-                      <CardDescription>Marcá las que correspondan e indicá el año de inicio.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {DEDICACION_TIPOS.map(t => {
-                        const ded = dedicaciones[t.value] ?? { checked: false, anio: '' }
-                        return (
-                          <div key={t.value} className="flex items-center gap-3">
-                            <input
-                              id={`ded-${t.value}`}
-                              type="checkbox"
-                              checked={ded.checked}
-                              onChange={e => toggleDedicacion(t.value, e.target.checked)}
-                              className="h-4 w-4 rounded border-border"
-                            />
-                            <Label htmlFor={`ded-${t.value}`} className="flex-1">{t.label}</Label>
-                            <Input
-                              type="number"
-                              min="1950"
-                              max={new Date().getFullYear()}
-                              placeholder="Año inicio"
-                              value={ded.anio}
-                              onChange={e => setDedicacionAnio(t.value, e.target.value)}
-                              disabled={!ded.checked}
-                              className="w-32"
-                            />
-                          </div>
-                        )
-                      })}
-                    </CardContent>
-                  </Card>
-
-                  {/* Votos */}
-                  <Card className="border-border bg-card">
-                    <CardHeader>
-                      <CardTitle className="text-foreground">Votos</CardTitle>
-                      <CardDescription>
-                        Indicá el año del voto. Si es perpetuo marcalo; si es temporal, la cantidad de años.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {VOTO_TIPOS.map(t => {
-                        const v = votos[t.value] ?? { anio: '', perpetuo: false, temporal: '' }
-                        return (
-                          <div key={t.value} className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] items-center gap-3 border-b border-border/60 pb-3 last:border-0 last:pb-0">
-                            <Label className="text-sm">{t.label}</Label>
-                            <Input
-                              type="number"
-                              min="1950"
-                              max={new Date().getFullYear()}
-                              placeholder="Año"
-                              value={v.anio}
-                              onChange={e => changeVoto(t.value, { anio: e.target.value }, false)}
-                              className="w-24"
-                            />
-                            <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <input
-                                type="checkbox"
-                                checked={v.perpetuo}
-                                onChange={e => changeVoto(t.value, { perpetuo: e.target.checked, ...(e.target.checked ? { temporal: '' } : {}) }, true)}
-                                className="h-4 w-4 rounded border-border"
-                              />
-                              Perpetuo
-                            </label>
-                            <Input
-                              type="number"
-                              min="1"
-                              placeholder="Años (temp.)"
-                              value={v.temporal}
-                              onChange={e => changeVoto(t.value, { temporal: e.target.value }, false)}
-                              disabled={v.perpetuo}
-                              className="w-28"
-                            />
-                          </div>
-                        )
-                      })}
-                    </CardContent>
-                  </Card>
-
-                  {/* Convivencias, Retiros y Talleres realizados */}
-                  <Card className="border-border bg-card">
-                    <CardHeader>
-                      <CardTitle className="text-foreground">Convivencias, Retiros y Talleres realizados</CardTitle>
-                      <CardDescription>Marcá los que hayas hecho e indicá el año (opcional).</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {tiposEventos.length === 0 && (
-                        <p className="text-xs text-muted-foreground">No hay tipos de evento cargados todavía.</p>
+                  {/* Casa Comunitaria (relación 1→1, solo cecistas) */}
+                  {persona.tipo_persona === 'cecista' && (
+                    <div className="space-y-2 max-w-md">
+                      <Label htmlFor="p-casa" className="flex items-center gap-2">
+                        <Home className="h-4 w-4 text-primary" />
+                        Casa Comunitaria
+                      </Label>
+                      <select
+                        id="p-casa"
+                        value={casaId}
+                        onChange={e => persistCasa(e.target.value)}
+                        className={selectClass}
+                      >
+                        <option value="">Sin casa comunitaria</option>
+                        {casas.map(c => (
+                          <option key={c.id} value={c.id}>
+                            {c.nombre}
+                          </option>
+                        ))}
+                      </select>
+                      {casas.length === 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          Todavía no hay casas comunitarias cargadas. Pedile a un administrador que las dé de alta.
+                        </p>
                       )}
-                      {tiposEventos.map(t => {
-                        const ev = eventosRealizados[t.id] ?? { checked: false, anio: '' }
-                        return (
-                          <div key={t.id} className="flex items-center gap-3">
+                    </div>
+                  )}
+                </CardContent>
+
+                {/* Convivencias, Retiros y Talleres realizados — cierra la sección */}
+                {persona.tipo_persona === 'cecista' && (
+                  <CardContent className="space-y-3 border-t border-border pt-6">
+                    <div>
+                      <h3 className="font-medium text-foreground">Convivencias, Retiros y Talleres realizados</h3>
+                      <p className="text-sm text-muted-foreground">Marcá los que hayas hecho e indicá el año (opcional).</p>
+                    </div>
+                    {tiposEventos.length === 0 && (
+                      <p className="text-xs text-muted-foreground">No hay tipos de evento cargados todavía.</p>
+                    )}
+                    {tiposEventos.map(t => {
+                      const ev = eventosRealizados[t.id] ?? { checked: false, anio: '' }
+                      return (
+                        <div key={t.id} className="flex items-center gap-3">
+                          <input
+                            id={`evt-${t.id}`}
+                            type="checkbox"
+                            checked={ev.checked}
+                            onChange={e => toggleEventoRealizado(t.id, e.target.checked)}
+                            className="h-4 w-4 rounded border-border"
+                          />
+                          <Label htmlFor={`evt-${t.id}`} className="flex-1">{nombreLegible(t.nombre)}</Label>
+                          <Input
+                            type="number"
+                            min="1950"
+                            max={new Date().getFullYear()}
+                            placeholder="Año"
+                            value={ev.anio}
+                            onChange={e => setEventoRealizadoAnio(t.id, e.target.value)}
+                            disabled={!ev.checked}
+                            className="w-32"
+                          />
+                        </div>
+                      )
+                    })}
+                  </CardContent>
+                )}
+              </Card>
+
+              {/* Dedicación — dedicaciones + votos (solo cecistas) */}
+              {persona.tipo_persona === 'cecista' && (
+                <Card className="border-border bg-card">
+                  <CardHeader>
+                    <CardTitle className="text-foreground">Dedicación</CardTitle>
+                    <CardDescription>Tu dedicación y los votos que asumiste.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <h3 className="font-medium text-foreground">Dedicación</h3>
+                      <p className="text-sm text-muted-foreground">Marcá las que correspondan e indicá el año de inicio.</p>
+                    </div>
+                    {DEDICACION_TIPOS.map(t => {
+                      const ded = dedicaciones[t.value] ?? { checked: false, anio: '' }
+                      return (
+                        <div key={t.value} className="flex items-center gap-3">
+                          <input
+                            id={`ded-${t.value}`}
+                            type="checkbox"
+                            checked={ded.checked}
+                            onChange={e => toggleDedicacion(t.value, e.target.checked)}
+                            className="h-4 w-4 rounded border-border"
+                          />
+                          <Label htmlFor={`ded-${t.value}`} className="flex-1">{t.label}</Label>
+                          <Input
+                            type="number"
+                            min="1950"
+                            max={new Date().getFullYear()}
+                            placeholder="Año inicio"
+                            value={ded.anio}
+                            onChange={e => setDedicacionAnio(t.value, e.target.value)}
+                            disabled={!ded.checked}
+                            className="w-32"
+                          />
+                        </div>
+                      )
+                    })}
+                  </CardContent>
+
+                  <CardContent className="space-y-3 border-t border-border pt-6">
+                    <div>
+                      <h3 className="font-medium text-foreground">Votos</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Indicá el año del voto. Si es perpetuo marcalo; si es temporal, la cantidad de años.
+                      </p>
+                    </div>
+                    {VOTO_TIPOS.map(t => {
+                      const v = votos[t.value] ?? { anio: '', perpetuo: false, temporal: '' }
+                      return (
+                        <div key={t.value} className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] items-center gap-3 border-b border-border/60 pb-3 last:border-0 last:pb-0">
+                          <Label className="text-sm">{t.label}</Label>
+                          <Input
+                            type="number"
+                            min="1950"
+                            max={new Date().getFullYear()}
+                            placeholder="Año"
+                            value={v.anio}
+                            onChange={e => changeVoto(t.value, { anio: e.target.value }, false)}
+                            className="w-24"
+                          />
+                          <label className="flex items-center gap-2 text-sm text-muted-foreground">
                             <input
-                              id={`evt-${t.id}`}
                               type="checkbox"
-                              checked={ev.checked}
-                              onChange={e => toggleEventoRealizado(t.id, e.target.checked)}
+                              checked={v.perpetuo}
+                              onChange={e => changeVoto(t.value, { perpetuo: e.target.checked, ...(e.target.checked ? { temporal: '' } : {}) }, true)}
                               className="h-4 w-4 rounded border-border"
                             />
-                            <Label htmlFor={`evt-${t.id}`} className="flex-1">{t.nombre}</Label>
-                            <Input
-                              type="number"
-                              min="1950"
-                              max={new Date().getFullYear()}
-                              placeholder="Año"
-                              value={ev.anio}
-                              onChange={e => setEventoRealizadoAnio(t.id, e.target.value)}
-                              disabled={!ev.checked}
-                              className="w-32"
-                            />
-                          </div>
-                        )
-                      })}
-                    </CardContent>
-                  </Card>
-                </>
+                            Perpetuo
+                          </label>
+                          <Input
+                            type="number"
+                            min="1"
+                            placeholder="Años (temp.)"
+                            value={v.temporal}
+                            onChange={e => changeVoto(t.value, { temporal: e.target.value }, false)}
+                            disabled={v.perpetuo}
+                            className="w-28"
+                          />
+                        </div>
+                      )
+                    })}
+                  </CardContent>
+                </Card>
               )}
             </>
           )}
