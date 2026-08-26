@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import MercadoPagoPanel from "./_components/mercadopago-panel"
+import { DiocesisCombobox } from "@/components/diocesis-field"
 
 type OrgOption = { id: string; nombre: string; tipo: string }
 type OrgDependiente = { id: string; nombre: string; tipo: string }
@@ -385,12 +386,11 @@ export default function EditarOrganizacionPage() {
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="diocesis">Diócesis</Label>
-                  <Input
-                    id="diocesis"
-                    name="diocesis"
-                    placeholder="Diócesis de Corrientes"
+                  <DiocesisCombobox
                     value={formData.diocesis}
-                    onChange={handleChange}
+                    onChange={(val) => setFormData((prev) => ({ ...prev, diocesis: val }))}
+                    pais={formData.pais}
+                    provincia={formData.provincia}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">

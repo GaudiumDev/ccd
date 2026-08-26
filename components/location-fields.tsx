@@ -4,22 +4,11 @@ import * as React from "react"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox"
+import { DiocesisCombobox } from "@/components/diocesis-field"
+import { PAISES } from "@/lib/geo/paises"
+import { getSubdivisiones } from "@/lib/geo/subdivisiones"
 
-// Short list of most common countries; Argentina first
-export const PAISES: ComboboxOption[] = [
-  { label: "Argentina", value: "Argentina" },
-  { label: "Bolivia", value: "Bolivia" },
-  { label: "Brasil", value: "Brasil" },
-  { label: "Chile", value: "Chile" },
-  { label: "Colombia", value: "Colombia" },
-  { label: "Ecuador", value: "Ecuador" },
-  { label: "España", value: "España" },
-  { label: "México", value: "México" },
-  { label: "Paraguay", value: "Paraguay" },
-  { label: "Perú", value: "Perú" },
-  { label: "Uruguay", value: "Uruguay" },
-  { label: "Venezuela", value: "Venezuela" },
-]
+export { PAISES }
 
 interface GeorefProvincia {
   id: string
@@ -74,6 +63,19 @@ export function LocationFields({
   provinciaLabel = "Provincia",
 }: LocationFieldsProps) {
   const isArgentina = pais === "Argentina"
+
+  // Provincias / estados del país seleccionado (Argentina se resuelve por API, más abajo).
+  const subdivisiones = React.useMemo<ComboboxOption[] | null>(() => {
+    if (isArgentina) return null
+    const nombres = getSubdivisiones(pais)
+    if (!nombres) return null
+    const opts = nombres.map((n) => ({ label: n, value: n }))
+    // Conserva un valor ya cargado que no figure en el listado.
+    if (provincia && !opts.some((o) => o.value === provincia)) {
+      opts.unshift({ label: provincia, value: provincia })
+    }
+    return opts
+  }, [isArgentina, pais, provincia])
 
   // Province typeahead state
   const [provinciaQuery, setProvinciaQuery] = React.useState("")
@@ -174,6 +176,16 @@ export function LocationFields({
             loading={provinciasLoading}
             disabled={disabled}
           />
+        ) : subdivisiones ? (
+          <Combobox
+            value={provincia}
+            onSelect={handleProvinciaChange}
+            options={subdivisiones}
+            placeholder="Seleccionar provincia / estado..."
+            searchPlaceholder="Escribir para buscar..."
+            emptyText="No se encontró la provincia / estado."
+            disabled={disabled}
+          />
         ) : (
           <Input
             placeholder="Provincia / Estado"
@@ -228,12 +240,11 @@ export function LocationFields({
       {onDiocesisChange !== undefined && (
         <div className="space-y-2">
           <Label htmlFor="diocesis">Diócesis</Label>
-          <Input
-            id="diocesis"
-            name="diocesis"
-            placeholder="Ej: Diócesis de Corrientes"
+          <DiocesisCombobox
             value={diocesis ?? ""}
-            onChange={(e) => onDiocesisChange(e.target.value)}
+            onChange={onDiocesisChange}
+            pais={pais}
+            provincia={provincia}
             disabled={disabled}
           />
         </div>

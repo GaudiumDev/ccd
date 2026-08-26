@@ -21,6 +21,27 @@ import {
 export interface ComboboxOption {
   label: string
   value: string
+  /** Términos alternativos de búsqueda (ej. "Holanda" para Países Bajos). */
+  keywords?: string[]
+}
+
+/** Minúsculas y sin tildes, para que "italia" encuentre "Italia" y "espana" encuentre "España". */
+function normalize(text: string): string {
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+}
+
+/** Filtro accent-insensitive que además considera los `keywords` de cada opción. */
+function fuzzyFilter(value: string, search: string, keywords?: string[]): number {
+  const q = normalize(search)
+  if (!q) return 1
+  const haystack = [value, ...(keywords ?? [])].map(normalize)
+  if (haystack.some((h) => h.startsWith(q))) return 1
+  if (haystack.some((h) => h.includes(q))) return 0.5
+  return 0
 }
 
 interface ComboboxProps {
@@ -81,7 +102,7 @@ export function Combobox({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
-        <Command shouldFilter={!onSearch}>
+        <Command shouldFilter={!onSearch} filter={fuzzyFilter}>
           <CommandInput
             placeholder={searchPlaceholder}
             value={search}
@@ -98,6 +119,7 @@ export function Combobox({
                     <CommandItem
                       key={option.value}
                       value={option.label}
+                      keywords={option.keywords}
                       onSelect={handleSelect}
                       className="data-[selected=true]:bg-muted data-[selected=true]:text-foreground"
                     >

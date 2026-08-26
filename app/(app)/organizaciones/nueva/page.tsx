@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/card"
 import { ArrowLeft } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { DiocesisCombobox } from "@/components/diocesis-field"
 
 type OrgOption = { id: string; nombre: string; tipo: string }
 
@@ -270,12 +271,11 @@ export default function NewOrganizacionPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="diocesis">Diócesis</Label>
-                  <Input
-                    id="diocesis"
-                    name="diocesis"
-                    placeholder="Diócesis de Corrientes"
+                  <DiocesisCombobox
                     value={formData.diocesis}
-                    onChange={handleChange}
+                    onChange={(val) => setFormData((prev) => ({ ...prev, diocesis: val }))}
+                    pais={formData.pais}
+                    provincia={formData.provincia}
                   />
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
