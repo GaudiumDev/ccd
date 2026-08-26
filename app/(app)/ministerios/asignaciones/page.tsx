@@ -35,7 +35,8 @@ export default async function AsignacionesPage({
     .eq("activo", true)
     .order("nombre")
 
-  // Cargar asignaciones activas desde asignaciones_ministerio
+  // Cargar asignaciones activas desde asignaciones_ministerio, con la persona
+  // embebida en la misma consulta (evita un segundo .in() con miles de ids).
   let query = supabase
     .from("asignaciones_ministerio")
     .select(
@@ -43,6 +44,7 @@ export default async function AsignacionesPage({
       id,
       fecha_inicio,
       persona_id,
+      persona:personas!persona_id(nombre, apellido, email),
       organizacion:organizaciones!organizacion_id(nombre),
       ministerio:ministerios!ministerio_id(nombre, tipo, nivel_acceso)
     `,
@@ -56,31 +58,10 @@ export default async function AsignacionesPage({
 
   const { data: asignaciones } = await query
 
-  // Cargar datos de personas
-  const personaIds = [
-    ...new Set(
-      (asignaciones ?? []).map((a: any) => a.persona_id).filter(Boolean),
-    ),
-  ]
-
-  const personasPorId: Record<
-    string,
-    { nombre: string; apellido: string; email: string | null }
-  > = {}
-  if (personaIds.length > 0) {
-    const { data: personasData } = await supabase
-      .from("personas")
-      .select("id, nombre, apellido, email")
-      .in("id", personaIds)
-    for (const p of personasData ?? []) {
-      personasPorId[p.id] = p
-    }
-  }
-
   // Filtrar por nombre si hay búsqueda
   const asignacionesFiltradas = (asignaciones ?? []).filter((a: any) => {
     if (!q) return true
-    const persona = personasPorId[a.persona_id]
+    const persona = a.persona
     if (!persona) return false
     const nombre = `${persona.nombre} ${persona.apellido}`.toLowerCase()
     const email = (persona.email ?? "").toLowerCase()
@@ -195,7 +176,7 @@ export default async function AsignacionesPage({
                 </thead>
                 <tbody>
                   {asignacionesFiltradas.map((a: any) => {
-                    const persona = personasPorId[a.persona_id]
+                    const persona = a.persona
                     const nombreCompleto = persona
                       ? `${persona.nombre} ${persona.apellido}`
                       : "Persona no encontrada"

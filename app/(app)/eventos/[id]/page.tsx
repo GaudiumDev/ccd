@@ -168,6 +168,9 @@ export default async function EventoDetailPage({
     organizacion_id: evento.organizacion_id ?? null,
     fraternidad_id: evento.fraternidad_id ?? null,
     coordinador_asignado_id: (evento as Record<string, unknown>).coordinador_asignado_id as string | null,
+    centralizador_1_persona_id: (evento as Record<string, unknown>).centralizador_1_persona_id as string | null,
+    centralizador_2_persona_id: (evento as Record<string, unknown>).centralizador_2_persona_id as string | null,
+    centralizador_3_persona_id: (evento as Record<string, unknown>).centralizador_3_persona_id as string | null,
   }
   const showCierre = canVerCierre(ctx, cierreEvento)
 
@@ -179,8 +182,12 @@ export default async function EventoDetailPage({
   }
   let participantes: ParticipanteRow[] = []
   let movimientos: Movimiento[] = []
+  const resumenPagos = {
+    inscripcion: { confirmado: 0, pendiente: 0 },
+    pension: { confirmado: 0, pendiente: 0 },
+  }
   if (showCierre) {
-    const [{ data: parts }, { data: movs }] = await Promise.all([
+    const [{ data: parts }, { data: movs }, { data: pagosEvento }] = await Promise.all([
       supabase
         .from('evento_participantes')
         .select('persona_id, rol_en_evento, estado_participacion, persona:personas!persona_id(nombre, apellido, email, telefono)')
@@ -190,9 +197,19 @@ export default async function EventoDetailPage({
         .select('*')
         .eq('evento_id', id)
         .order('created_at', { ascending: true }),
+      supabase
+        .from('pagos')
+        .select('monto, estado_pago, concepto, participante:evento_participantes!evento_participante_id!inner(evento_id)')
+        .eq('participante.evento_id', id),
     ])
     participantes = (parts ?? []) as unknown as ParticipanteRow[]
     movimientos = (movs ?? []) as Movimiento[]
+
+    for (const p of (pagosEvento ?? []) as { monto: number; estado_pago: string; concepto: string | null }[]) {
+      const c: 'inscripcion' | 'pension' = p.concepto === 'pension' ? 'pension' : 'inscripcion'
+      if (p.estado_pago === 'confirmado') resumenPagos[c].confirmado += Number(p.monto)
+      else if (p.estado_pago === 'pendiente') resumenPagos[c].pendiente += Number(p.monto)
+    }
   }
 
   const conviventesCierre = participantes
@@ -1019,6 +1036,7 @@ export default async function EventoDetailPage({
           cecistas={(personasCecistas ?? []) as { id: string; nombre: string; apellido: string }[]}
           preguntas={preguntasInforme}
           movimientos={movimientos}
+          resumenPagos={resumenPagos}
           inicial={{
             cierre_foto_convivencia_url: (ev.cierre_foto_convivencia_url as string | null) ?? null,
             cierre_foto_servidores_url: (ev.cierre_foto_servidores_url as string | null) ?? null,

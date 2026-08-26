@@ -16,7 +16,7 @@ export async function PATCH(
 
   const { data: evento, error: eventoError } = await supabase
     .from('eventos')
-    .select('id, estado, organizacion_id, fraternidad_id, coordinador_asignado_id')
+    .select('id, estado, organizacion_id, fraternidad_id, coordinador_asignado_id, centralizador_1_persona_id, centralizador_2_persona_id, centralizador_3_persona_id')
     .eq('id', id)
     .single()
 

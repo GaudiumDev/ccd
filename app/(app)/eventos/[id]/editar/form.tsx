@@ -46,6 +46,7 @@ export default function EditarEventoForm({
     casa_retiro_id: "",
     cupo_maximo: "30",
     precio: "",
+    pension: "",
     audiencia: "cerrado",
     modalidad: "presencial",
     estado: "borrador",
@@ -65,7 +66,7 @@ export default function EditarEventoForm({
       supabase
         .from("eventos")
         .select(
-          "id, nombre, tipo, fecha_solicitud, fecha_inicio, fecha_fin, organizacion_id, casa_retiro_id, cupo_maximo, precio, audiencia, modalidad, estado, descripcion, link_pago_mercadopago, ciudad, codigo_postal, diocesis, provincia_evento, pais_evento, flyer_horizontal_url, flyer_cuadrado_url",
+          "id, nombre, tipo, fecha_solicitud, fecha_inicio, fecha_fin, organizacion_id, casa_retiro_id, cupo_maximo, precio, pension, audiencia, modalidad, estado, descripcion, link_pago_mercadopago, ciudad, codigo_postal, diocesis, provincia_evento, pais_evento, flyer_horizontal_url, flyer_cuadrado_url",
         )
         .eq("id", id)
         .single(),
@@ -108,6 +109,7 @@ export default function EditarEventoForm({
           casa_retiro_id: evento.casa_retiro_id ?? "",
           cupo_maximo: evento.cupo_maximo?.toString() ?? "30",
           precio: evento.precio?.toString() ?? "",
+          pension: evento.pension?.toString() ?? "",
           audiencia: evento.audiencia ?? "cerrado",
           modalidad: evento.modalidad ?? "presencial",
           estado: evento.estado ?? "borrador",
@@ -187,6 +189,7 @@ export default function EditarEventoForm({
           ? parseInt(formData.cupo_maximo)
           : null,
         precio: formData.precio ? parseFloat(formData.precio) : null,
+        pension: formData.pension ? parseFloat(formData.pension) : null,
         descripcion: formData.descripcion || null,
         link_pago_mercadopago: formData.link_pago_mercadopago.trim() || null,
         ciudad: formData.ciudad || null,
@@ -540,8 +543,8 @@ export default function EditarEventoForm({
               </select>
             </div>
 
-            {/* Cupo y Precio */}
-            <div className="grid gap-4 md:grid-cols-2">
+            {/* Cupo y Precios */}
+            <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="cupo_maximo">Cupo Máximo</Label>
                 <Input
@@ -554,7 +557,7 @@ export default function EditarEventoForm({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="precio">Precio</Label>
+                <Label htmlFor="precio">Precio de Inscripción</Label>
                 <Input
                   id="precio"
                   name="precio"
@@ -566,7 +569,23 @@ export default function EditarEventoForm({
                   onChange={handleChange}
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="pension">Precio de Pensión</Label>
+                <Input
+                  id="pension"
+                  name="pension"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={formData.pension}
+                  onChange={handleChange}
+                />
+              </div>
             </div>
+            <p className="text-xs text-muted-foreground -mt-3">
+              La landing pública del evento solo cobra el precio de inscripción. La pensión se registra y valida desde Pagos.
+            </p>
 
             {/* Audiencia y Modalidad */}
             <div className="grid gap-4 md:grid-cols-2">

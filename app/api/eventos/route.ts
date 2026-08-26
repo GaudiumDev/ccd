@@ -36,6 +36,8 @@ export async function POST(request: Request) {
     fecha_inicio: body.fecha_inicio,
     fecha_fin: body.fecha_fin,
     estado,
+    precio: body.precio != null && body.precio !== '' ? Number(body.precio) : 0,
+    pension: body.pension != null && body.pension !== '' ? Number(body.pension) : 0,
     organizacion_id: organizacion_id || null,       // confraternidad
     fraternidad_id: fraternidad_id || null,
     requiere_discernimiento_confra: body.requiere_discernimiento_confra ?? false,

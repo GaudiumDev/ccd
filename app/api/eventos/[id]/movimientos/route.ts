@@ -7,7 +7,7 @@ async function loadEvento(id: string) {
   const supabase = await createClient()
   const { data } = await supabase
     .from('eventos')
-    .select('id, estado, organizacion_id, fraternidad_id, coordinador_asignado_id')
+    .select('id, estado, organizacion_id, fraternidad_id, coordinador_asignado_id, centralizador_1_persona_id, centralizador_2_persona_id, centralizador_3_persona_id')
     .eq('id', id)
     .single()
   return { supabase, evento: data }
@@ -58,6 +58,7 @@ export async function POST(
       .from('pagos')
       .select('id, monto, fecha_pago, participante:evento_participantes!evento_participante_id!inner(evento_id, persona:personas!persona_id(nombre, apellido))')
       .eq('estado_pago', 'confirmado')
+      .eq('concepto', 'pension')
       .eq('participante.evento_id', id)
 
     if (pagosError) return NextResponse.json({ error: pagosError.message }, { status: 400 })

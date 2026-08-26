@@ -7,7 +7,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { DollarSign, Plus, Edit2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getUserContext, canPerform } from '@/lib/auth/context'
+import { esCentralizadorDeEvento } from '@/lib/eventos/cierre'
 import { VerificacionPendientes, type PagoPendiente } from '@/components/pagos/VerificacionPendientes'
+
+const conceptoLabel: Record<string, string> = {
+  inscripcion: 'Inscripción',
+  pension: 'Pensión',
+}
 
 const estadoClases: Record<string, string> = {
   pendiente: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400',
@@ -22,7 +28,7 @@ export default async function PagosPage() {
   const { data: pagos } = await supabase
     .from('pagos')
     .select(`
-      id, monto, medio_pago, estado_pago, fecha_pago, referencia,
+      id, monto, medio_pago, estado_pago, fecha_pago, referencia, concepto,
       participante:evento_participantes!evento_participante_id(
         persona:personas!persona_id(nombre, apellido),
         evento:eventos!evento_id(nombre)
@@ -30,18 +36,19 @@ export default async function PagosPage() {
     `)
     .order('fecha_pago', { ascending: false })
 
-  // Pendientes de verificación: transferencias con comprobante, scopeadas a la org del usuario.
-  const puedeVerificar = !!ctx && canPerform(ctx, 'payment.verify')
+  // Pendientes de verificación: transferencias con comprobante. Visibles para quien
+  // tiene payment.verify scopeado a la org del evento, o es Centralizador del evento.
+  const tienePermisoVerificar = !!ctx && canPerform(ctx, 'payment.verify')
   let pagosPendientes: PagoPendiente[] = []
 
-  if (puedeVerificar && ctx) {
+  if (ctx) {
     const { data: pendientes } = await supabase
       .from('pagos')
       .select(`
-        id, monto, fecha_pago, comprobante_url,
+        id, monto, fecha_pago, comprobante_url, concepto,
         participante:evento_participantes!evento_participante_id(
           persona:personas!persona_id(nombre, apellido),
-          evento:eventos!evento_id(nombre, organizacion_id, fraternidad_id)
+          evento:eventos!evento_id(nombre, organizacion_id, fraternidad_id, centralizador_1_persona_id, centralizador_2_persona_id, centralizador_3_persona_id)
         )
       `)
       .eq('medio_pago', 'transferencia')
@@ -52,9 +59,11 @@ export default async function PagosPage() {
     const visibles = (pendientes ?? []).filter((p: any) => {
       if (ctx.is_admin) return true
       const ev = p.participante?.evento
+      if (!ev) return false
       return (
-        (ev?.organizacion_id && ctx.org_ids.includes(ev.organizacion_id)) ||
-        (ev?.fraternidad_id && ctx.org_ids.includes(ev.fraternidad_id))
+        (ev.organizacion_id && ctx.org_ids.includes(ev.organizacion_id)) ||
+        (ev.fraternidad_id && ctx.org_ids.includes(ev.fraternidad_id)) ||
+        esCentralizadorDeEvento(ctx, ev)
       )
     })
 
@@ -72,6 +81,7 @@ export default async function PagosPage() {
           monto: Number(p.monto),
           fecha_pago: p.fecha_pago,
           comprobante_signed_url: signedUrl,
+          concepto: p.concepto ?? 'inscripcion',
           persona: p.participante?.persona
             ? `${p.participante.persona.apellido}, ${p.participante.persona.nombre}`
             : '—',
@@ -87,6 +97,11 @@ export default async function PagosPage() {
   const totalPendiente = (pagos ?? [])
     .filter(p => p.estado_pago === 'pendiente')
     .reduce((sum, p) => sum + Number(p.monto), 0)
+
+  const totalPorConcepto = (concepto: string, estado: string) =>
+    (pagos ?? [])
+      .filter(p => (p.concepto ?? 'inscripcion') === concepto && p.estado_pago === estado)
+      .reduce((sum, p) => sum + Number(p.monto), 0)
 
   return (
     <div className="space-y-8">
@@ -116,7 +131,37 @@ export default async function PagosPage() {
         </Card>
       </div>
 
-      {puedeVerificar && <VerificacionPendientes pagos={pagosPendientes} />}
+      {/* Inscripciones vs Pensiones */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="border-border bg-card">
+          <CardHeader className="pb-2">
+            <CardDescription>Inscripciones</CardDescription>
+            <CardTitle className="text-lg text-foreground">
+              <span className="text-green-600">${totalPorConcepto('inscripcion', 'confirmado').toFixed(2)}</span>
+              <span className="mx-1 text-muted-foreground text-sm">confirmado</span>
+              {' · '}
+              <span className="text-yellow-600">${totalPorConcepto('inscripcion', 'pendiente').toFixed(2)}</span>
+              <span className="mx-1 text-muted-foreground text-sm">pendiente</span>
+            </CardTitle>
+          </CardHeader>
+        </Card>
+        <Card className="border-border bg-card">
+          <CardHeader className="pb-2">
+            <CardDescription>Pensiones</CardDescription>
+            <CardTitle className="text-lg text-foreground">
+              <span className="text-green-600">${totalPorConcepto('pension', 'confirmado').toFixed(2)}</span>
+              <span className="mx-1 text-muted-foreground text-sm">confirmado</span>
+              {' · '}
+              <span className="text-yellow-600">${totalPorConcepto('pension', 'pendiente').toFixed(2)}</span>
+              <span className="mx-1 text-muted-foreground text-sm">pendiente</span>
+            </CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
+
+      {(tienePermisoVerificar || pagosPendientes.length > 0) && (
+        <VerificacionPendientes pagos={pagosPendientes} mostrarVacio={tienePermisoVerificar} />
+      )}
 
       <Card className="border-border bg-card">
         <CardHeader className="flex flex-row items-center justify-between">
@@ -139,6 +184,7 @@ export default async function PagosPage() {
                   <tr className="border-b border-border">
                     <th className="text-left py-3 px-4 font-semibold text-foreground">Persona</th>
                     <th className="text-left py-3 px-4 font-semibold text-foreground">Evento</th>
+                    <th className="text-left py-3 px-4 font-semibold text-foreground">Concepto</th>
                     <th className="text-left py-3 px-4 font-semibold text-foreground">Monto</th>
                     <th className="text-left py-3 px-4 font-semibold text-foreground">Fecha</th>
                     <th className="text-left py-3 px-4 font-semibold text-foreground">Medio</th>
@@ -156,6 +202,9 @@ export default async function PagosPage() {
                       </td>
                       <td className="py-3 px-4 text-muted-foreground">
                         {pago.participante?.evento?.nombre ?? '—'}
+                      </td>
+                      <td className="py-3 px-4 text-muted-foreground">
+                        {conceptoLabel[pago.concepto ?? 'inscripcion'] ?? pago.concepto}
                       </td>
                       <td className="py-3 px-4 text-foreground font-medium">
                         ${Number(pago.monto).toFixed(2)}

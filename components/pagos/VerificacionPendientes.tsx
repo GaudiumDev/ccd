@@ -23,11 +23,23 @@ export type PagoPendiente = {
   monto: number
   fecha_pago: string | null
   comprobante_signed_url: string | null
+  concepto: string
   persona: string
   evento: string
 }
 
-export function VerificacionPendientes({ pagos }: { pagos: PagoPendiente[] }) {
+const conceptoLabel: Record<string, string> = {
+  inscripcion: 'Inscripción',
+  pension: 'Pensión',
+}
+
+export function VerificacionPendientes({
+  pagos,
+  mostrarVacio = false,
+}: {
+  pagos: PagoPendiente[]
+  mostrarVacio?: boolean
+}) {
   const router = useRouter()
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -60,7 +72,7 @@ export function VerificacionPendientes({ pagos }: { pagos: PagoPendiente[] }) {
     }
   }
 
-  if (pagos.length === 0) return null
+  if (pagos.length === 0 && !mostrarVacio) return null
 
   return (
     <Card className="border-border bg-card">
@@ -74,12 +86,18 @@ export function VerificacionPendientes({ pagos }: { pagos: PagoPendiente[] }) {
         {error && (
           <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
         )}
+        {pagos.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No hay pagos pendientes de verificación.</p>
+        ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {pagos.map((p) => (
             <div key={p.id} className="rounded-lg border border-border p-4 space-y-3">
               <div>
                 <p className="font-medium text-foreground">{p.persona}</p>
                 <p className="text-sm text-muted-foreground">{p.evento}</p>
+                <span className="mt-1 inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                  {conceptoLabel[p.concepto] ?? p.concepto}
+                </span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="font-semibold text-foreground">${Number(p.monto).toFixed(2)}</span>
@@ -121,6 +139,7 @@ export function VerificacionPendientes({ pagos }: { pagos: PagoPendiente[] }) {
             </div>
           ))}
         </div>
+        )}
       </CardContent>
 
       <Dialog open={!!comprobante} onOpenChange={(open) => !open && setComprobante(null)}>
