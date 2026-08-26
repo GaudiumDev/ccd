@@ -14,14 +14,17 @@ import { exportInformeEconomicoPDF, type EventoInfo } from '@/lib/eventos/cierre
 
 const inputClass = 'w-full rounded border border-border bg-background px-3 py-1.5 text-sm text-foreground'
 
+type ResumenConcepto = { confirmado: number; pendiente: number }
+
 type Props = {
   eventoId: string
   eventoInfo: EventoInfo
   movimientosIniciales: Movimiento[]
+  resumenPagos: { inscripcion: ResumenConcepto; pension: ResumenConcepto }
   readOnly: boolean
 }
 
-export default function CierreEconomico({ eventoId, eventoInfo, movimientosIniciales, readOnly }: Props) {
+export default function CierreEconomico({ eventoId, eventoInfo, movimientosIniciales, resumenPagos, readOnly }: Props) {
   const [movimientos, setMovimientos] = useState<Movimiento[]>(movimientosIniciales)
   const [tipo, setTipo] = useState<'ingreso' | 'egreso'>('ingreso')
   const [subtipoIngreso, setSubtipoIngreso] = useState<string>(SUBTIPOS_INGRESO[0].value)
@@ -116,6 +119,12 @@ export default function CierreEconomico({ eventoId, eventoInfo, movimientosInici
         <ResumenBox label="Egresos" value={egresos} tone="neg" />
         <ResumenBox label="Saldo" value={saldo} tone={saldo >= 0 ? 'pos' : 'neg'} strong />
         <ResumenBox label="Diezmo (20% EqT)" value={diezmo} tone="neutral" strong />
+      </div>
+
+      {/* Inscripciones y Pensiones */}
+      <div className="grid grid-cols-2 gap-3">
+        <ResumenConceptoBox label="Inscripciones" resumen={resumenPagos.inscripcion} />
+        <ResumenConceptoBox label="Pensiones" resumen={resumenPagos.pension} />
       </div>
 
       {/* Movimientos */}
@@ -214,6 +223,21 @@ export default function CierreEconomico({ eventoId, eventoInfo, movimientosInici
       >
         <Download className="h-4 w-4" /> Exportar PDF
       </Button>
+    </div>
+  )
+}
+
+function ResumenConceptoBox({ label, resumen }: { label: string; resumen: { confirmado: number; pendiente: number } }) {
+  return (
+    <div className="rounded-md border border-border p-3 bg-card">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-sm font-medium tabular-nums">
+        <span className="text-green-600 dark:text-green-400">${formatMonto(resumen.confirmado)}</span>
+        <span className="mx-1 text-xs text-muted-foreground">confirmado</span>
+        {' · '}
+        <span className="text-yellow-600 dark:text-yellow-400">${formatMonto(resumen.pendiente)}</span>
+        <span className="mx-1 text-xs text-muted-foreground">pendiente</span>
+      </p>
     </div>
   )
 }

@@ -69,7 +69,7 @@ export async function POST(request: Request) {
 
   const { data: pago } = await supabaseAdmin
     .from('pagos')
-    .select('id, mp_payment_id, mp_organizacion_id, evento_participante_id')
+    .select('id, mp_payment_id, mp_organizacion_id, evento_participante_id, concepto')
     .eq('id', pagoId)
     .maybeSingle()
 
@@ -105,7 +105,7 @@ export async function POST(request: Request) {
     .update({ estado_pago: estadoPago, mp_payment_id: payment.id })
     .eq('id', pago.id)
 
-  if (estadoPago === 'confirmado') {
+  if (estadoPago === 'confirmado' && pago.concepto === 'inscripcion') {
     await supabaseAdmin
       .from('evento_participantes')
       .update({ estado_participacion: 'inscripto' })

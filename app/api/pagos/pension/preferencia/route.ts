@@ -1,10 +1,21 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { MercadoPagoConfig, Preference } from 'mercadopago'
+import { getUserContext, canPerform } from '@/lib/auth/context'
+import { esCentralizadorDeEvento } from '@/lib/eventos/cierre'
 import { resolverCuentaEvento } from '@/lib/mercadopago/org-account'
 import { getPublicOrigin } from '@/lib/http'
 
+// Genera un link de pago de Mercado Pago para la pensión de un participante.
+// A diferencia de la inscripción (checkout público en la landing), esto lo
+// invoca un Centralizador/Responsable/Enlace/Delegado EqT desde el panel
+// interno de Pagos, para compartir el link con el conviviente.
 export async function POST(request: Request) {
+  const ctx = await getUserContext()
+  if (!ctx) {
+    return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+  }
+
   let body: { evento_participante_id?: string }
   try {
     body = await request.json()
@@ -14,7 +25,7 @@ export async function POST(request: Request) {
 
   const eventoParticipanteId = body.evento_participante_id
   if (typeof eventoParticipanteId !== 'string' || !eventoParticipanteId) {
-    return NextResponse.json({ error: 'Falta la inscripción.' }, { status: 400 })
+    return NextResponse.json({ error: 'Falta el participante.' }, { status: 400 })
   }
 
   const supabaseAdmin = createClient(
@@ -25,25 +36,43 @@ export async function POST(request: Request) {
 
   const { data: participante } = await supabaseAdmin
     .from('evento_participantes')
-    .select('id, evento:eventos!evento_id(id, nombre, precio, organizacion_id, fraternidad_id)')
+    .select(
+      'id, evento:eventos!evento_id(id, nombre, pension, organizacion_id, fraternidad_id, centralizador_1_persona_id, centralizador_2_persona_id, centralizador_3_persona_id)'
+    )
     .eq('id', eventoParticipanteId)
     .single()
 
   if (!participante) {
-    return NextResponse.json({ error: 'No se encontró la inscripción.' }, { status: 404 })
+    return NextResponse.json({ error: 'No se encontró el participante.' }, { status: 404 })
   }
 
   const evento = participante.evento as unknown as {
     id: string
     nombre: string
-    precio: number | null
+    pension: number | null
     organizacion_id: string | null
     fraternidad_id: string | null
+    centralizador_1_persona_id: string | null
+    centralizador_2_persona_id: string | null
+    centralizador_3_persona_id: string | null
   } | null
-  const monto = Number(evento?.precio ?? 0)
 
-  if (!evento || monto <= 0) {
-    return NextResponse.json({ error: 'Este evento no requiere pago de inscripción.' }, { status: 400 })
+  if (!evento) {
+    return NextResponse.json({ error: 'No se encontró el evento.' }, { status: 404 })
+  }
+
+  const autorizado =
+    canPerform(ctx, 'event.update', evento.organizacion_id) ||
+    (evento.fraternidad_id ? canPerform(ctx, 'event.update', evento.fraternidad_id) : false) ||
+    esCentralizadorDeEvento(ctx, evento)
+
+  if (!autorizado) {
+    return NextResponse.json({ error: 'No tenés permiso para generar pagos de pensión de este evento' }, { status: 403 })
+  }
+
+  const monto = Number(evento.pension ?? 0)
+  if (monto <= 0) {
+    return NextResponse.json({ error: 'Este evento no tiene precio de pensión configurado.' }, { status: 400 })
   }
 
   const cuenta = await resolverCuentaEvento(evento.organizacion_id, evento.fraternidad_id)
@@ -54,18 +83,19 @@ export async function POST(request: Request) {
     )
   }
 
-  // Evitar preferencias duplicadas para una inscripción ya con pago en curso
+  // Evitar preferencias duplicadas para una pensión ya con pago en curso
+  // (scopeado por concepto: un pago de inscripción confirmado no debe bloquear la pensión).
   const { data: pagoExistente } = await supabaseAdmin
     .from('pagos')
     .select('id')
     .eq('evento_participante_id', eventoParticipanteId)
-    .eq('concepto', 'inscripcion')
+    .eq('concepto', 'pension')
     .in('estado_pago', ['pendiente', 'confirmado'])
     .maybeSingle()
 
   if (pagoExistente) {
     return NextResponse.json(
-      { error: 'Ya hay un pago en curso para esta inscripción.' },
+      { error: 'Ya hay un pago de pensión en curso para este participante.' },
       { status: 409 }
     )
   }
@@ -76,7 +106,7 @@ export async function POST(request: Request) {
     .from('pagos')
     .insert({
       evento_participante_id: eventoParticipanteId,
-      concepto: 'inscripcion',
+      concepto: 'pension',
       monto,
       medio_pago: 'mercadopago',
       estado_pago: 'pendiente',
@@ -100,27 +130,19 @@ export async function POST(request: Request) {
         items: [
           {
             id: pago.id,
-            title: `Inscripción — ${evento.nombre}`,
+            title: `Pensión — ${evento.nombre}`,
             quantity: 1,
             unit_price: monto,
             currency_id: 'ARS',
           },
         ],
         external_reference: pago.id,
-        back_urls: {
-          success: `${origin}/e/${evento.id}?pago=success`,
-          pending: `${origin}/e/${evento.id}?pago=pending`,
-          failure: `${origin}/e/${evento.id}?pago=failure`,
-        },
         notification_url: `${origin}/api/public/pagos/mercadopago/webhook?pago_id=${pago.id}`,
-        auto_return: 'approved',
       },
     })
 
     await supabaseAdmin.from('pagos').update({ mp_preference_id: result.id }).eq('id', pago.id)
 
-    // En producción siempre el checkout real; sandbox_init_point queda solo
-    // para cuando se prueba localmente con credenciales de prueba.
     const checkoutUrl = process.env.VERCEL_ENV === 'production'
       ? result.init_point
       : (result.sandbox_init_point ?? result.init_point)

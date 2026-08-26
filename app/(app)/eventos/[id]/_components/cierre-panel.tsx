@@ -30,6 +30,10 @@ type Props = {
   cecistas: Persona[]
   preguntas: PreguntaInforme[]
   movimientos: Movimiento[]
+  resumenPagos: {
+    inscripcion: { confirmado: number; pendiente: number }
+    pension: { confirmado: number; pendiente: number }
+  }
   inicial: {
     cierre_foto_convivencia_url: string | null
     cierre_foto_servidores_url: string | null
@@ -61,7 +65,7 @@ function Section({ icon: Icon, title, badge, children }: { icon: React.ElementTy
 }
 
 export default function CierrePanel(props: Props) {
-  const { eventoId, estado, eventoInfo, canEditar, canVerConfidencial, canEditarConfidencial, canCerrar, conviventes, servidores, cecistas, preguntas, movimientos, inicial } = props
+  const { eventoId, estado, eventoInfo, canEditar, canVerConfidencial, canEditarConfidencial, canCerrar, conviventes, servidores, cecistas, preguntas, movimientos, resumenPagos, inicial } = props
   const router = useRouter()
   const supabase = createClient()
 
@@ -212,6 +216,7 @@ export default function CierrePanel(props: Props) {
           eventoId={eventoId}
           eventoInfo={eventoInfo}
           movimientosIniciales={movimientos}
+          resumenPagos={resumenPagos}
           readOnly={!canEditar}
         />
       </Section>

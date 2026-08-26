@@ -23,9 +23,11 @@ export default function NewPagoPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [participantes, setParticipantes] = useState<ParticipanteOption[]>([])
+  const [linkPension, setLinkPension] = useState('')
   const router = useRouter()
   const [formData, setFormData] = useState({
     evento_participante_id: '',
+    concepto: 'inscripcion',
     monto: '',
     medio_pago: 'transferencia',
     estado_pago: 'pendiente',
@@ -54,12 +56,28 @@ export default function NewPagoPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
+    setLinkPension('')
 
     try {
+      // Pensión por Mercado Pago: se genera un link de pago para compartir,
+      // en vez de insertar el pago directamente (queda pendiente hasta que se paga).
+      if (formData.concepto === 'pension' && formData.medio_pago === 'mercadopago') {
+        const res = await fetch('/api/pagos/pension/preferencia', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ evento_participante_id: formData.evento_participante_id }),
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error ?? 'No se pudo generar el link de pago')
+        setLinkPension(data.checkout_url)
+        return
+      }
+
       const supabase = createClient()
 
       const insertData: Record<string, unknown> = {
         evento_participante_id: formData.evento_participante_id,
+        concepto: formData.concepto,
         monto: parseFloat(formData.monto),
         medio_pago: formData.medio_pago,
         estado_pago: formData.estado_pago,
@@ -71,7 +89,7 @@ export default function NewPagoPage() {
       const { error: pagoError } = await supabase.from('pagos').insert(insertData)
       if (pagoError) throw pagoError
 
-      if (formData.estado_pago === 'confirmado') {
+      if (formData.estado_pago === 'confirmado' && formData.concepto === 'inscripcion') {
         await supabase
           .from('evento_participantes')
           .update({ estado_participacion: 'inscripto' })
@@ -88,6 +106,8 @@ export default function NewPagoPage() {
     }
   }
 
+  const esPensionMercadopago = formData.concepto === 'pension' && formData.medio_pago === 'mercadopago'
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
@@ -103,7 +123,7 @@ export default function NewPagoPage() {
       <Card className="border-border bg-card max-w-2xl">
         <CardHeader>
           <CardTitle className="text-foreground">Registrar Nuevo Pago</CardTitle>
-          <CardDescription>Registra un pago para una inscripción a un evento</CardDescription>
+          <CardDescription>Registra un pago de inscripción o de pensión para un evento</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -113,9 +133,45 @@ export default function NewPagoPage() {
               </div>
             )}
 
-            {/* Inscripción */}
+            {linkPension && (
+              <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm space-y-2">
+                <p className="text-foreground font-medium">Link de pago de pensión generado</p>
+                <p className="break-all text-muted-foreground">{linkPension}</p>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="bg-transparent"
+                    onClick={() => navigator.clipboard.writeText(linkPension)}
+                  >
+                    Copiar link
+                  </Button>
+                  <Button type="button" size="sm" onClick={() => router.push('/pagos')}>
+                    Ir a Pagos
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Concepto */}
             <div className="space-y-2">
-              <Label htmlFor="evento_participante_id">Inscripción *</Label>
+              <Label htmlFor="concepto">Concepto *</Label>
+              <select
+                id="concepto"
+                name="concepto"
+                value={formData.concepto}
+                onChange={handleChange}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground text-sm"
+              >
+                <option value="inscripcion">Inscripción</option>
+                <option value="pension">Pensión</option>
+              </select>
+            </div>
+
+            {/* Participante */}
+            <div className="space-y-2">
+              <Label htmlFor="evento_participante_id">Participante *</Label>
               <select
                 id="evento_participante_id"
                 name="evento_participante_id"
@@ -137,7 +193,7 @@ export default function NewPagoPage() {
             {/* Monto y Método */}
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="monto">Monto *</Label>
+                <Label htmlFor="monto">Monto {esPensionMercadopago ? '' : '*'}</Label>
                 <Input
                   id="monto"
                   name="monto"
@@ -147,8 +203,14 @@ export default function NewPagoPage() {
                   placeholder="0.00"
                   value={formData.monto}
                   onChange={handleChange}
-                  required
+                  required={!esPensionMercadopago}
+                  disabled={esPensionMercadopago}
                 />
+                {esPensionMercadopago && (
+                  <p className="text-xs text-muted-foreground">
+                    Se usa el precio de pensión configurado en el evento.
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="medio_pago">Medio de Pago *</Label>
@@ -225,7 +287,11 @@ export default function NewPagoPage() {
             {/* Buttons */}
             <div className="flex gap-3 pt-6">
               <Button type="submit" disabled={loading}>
-                {loading ? 'Guardando...' : 'Registrar Pago'}
+                {loading
+                  ? 'Guardando...'
+                  : esPensionMercadopago
+                    ? 'Generar Link de Pago'
+                    : 'Registrar Pago'}
               </Button>
               <Link href="/pagos">
                 <Button type="button" variant="outline" className="bg-transparent">

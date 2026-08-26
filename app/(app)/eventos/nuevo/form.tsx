@@ -93,6 +93,8 @@ export default function NuevoEventoForm({
     fecha_solicitud: today,
     casa_retiro_id: "",
     cupo_maximo: "30",
+    precio: "",
+    pension: "",
     audiencia: "cerrado",
     modalidad: "presencial",
     asesor_voluntario: false,
@@ -459,6 +461,39 @@ export default function NuevoEventoForm({
                 Es de aporte voluntario DAV
               </label>
             </div>
+
+            {/* Precios */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="precio">Precio de Inscripción</Label>
+                <Input
+                  id="precio"
+                  name="precio"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={formData.precio}
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="pension">Precio de Pensión</Label>
+                <Input
+                  id="pension"
+                  name="pension"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={formData.pension}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground -mt-3">
+              La landing pública del evento solo cobra el precio de inscripción. La pensión se registra y valida desde Pagos.
+            </p>
 
             {/* 6–9. Ubicación */}
             <LocationFields

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getUserContext, canPerform } from '@/lib/auth/context'
+import { esCentralizadorDeEvento } from '@/lib/eventos/cierre'
 
 export async function POST(
   request: Request,
@@ -16,10 +17,10 @@ export async function POST(
   const { data: pago, error: pagoError } = await supabase
     .from('pagos')
     .select(`
-      id, estado_pago, evento_participante_id, notas,
+      id, estado_pago, evento_participante_id, notas, concepto,
       participante:evento_participantes!evento_participante_id(
         id, estado_participacion,
-        evento:eventos!evento_id(organizacion_id)
+        evento:eventos!evento_id(organizacion_id, fraternidad_id, centralizador_1_persona_id, centralizador_2_persona_id, centralizador_3_persona_id)
       )
     `)
     .eq('id', id)
@@ -30,11 +31,28 @@ export async function POST(
   }
 
   const participante = pago.participante as unknown as
-    | { id: string; estado_participacion: string; evento: { organizacion_id: string | null } | null }
+    | {
+        id: string
+        estado_participacion: string
+        evento: {
+          organizacion_id: string | null
+          fraternidad_id: string | null
+          centralizador_1_persona_id: string | null
+          centralizador_2_persona_id: string | null
+          centralizador_3_persona_id: string | null
+        } | null
+      }
     | null
-  const organizacionId = participante?.evento?.organizacion_id ?? null
+  const evento = participante?.evento ?? null
+  const organizacionId = evento?.organizacion_id ?? null
+  const fraternidadId = evento?.fraternidad_id ?? null
 
-  if (!canPerform(ctx, 'payment.verify', organizacionId)) {
+  const autorizado =
+    canPerform(ctx, 'payment.verify', organizacionId) ||
+    (fraternidadId ? canPerform(ctx, 'payment.verify', fraternidadId) : false) ||
+    (evento ? esCentralizadorDeEvento(ctx, evento) : false)
+
+  if (!autorizado) {
     return NextResponse.json({ error: 'No tenés permiso para verificar este pago' }, { status: 403 })
   }
 
@@ -56,7 +74,7 @@ export async function POST(
 
     if (updateError) return NextResponse.json({ error: updateError.message }, { status: 400 })
 
-    if (participante?.estado_participacion === 'interesado') {
+    if (pago.concepto === 'inscripcion' && participante?.estado_participacion === 'interesado') {
       await supabase
         .from('evento_participantes')
         .update({ estado_participacion: 'inscripto' })

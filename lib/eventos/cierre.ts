@@ -78,11 +78,33 @@ type CierreEvento = {
   organizacion_id: string | null
   fraternidad_id: string | null
   coordinador_asignado_id: string | null
+  centralizador_1_persona_id: string | null
+  centralizador_2_persona_id: string | null
+  centralizador_3_persona_id: string | null
 }
 
 /** El usuario es el coordinador asignado del evento. */
 export function esCoordinador(ctx: UserContext | null, evento: CierreEvento): boolean {
   return !!ctx?.persona_id && ctx.persona_id === evento.coordinador_asignado_id
+}
+
+/**
+ * El usuario es uno de los (hasta 3) centralizadores asignados al evento.
+ * "Centralizador" es un rol scoped a evento (no a organización), por eso no
+ * llega a `ctx.org_ids`/`canPerform` — se resuelve comparando persona_id
+ * directamente contra las columnas centralizador_X_persona_id de eventos,
+ * igual que ya hacen `eventos/centralizador/page.tsx` y `dashboard/page.tsx`.
+ */
+export function esCentralizadorDeEvento(
+  ctx: UserContext | null,
+  evento: Pick<CierreEvento, 'centralizador_1_persona_id' | 'centralizador_2_persona_id' | 'centralizador_3_persona_id'>
+): boolean {
+  if (!ctx?.persona_id) return false
+  return (
+    ctx.persona_id === evento.centralizador_1_persona_id ||
+    ctx.persona_id === evento.centralizador_2_persona_id ||
+    ctx.persona_id === evento.centralizador_3_persona_id
+  )
 }
 
 /**
@@ -93,6 +115,7 @@ export function canEditarCierre(ctx: UserContext | null, evento: CierreEvento): 
   if (!ctx || evento.estado !== 'finalizado') return false
   return (
     esCoordinador(ctx, evento) ||
+    esCentralizadorDeEvento(ctx, evento) ||
     canPerform(ctx, 'event.update', evento.organizacion_id) ||
     (evento.fraternidad_id ? canPerform(ctx, 'event.update', evento.fraternidad_id) : false)
   )
@@ -125,6 +148,7 @@ export function canVerCierre(ctx: UserContext | null, evento: CierreEvento): boo
   if (evento.estado !== 'finalizado' && evento.estado !== 'cerrado') return false
   return (
     esCoordinador(ctx, evento) ||
+    esCentralizadorDeEvento(ctx, evento) ||
     canVerInformesConfidenciales(ctx, evento) ||
     canPerform(ctx, 'event.update', evento.organizacion_id) ||
     (evento.fraternidad_id ? canPerform(ctx, 'event.update', evento.fraternidad_id) : false)
