@@ -150,7 +150,6 @@ export default async function DashboardPage() {
     misRechazadosResult,
     pendienteDatosNoticiasResult,
     pendienteAprobacionFinalResult,
-    centralizadorCountResult,
   ] = await Promise.all([
     // 1. Count personas (non-admin count se calcula en el bloque cecistas más abajo)
     ctx.is_admin
@@ -328,19 +327,7 @@ export default async function DashboardPage() {
           .order("updated_at", { ascending: true })
           .limit(10)
       : Promise.resolve({ data: null, error: null }),
-
-    // 14. Eventos donde soy Centralizador (autoscopeado por persona_id)
-    hasPersonaId
-      ? supabase
-          .from("eventos")
-          .select("id", { count: "exact", head: true })
-          .or(
-            `centralizador_1_persona_id.eq.${ctx.persona_id},centralizador_2_persona_id.eq.${ctx.persona_id},centralizador_3_persona_id.eq.${ctx.persona_id}`,
-          )
-      : Promise.resolve({ count: 0, error: null }),
   ])
-
-  const centralizadorCount = centralizadorCountResult.count ?? 0
 
   let totalPersonas = personasCountResult.count ?? 0
   const totalConfraternidades = confraternidadesCountResult.count ?? 0
@@ -449,6 +436,41 @@ export default async function DashboardPage() {
     }
     const { data: interesadosData } = await q
     nuevosInteresados = interesadosData ?? []
+  }
+
+  // Eventos donde soy Centralizador + interesados de eventos activos — autoscopeado por persona_id
+  let misEventosCentralizador: any[] | null = null
+  let interesadosCentralizador: any[] | null = null
+  if (hasPersonaId) {
+    const { data: centralizadorEventos } = await supabase
+      .from("eventos")
+      .select(
+        "id, nombre, estado, fecha_inicio, organizacion:organizaciones!organizacion_id(nombre)",
+      )
+      .or(
+        `centralizador_1_persona_id.eq.${ctx.persona_id},centralizador_2_persona_id.eq.${ctx.persona_id},centralizador_3_persona_id.eq.${ctx.persona_id}`,
+      )
+      .order("fecha_inicio", { ascending: false })
+    misEventosCentralizador = centralizadorEventos ?? []
+
+    const activosIds = misEventosCentralizador
+      .filter((ev: any) => ["aprobado", "publicado", "en_curso"].includes(ev.estado))
+      .map((ev: any) => ev.id)
+
+    if (activosIds.length > 0) {
+      const { data: interesadosData } = await supabase
+        .from("evento_participantes")
+        .select(
+          "id, persona:personas!persona_id(id, nombre, apellido, telefono, localidad, provincia), evento:eventos!evento_id(id, nombre)",
+        )
+        .in("evento_id", activosIds)
+        .eq("estado_participacion", "interesado")
+        .order("fecha_inscripcion", { ascending: false })
+        .limit(10)
+      interesadosCentralizador = interesadosData ?? []
+    } else {
+      interesadosCentralizador = []
+    }
   }
 
   // Pagos por transferencia pendientes de verificación — scopeados a la org del usuario
@@ -678,28 +700,123 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      {/* Soy Centralizador */}
-      {centralizadorCount > 0 && (
+      {/* Eventos donde soy Centralizador */}
+      {misEventosCentralizador && misEventosCentralizador.length > 0 && (
         <Card className="border-primary/30 bg-primary/5">
-          <CardContent className="flex flex-col gap-3 py-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3">
-              <Users className="h-6 w-6 text-primary shrink-0 mt-0.5" />
-              <div>
-                <p className="font-semibold text-foreground">
-                  Soy Centralizador en {centralizadorCount}{" "}
-                  {centralizadorCount === 1 ? "evento" : "eventos"}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Revisá tus eventos y las personas interesadas, inscriptas y
-                  convivientes.
-                </p>
-              </div>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <Users className="h-5 w-5 text-primary" />
+              Eventos donde soy Centralizador
+            </CardTitle>
+            <CardDescription>
+              Soy Centralizador en {misEventosCentralizador.length}{" "}
+              {misEventosCentralizador.length === 1 ? "evento" : "eventos"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {misEventosCentralizador.slice(0, 5).map((evento: any) => (
+                <Link
+                  key={evento.id}
+                  href={`/eventos/${evento.id}`}
+                  className="flex items-center justify-between rounded-lg border border-border p-3 hover:border-primary/50 transition-colors"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-foreground truncate">
+                      {evento.nombre}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {evento.organizacion?.nombre ?? "—"}
+                      {evento.fecha_inicio
+                        ? ` · ${formatDateShort(evento.fecha_inicio)}`
+                        : ""}
+                    </p>
+                  </div>
+                  <span
+                    className={`text-xs px-2 py-1 rounded font-medium ml-3 shrink-0 ${ESTADO_EVENT_COLORS[evento.estado] ?? ""}`}
+                  >
+                    {ESTADO_LABELS[evento.estado] ?? evento.estado}
+                  </span>
+                </Link>
+              ))}
             </div>
-            <Link href="/eventos/centralizador" className="shrink-0">
-              <Button className="gap-2">
-                <Users className="h-4 w-4" />
-                Ver mis eventos
-                <ArrowRight className="h-4 w-4" />
+            <Link href="/eventos/centralizador" className="block mt-4">
+              <Button variant="outline" className="w-full bg-transparent">
+                Ver mis eventos y filtrar
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Interesados de eventos activos donde soy Centralizador */}
+      {misEventosCentralizador && misEventosCentralizador.length > 0 && (
+        <Card className="border-amber-200 dark:border-amber-900 bg-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <Users className="h-5 w-5 text-amber-500" />
+              Interesados de eventos activos
+            </CardTitle>
+            <CardDescription>
+              Personas interesadas en tus eventos aprobados, publicados o en curso
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!interesadosCentralizador || interesadosCentralizador.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No hay personas interesadas en tus eventos activos por el momento
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+                      <th className="px-3 py-2 font-medium">Nombre</th>
+                      <th className="px-3 py-2 font-medium">Apellido</th>
+                      <th className="px-3 py-2 font-medium">Teléfono</th>
+                      <th className="px-3 py-2 font-medium">Ciudad</th>
+                      <th className="px-3 py-2 font-medium">Provincia</th>
+                      <th className="px-3 py-2 font-medium">Evento de Interés</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {interesadosCentralizador.map((ep: any) => {
+                      const persona = ep.persona
+                      return (
+                        <tr
+                          key={ep.id}
+                          className="border-b border-border/60 hover:bg-muted/40"
+                        >
+                          <td className="px-3 py-2 font-medium text-foreground">
+                            {persona?.nombre ?? "—"}
+                          </td>
+                          <td className="px-3 py-2 text-foreground">
+                            {persona?.apellido ?? "—"}
+                          </td>
+                          <td className="px-3 py-2 text-muted-foreground">
+                            {persona?.telefono ?? "—"}
+                          </td>
+                          <td className="px-3 py-2 text-muted-foreground">
+                            {persona?.localidad ?? "—"}
+                          </td>
+                          <td className="px-3 py-2 text-muted-foreground">
+                            {persona?.provincia ?? "—"}
+                          </td>
+                          <td className="px-3 py-2 text-muted-foreground">
+                            {ep.evento?.nombre ?? "—"}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <Link href="/eventos/centralizador" className="block mt-4">
+              <Button variant="outline" className="w-full bg-transparent">
+                Ver todas las personas de mis eventos
+                <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </Link>
           </CardContent>
