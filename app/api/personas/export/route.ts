@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getUserContext, canPerform } from '@/lib/auth/context'
 
 const TIPO_PERSONA_LABELS: Record<string, string> = {
   interesado: 'Interesado/a',
@@ -14,11 +15,18 @@ function tipoPersonaLabel(tipo: string | null | undefined): string {
 }
 
 export async function GET(req: NextRequest) {
+  const ctx = await getUserContext()
+  if (!ctx) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+  if (!canPerform(ctx, 'personas.export')) {
+    return NextResponse.json({ error: 'Sin permiso para exportar personas' }, { status: 403 })
+  }
+
   const { searchParams } = req.nextUrl
   const q = searchParams.get('q') ?? ''
   const estado = searchParams.get('estado') ?? ''
   const estado_eclesial = searchParams.get('estado_eclesial') ?? ''
   const provincia = searchParams.get('provincia') ?? ''
+  const localidad = searchParams.get('localidad') ?? ''
   const modo = searchParams.get('modo') ?? ''
   const ministerio_id = searchParams.get('ministerio_id') ?? ''
 
@@ -74,7 +82,8 @@ export async function GET(req: NextRequest) {
   if (q) query = query.or(`nombre.ilike.%${q}%,apellido.ilike.%${q}%,email.ilike.%${q}%`)
   if (estado) query = query.eq('estado', estado)
   if (estado_eclesial) query = query.eq('estado_eclesial', estado_eclesial)
-  if (provincia) query = query.ilike('provincia', `%${provincia}%`)
+  if (provincia) query = query.ilike('provincia', provincia)
+  if (localidad) query = query.ilike('localidad', localidad)
   if (filterIds !== null) query = query.in('id', filterIds)
 
   const { data: personas, error } = await query

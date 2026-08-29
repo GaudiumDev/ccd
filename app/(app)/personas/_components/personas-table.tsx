@@ -31,6 +31,7 @@ type Props = {
   personas: Persona[]
   canCreate: boolean
   canUpdate: boolean
+  canExport: boolean
   exportSearch: string
   initialPersonaId: string | null
   sortBy: string
@@ -42,6 +43,7 @@ export default function PersonasTable({
   personas,
   canCreate,
   canUpdate,
+  canExport,
   exportSearch,
   initialPersonaId,
   sortBy,
@@ -208,7 +210,7 @@ export default function PersonasTable({
             <span className="text-sm text-muted-foreground">
               {(totalCount ?? personas.length)} persona{(totalCount ?? personas.length) !== 1 ? "s" : ""} en total
             </span>
-            <ExportButton searchString={exportSearch} />
+            {canExport && <ExportButton searchString={exportSearch} />}
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -389,20 +391,22 @@ export default function PersonasTable({
                       )}
                       {copied ? "Copiado" : "Copiar enlace"}
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="gap-1.5 text-xs"
-                      onClick={handleExportPdf}
-                      disabled={exporting}
-                    >
-                      {exporting ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Printer className="h-3.5 w-3.5" />
-                      )}
-                      {exporting ? "Generando..." : "Exportar PDF"}
-                    </Button>
+                    {canExport && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="gap-1.5 text-xs"
+                        onClick={handleExportPdf}
+                        disabled={exporting}
+                      >
+                        {exporting ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Printer className="h-3.5 w-3.5" />
+                        )}
+                        {exporting ? "Generando..." : "Exportar PDF"}
+                      </Button>
+                    )}
                   </div>
                 </div>
               </DialogHeader>

@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getUserContext, canPerform } from '@/lib/auth/context'
 
 export async function GET(req: NextRequest) {
+  const ctx = await getUserContext()
+  if (!ctx) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+  if (!canPerform(ctx, 'organizaciones.export')) {
+    return NextResponse.json({ error: 'Sin permiso para exportar organizaciones' }, { status: 403 })
+  }
+
   const { searchParams } = req.nextUrl
   const q = searchParams.get('q') ?? ''
   const tipo = searchParams.get('tipo') ?? ''
