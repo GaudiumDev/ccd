@@ -1,10 +1,18 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useRef } from "react"
+import { useMemo, useRef, useState } from "react"
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox"
 
 type Ministerio = { id: string; nombre: string }
 type Organizacion = { id: string; nombre: string; tipo: string }
+/** Par provincia + localidad presente entre las personas (deduplicado en el server component). */
+export type Ubicacion = { provincia: string; localidad: string | null }
+
+/** Minúsculas y sin tildes, para comparar variantes de la misma provincia/localidad. */
+function normalizar(text: string): string {
+  return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim()
+}
 
 const tipoLabel: Record<string, string> = {
   confraternidad: 'Confraternidad',
@@ -14,11 +22,13 @@ const tipoLabel: Record<string, string> = {
 type Props = {
   ministerios: Ministerio[]
   organizaciones: Organizacion[]
+  ubicaciones: Ubicacion[]
   defaults: {
     q: string
     estado: string
     estado_eclesial: string
     provincia: string
+    localidad: string
     modo: string
     ministerio_id: string
     organizacion_id: string
@@ -27,16 +37,67 @@ type Props = {
 }
 
 const selectClass = "w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+// Iguala la altura y el padding de los <select> vecinos (el Button del Combobox es h-9 px-4).
+const comboboxClass = "h-[38px] border-border px-3 text-sm shadow-none"
 
-export default function PersonasFilters({ ministerios, organizaciones, defaults }: Props) {
+export default function PersonasFilters({ ministerios, organizaciones, ubicaciones, defaults }: Props) {
   const router = useRouter()
   const formRef = useRef<HTMLFormElement>(null)
+  const [provincia, setProvincia] = useState(defaults.provincia)
+  const [localidad, setLocalidad] = useState(defaults.localidad)
+
+  const provinciaOptions = useMemo<ComboboxOption[]>(() => {
+    const vistas = new Map<string, string>()
+    for (const u of ubicaciones) {
+      const key = normalizar(u.provincia)
+      if (key && !vistas.has(key)) vistas.set(key, u.provincia)
+    }
+    // Conserva un valor que venga de la URL aunque ya no exista entre las personas visibles.
+    if (defaults.provincia && !vistas.has(normalizar(defaults.provincia))) {
+      vistas.set(normalizar(defaults.provincia), defaults.provincia)
+    }
+    return [...vistas.values()]
+      .sort((a, b) => a.localeCompare(b, "es"))
+      .map((n) => ({ label: n, value: n }))
+  }, [ubicaciones, defaults.provincia])
+
+  const localidadOptions = useMemo<ComboboxOption[]>(() => {
+    const provKey = normalizar(provincia)
+    const vistas = new Map<string, string>()
+    for (const u of ubicaciones) {
+      if (!u.localidad) continue
+      if (provKey && normalizar(u.provincia) !== provKey) continue
+      const key = normalizar(u.localidad)
+      if (key && !vistas.has(key)) vistas.set(key, u.localidad)
+    }
+    if (defaults.localidad && !vistas.has(normalizar(defaults.localidad))) {
+      vistas.set(normalizar(defaults.localidad), defaults.localidad)
+    }
+    return [...vistas.values()]
+      .sort((a, b) => a.localeCompare(b, "es"))
+      .map((n) => ({ label: n, value: n }))
+  }, [ubicaciones, provincia, defaults.localidad])
+
+  function handleProvinciaChange(val: string) {
+    setProvincia(val)
+    // Si la ciudad elegida no pertenece a la nueva provincia, se descarta.
+    if (!localidad) return
+    const sigueValiendo = ubicaciones.some(
+      (u) =>
+        u.localidad &&
+        normalizar(u.localidad) === normalizar(localidad) &&
+        (!val || normalizar(u.provincia) === normalizar(val))
+    )
+    if (!sigueValiendo) setLocalidad("")
+  }
 
   function handleClear() {
+    setProvincia("")
+    setLocalidad("")
     router.push("/personas")
   }
 
-  const hasActiveFilters = Object.values(defaults).some((v) => v !== "")
+  const hasActiveFilters = Object.values(defaults).some((v) => v !== "") || provincia !== "" || localidad !== ""
 
   return (
     <form ref={formRef} method="GET" className="space-y-3">
@@ -94,12 +155,31 @@ export default function PersonasFilters({ ministerios, organizaciones, defaults 
           <option value="cardenal">Cardenal</option>
         </select>
 
-        <input
-          name="provincia"
-          defaultValue={defaults.provincia}
-          placeholder="Provincia..."
-          className={selectClass}
-        />
+        <div>
+          <input type="hidden" name="provincia" value={provincia} />
+          <Combobox
+            value={provincia}
+            onSelect={handleProvinciaChange}
+            options={provinciaOptions}
+            placeholder="Provincia"
+            searchPlaceholder="Buscar provincia..."
+            emptyText="Sin provincias cargadas."
+            className={comboboxClass}
+          />
+        </div>
+
+        <div>
+          <input type="hidden" name="localidad" value={localidad} />
+          <Combobox
+            value={localidad}
+            onSelect={setLocalidad}
+            options={localidadOptions}
+            placeholder="Ciudad / Localidad"
+            searchPlaceholder="Buscar ciudad..."
+            emptyText={provincia ? "Sin ciudades en esa provincia." : "Sin ciudades cargadas."}
+            className={comboboxClass}
+          />
+        </div>
 
         {organizaciones.length > 0 && (
           <select name="organizacion_id" defaultValue={defaults.organizacion_id} className={selectClass}>

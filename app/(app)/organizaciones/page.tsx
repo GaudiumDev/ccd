@@ -53,6 +53,7 @@ export default async function OrganizacionesPage({
   const pageNum = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1)
 
   const canCreate = ctx ? canPerform(ctx, "organization.create") : false
+  const canExport = ctx ? canPerform(ctx, "organizaciones.export") : false
   // canUpdate se evalúa por org en la tabla (ver uso abajo)
   const canUpdateOrg = (orgId: string) =>
     ctx ? canPerform(ctx, "organization.update", orgId) : false
@@ -244,7 +245,7 @@ export default async function OrganizacionesPage({
                     </>
                   )}
                 </span>
-                <OrgExportButton searchString={exportSearch} />
+                {canExport && <OrgExportButton searchString={exportSearch} />}
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">

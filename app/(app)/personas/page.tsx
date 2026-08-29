@@ -7,8 +7,53 @@ import { Users, Plus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getUserContext, canPerform } from '@/lib/auth/context'
 import PersonasTable from './_components/personas-table'
-import PersonasFilters from './_components/personas-filters'
+import PersonasFilters, { type Ubicacion } from './_components/personas-filters'
 import PersonasPagination from './_components/personas-pagination'
+
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
+
+/** Normaliza a minúsculas sin tildes, para deduplicar variantes de la misma provincia/localidad. */
+function normalizarUbicacion(text: string): string {
+  return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+}
+
+/**
+ * Pares provincia + localidad existentes entre las personas activas, deduplicados.
+ * Alimenta los combobox de Provincia y Ciudad del filtro: solo se ofrecen valores
+ * que realmente están cargados (y que el usuario puede ver, porque RLS aplica acá también).
+ */
+async function fetchUbicaciones(supabase: SupabaseServerClient): Promise<Ubicacion[]> {
+  const CHUNK = 1000
+  const MAX_CHUNKS = 20
+  const vistos = new Set<string>()
+  const ubicaciones: Ubicacion[] = []
+
+  for (let i = 0; i < MAX_CHUNKS; i++) {
+    const { data, error } = await supabase
+      .from('personas')
+      .select('provincia, localidad')
+      .is('fecha_baja', null)
+      .not('provincia', 'is', null)
+      .order('id')
+      .range(i * CHUNK, i * CHUNK + CHUNK - 1)
+
+    if (error || !data) break
+
+    for (const row of data) {
+      const prov = (row.provincia ?? '').trim()
+      if (!prov) continue
+      const loc = (row.localidad ?? '').trim()
+      const key = `${normalizarUbicacion(prov)}|${normalizarUbicacion(loc)}`
+      if (vistos.has(key)) continue
+      vistos.add(key)
+      ubicaciones.push({ provincia: prov, localidad: loc || null })
+    }
+
+    if (data.length < CHUNK) break
+  }
+
+  return ubicaciones
+}
 
 export default async function PersonasPage({
   searchParams,
@@ -18,6 +63,7 @@ export default async function PersonasPage({
     estado?: string
     estado_eclesial?: string
     provincia?: string
+    localidad?: string
     modo?: string
     ministerio_id?: string
     organizacion_id?: string
@@ -33,6 +79,7 @@ export default async function PersonasPage({
   const estado = params.estado ?? ''
   const estado_eclesial = params.estado_eclesial ?? ''
   const provincia = params.provincia ?? ''
+  const localidad = params.localidad ?? ''
   const modo = params.modo ?? ''
   const ministerio_id = params.ministerio_id ?? ''
   const organizacion_id = params.organizacion_id ?? ''
@@ -46,6 +93,7 @@ export default async function PersonasPage({
 
   const canCreate = ctx ? canPerform(ctx, 'person.create') : false
   const canUpdate = ctx ? canPerform(ctx, 'person.update') : false
+  const canExport = ctx ? canPerform(ctx, 'personas.export') : false
   const supabase = await createClient()
 
   // Load ministerios for the filter select
@@ -53,6 +101,10 @@ export default async function PersonasPage({
     supabase.from('ministerios').select('id, nombre').eq('activo', true).order('nombre'),
     supabase.from('organizaciones').select('id, nombre, tipo').in('tipo', ['confraternidad', 'fraternidad']).is('fecha_baja', null).order('tipo').order('nombre'),
   ])
+
+  // Ubicaciones existentes (provincia + localidad) para los combobox de filtro.
+  // Supabase no expone DISTINCT, así que se traen las columnas en tandas y se deduplican acá.
+  const ubicaciones = await fetchUbicaciones(supabase)
 
   // Relational filters: get persona ids matching modo/ministerio
   let modoIds: string[] | null = null
@@ -118,7 +170,8 @@ export default async function PersonasPage({
     }
     if (estado) query = query.eq('estado', estado)
     if (estado_eclesial) query = query.eq('estado_eclesial', estado_eclesial)
-    if (provincia) query = query.ilike('provincia', `%${provincia}%`)
+    if (provincia) query = query.ilike('provincia', provincia)
+    if (localidad) query = query.ilike('localidad', localidad)
     if (tipo_persona) query = query.eq('tipo_persona', tipo_persona)
     if (filterIds !== null) query = query.in('id', filterIds)
 
@@ -129,7 +182,7 @@ export default async function PersonasPage({
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
 
-  const hasFilters = !!(q || estado || estado_eclesial || provincia || modo || ministerio_id || organizacion_id || tipo_persona)
+  const hasFilters = !!(q || estado || estado_eclesial || provincia || localidad || modo || ministerio_id || organizacion_id || tipo_persona)
 
   // Build search string for export button
   const exportParams = new URLSearchParams()
@@ -137,6 +190,7 @@ export default async function PersonasPage({
   if (estado) exportParams.set('estado', estado)
   if (estado_eclesial) exportParams.set('estado_eclesial', estado_eclesial)
   if (provincia) exportParams.set('provincia', provincia)
+  if (localidad) exportParams.set('localidad', localidad)
   if (modo) exportParams.set('modo', modo)
   if (ministerio_id) exportParams.set('ministerio_id', ministerio_id)
   if (organizacion_id) exportParams.set('organizacion_id', organizacion_id)
@@ -175,7 +229,8 @@ export default async function PersonasPage({
           <PersonasFilters
             ministerios={ministerios ?? []}
             organizaciones={organizaciones ?? []}
-            defaults={{ q, estado, estado_eclesial, provincia, modo, ministerio_id, organizacion_id, tipo_persona }}
+            ubicaciones={ubicaciones}
+            defaults={{ q, estado, estado_eclesial, provincia, localidad, modo, ministerio_id, organizacion_id, tipo_persona }}
           />
 
           {/* Table — always rendered so ?persona=id deep-links work even with active filters */}
@@ -183,6 +238,7 @@ export default async function PersonasPage({
             personas={personas}
             canCreate={canCreate}
             canUpdate={canUpdate}
+            canExport={canExport}
             exportSearch={exportSearch}
             initialPersonaId={initialPersonaId}
             sortBy={sortBy}

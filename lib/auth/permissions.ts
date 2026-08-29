@@ -18,6 +18,7 @@ export type Permission =
   | 'person.merge'        // fusión de duplicados — solo admin
   | 'votos.edit'          // editar votos de Dedicados (Referente/Responsable) — global
   | 'votos.list'          // ver listado consolidado de votos (Animadores) — solo lectura
+  | 'personas.export'      // exportar listado de personas a Excel / detalle a PDF
   | 'event.create'
   | 'event.approve'       // aprobar eventos directamente (sin discernimiento) — solo admin
   | 'event.approve_confra' // aprobar en discernimiento confra (tecnico_confraternidad, responsable_fraternidad)
@@ -30,6 +31,7 @@ export type Permission =
   | 'payment.verify'       // verificar/aprobar/rechazar pagos por transferencia — scopeado a la org del evento
   | 'organization.create' // solo admin
   | 'organization.update'
+  | 'organizaciones.export' // exportar listado de organizaciones a Excel
   | 'ministry.assign'
   | 'roles.assign'        // asignar roles de sistema — solo admin
   | 'roles.view'          // ver sección ministerios y roles
@@ -56,6 +58,7 @@ export const rolePermissions: Record<SystemRole, Permission[]> = {
     'person.merge',
     'votos.edit',
     'votos.list',
+    'personas.export',
     'event.create',
     'event.approve',
     'event.approve_confra',
@@ -68,6 +71,7 @@ export const rolePermissions: Record<SystemRole, Permission[]> = {
     'payment.verify',
     'organization.create',
     'organization.update',
+    'organizaciones.export',
     'ministry.assign',
     'roles.assign',
     'view.all',
