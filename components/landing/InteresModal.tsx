@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { CheckCircle, Copy, Check, Link2 } from 'lucide-react'
+import { CheckCircle, Copy, Check, Link2, AlertCircle } from 'lucide-react'
 
 export type DatosPago = {
   alias: string
@@ -81,6 +81,7 @@ export function InteresModal({ eventoId, eventoNombre, montoInscripcion, mpDispo
   const [participanteId, setParticipanteId] = useState<string | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [comprobanteEnviado, setComprobanteEnviado] = useState(false)
+  const [yaRegistrado, setYaRegistrado] = useState(false)
 
   // ¿Corresponde el paso de pago? Solo si hay monto y algún medio de cobro configurado
   // (Mercado Pago conectado y/o datos de transferencia cargados).
@@ -104,11 +105,14 @@ export function InteresModal({ eventoId, eventoNombre, montoInscripcion, mpDispo
       const data = await res.json()
       if (!res.ok) {
         setError(data.error ?? 'Error inesperado. Intentá de nuevo.')
-      } else if (requierePago && data.evento_participante_id) {
-        setParticipanteId(data.evento_participante_id)
-        setStep('pago')
       } else {
-        setStep('listo')
+        setYaRegistrado(!!data.ya_registrado)
+        if (requierePago && data.evento_participante_id) {
+          setParticipanteId(data.evento_participante_id)
+          setStep('pago')
+        } else {
+          setStep('listo')
+        }
       }
     } catch {
       setError('Error de conexión. Verificá tu internet e intentá de nuevo.')
@@ -186,6 +190,7 @@ export function InteresModal({ eventoId, eventoNombre, montoInscripcion, mpDispo
       setParticipanteId(null)
       setFile(null)
       setComprobanteEnviado(false)
+      setYaRegistrado(false)
       setForm({ nombre: '', apellido: '', email: '', telefono: '', direccion: '', localidad: '', provincia: '', pais: 'Argentina' })
       onOpenChange(open)
       if (debeVolverAlListado) router.push(volverAlListadoHref!)
@@ -201,15 +206,23 @@ export function InteresModal({ eventoId, eventoNombre, montoInscripcion, mpDispo
       <DialogContent className="sm:max-w-md">
         {step === 'listo' ? (
           <div className="flex flex-col items-center gap-4 py-6 text-center">
-            <CheckCircle className="h-12 w-12 text-green-500" />
+            {yaRegistrado ? (
+              <AlertCircle className="h-12 w-12 text-amber-500" />
+            ) : (
+              <CheckCircle className="h-12 w-12 text-green-500" />
+            )}
             <div>
-              <p className="text-lg font-semibold text-foreground">¡Gracias por tu interés!</p>
+              <p className="text-lg font-semibold text-foreground">
+                {yaRegistrado ? 'Ya estabas registrado/a' : '¡Gracias por tu interés!'}
+              </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                {comprobanteEnviado
-                  ? <>Recibimos tu comprobante para <strong>{eventoNombre}</strong>. Lo verificaremos y nos comunicaremos pronto.</>
-                  : participanteId
-                    ? <>Tu inscripción a <strong>{eventoNombre}</strong> quedó registrada. Cuando se confirme el pago te avisaremos.</>
-                    : <>Tu interés en <strong>{eventoNombre}</strong> fue registrado. Nos comunicaremos pronto.</>}
+                {yaRegistrado
+                  ? <>Ese email ya había registrado interés en <strong>{eventoNombre}</strong>. No hace falta que te registres de nuevo; si necesitás actualizar tus datos, contactanos.</>
+                  : comprobanteEnviado
+                    ? <>Recibimos tu comprobante para <strong>{eventoNombre}</strong>. Lo verificaremos y nos comunicaremos pronto.</>
+                    : participanteId
+                      ? <>Tu inscripción a <strong>{eventoNombre}</strong> quedó registrada. Cuando se confirme el pago te avisaremos.</>
+                      : <>Tu interés en <strong>{eventoNombre}</strong> fue registrado. Nos comunicaremos pronto.</>}
               </p>
             </div>
             <Button onClick={() => handleClose(false)} className="mt-2">
@@ -225,6 +238,13 @@ export function InteresModal({ eventoId, eventoNombre, montoInscripcion, mpDispo
                 {montoLabel ? <> aboná <strong className="text-foreground">{montoLabel}</strong></> : <> aboná el pago de inscripción</>}.
               </DialogDescription>
             </DialogHeader>
+
+            {yaRegistrado && (
+              <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400">
+                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                <p>Ese email ya tenía una inscripción registrada para este evento. Podés continuar para completar el pago.</p>
+              </div>
+            )}
 
             <div className="grid gap-4 py-1">
               {mpDisponible && (
